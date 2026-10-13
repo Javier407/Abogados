@@ -19,17 +19,50 @@ Aplicación web para un gabinete de abogados que registra **clientes**, **abogad
 
 Las reglas del gabinete (expediente único, cliente existente, coherencia entre estado y fechas, tarjeta profesional única, cuenta de usuario única) viven en la capa de negocio. `ManejadorErroresAPI` las traduce a respuestas 400, 404 y 409.
 
-## Ejecutar
+## Ejecutar en otro computador
 
-Requisitos: JDK 11 y Maven (o IntelliJ IDEA).
+No hace falta instalar Maven: el proyecto trae el Maven Wrapper (`mvnw` / `mvnw.cmd`), que lo descarga solo la primera vez.
 
-**Con MySQL** (perfil por defecto):
+### 1. Instalar lo necesario
 
-1. Ejecutar [`sql/gabinete.sql`](sql/gabinete.sql) en MySQL Workbench. Crea la base `gabinete`, el usuario `admin` / `admin123` y datos de ejemplo. Se puede ejecutar varias veces.
-2. `mvn spring-boot:run`
+| Programa | Para qué | Dónde |
+|---|---|---|
+| Git | Descargar el proyecto | https://git-scm.com |
+| JDK 11 | Compilar y ejecutar (Spring Boot 2.5 no funciona con JDK 17 o superior) | https://adoptium.net (Temurin 11) o desde IntelliJ |
+| MySQL 8 + Workbench | Base de datos (opcional: ver paso 3B) | https://dev.mysql.com/downloads/installer |
+| IntelliJ IDEA | Opcional, para abrir y ejecutar el proyecto | https://www.jetbrains.com/idea |
+
+### 2. Descargar el proyecto
+
+```bash
+git clone https://github.com/Javier407/Abogados.git
+cd Abogados
+```
+
+### 3A. Con MySQL (configuración por defecto)
+
+1. Abrir MySQL Workbench, entrar con el usuario **root** y ejecutar [`sql/gabinete.sql`](sql/gabinete.sql) (File → Open SQL Script → rayo ⚡). Crea la base `gabinete`, el usuario `admin` / `admin123` que usa la aplicación y datos de ejemplo. Se puede ejecutar varias veces.
+2. Ejecutar la aplicación:
+   - Windows: `mvnw.cmd spring-boot:run`
+   - Linux / macOS: `./mvnw spring-boot:run`
 3. Abrir http://localhost:8080/gabinete.html
 
-**Sin instalar nada**: cambiar `spring.profiles.active=mysql` por `h2` en `src/main/resources/application.properties`. La base queda en memoria y se carga con `data-h2.sql`.
+### 3B. Sin MySQL (base en memoria, para probar rápido)
+
+En `src/main/resources/application.properties` cambiar `spring.profiles.active=mysql` por `spring.profiles.active=h2` y ejecutar igual que en el paso 3A. La base se crea en memoria con los datos de `data-h2.sql` y se borra al cerrar la aplicación.
+
+### Con IntelliJ IDEA
+
+File → Open → carpeta `Abogados` (abrir como proyecto Maven). En File → Project Structure → SDK elegir un **JDK 11** (si no hay, *Download JDK* → versión 11). Luego ejecutar `Ciclo3backApplication` con ▶.
+
+### Problemas frecuentes
+
+| Mensaje | Solución |
+|---|---|
+| `Access denied for user 'admin'` o `Unknown database 'gabinete'` | Ejecutar `sql/gabinete.sql` como root (paso 3A.1). |
+| `Communications link failure` | El servicio de MySQL está detenido: iniciarlo (Windows: `services.msc` → MySQL80). |
+| `Port 8080 was already in use` | Agregar `server.port=8081` en `application.properties` y abrir http://localhost:8081/gabinete.html |
+| Errores raros al compilar o con `javax` | Verificar que se está usando JDK 11: `java -version`. |
 
 > Las credenciales de `application-mysql.properties` son solo para desarrollo local.
 
@@ -40,10 +73,14 @@ Requisitos: JDK 11 y Maven (o IntelliJ IDEA).
 ## Pruebas
 
 ```bash
-mvn test
+./mvnw test        # Windows: mvnw.cmd test
 ```
 
 27 pruebas de integración (MockMvc sobre H2) que recorren las tres capas: validaciones, reglas de negocio, filtros, archivado, conflictos 409 y la relación abogado–usuario.
+
+## Documento del laboratorio
+
+El informe completo (requerimientos, diagramas, pruebas, QA y evaluación ISO/IEC 25000) está en [`docs/`](docs/).
 
 ## Servicios REST
 
