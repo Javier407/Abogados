@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Usuarios · Ciclo 3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+       :root {
+          --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          --font-display: "Space Grotesk", "Inter", -apple-system, sans-serif;
+          --bg: #f5f5f7;
+          --bg-2: #ffffff;
+          --card: rgba(255, 255, 255, .72);
+          --card-solid: #ffffff;
+          --ink: #1d1d1f;
+          --muted: #6e6e73;
+          --line: rgba(0, 0, 0, .08);
+          --input-bg: #f5f5f7;
+          --brand: #0071e3;
+          --brand-ink: #0077ed;
+          --brand-soft: rgba(0, 113, 227, .08);
+          --ok: #34c759;
+          --danger: #ff3b30;
+          --danger-soft: rgba(255, 59, 48, .08);
+          --warn: #ff9f0a;
+          --radius: 20px;
+          --shadow: 0 4px 24px -6px rgba(0, 0, 0, .12);
+          --shadow-lg: 0 12px 40px -12px rgba(0, 0, 0, .22);
+       }
+       @media (prefers-color-scheme: dark) {
+          :root {
+             --bg: #000000;
+             --bg-2: #1d1d1f;
+             --card: rgba(29, 29, 31, .72);
+             --card-solid: #1d1d1f;
+             --ink: #f5f5f7;
+             --muted: #86868b;
+             --line: rgba(255, 255, 255, .1);
+             --input-bg: #2a2a2c;
+             --brand: #0a84ff;
+             --brand-ink: #409cff;
+             --brand-soft: rgba(10, 132, 255, .14);
+             --danger-soft: rgba(255, 69, 58, .16);
+             --shadow: 0 4px 24px -6px rgba(0, 0, 0, .6);
+             --shadow-lg: 0 12px 40px -12px rgba(0, 0, 0, .8);
+          }
+       }
+
+       * { box-sizing: border-box; }
+
+       body {
+          margin: 0;
+          min-height: 100vh;
+          font-family: var(--font-sans);
+          color: var(--ink);
+          letter-spacing: -.011em;
+          background: var(--bg);
+          padding: 40px 20px 72px;
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+       }
+
+       .wrap { max-width: 1080px; margin: 0 auto; }
+
+       @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+       @keyframes pop { 0% { transform: scale(1); } 45% { transform: scale(1.3); } 100% { transform: scale(1); } }
+       @keyframes rowIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+       @keyframes slidein { from { transform: translateY(16px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+       @keyframes spin { to { transform: rotate(360deg); } }
+
+       header.top {
+          display: flex; align-items: center; gap: 16px;
+          margin-bottom: 34px;
+          animation: fadeUp .6s cubic-bezier(.22,1,.36,1) both;
+       }
+       .logo {
+          width: 52px; height: 52px; border-radius: 15px;
+          background: linear-gradient(135deg, #0a84ff, #0071e3);
+          display: grid; place-items: center; font-size: 25px;
+          box-shadow: 0 8px 20px -8px rgba(0, 113, 227, .6);
+          transition: transform .4s cubic-bezier(.22,1,.36,1);
+       }
+       .logo:hover { transform: scale(1.08); }
+       header.top h1 {
+          font-family: var(--font-display);
+          font-size: 30px; margin: 0; font-weight: 600;
+          letter-spacing: -.03em; line-height: 1.05;
+       }
+       header.top p {
+          margin: 5px 0 0; color: var(--muted); font-size: 13px; font-weight: 450;
+          letter-spacing: .01em; text-transform: uppercase;
+       }
+
+       .grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 22px;
+          align-items: start;
+       }
+
+       .card {
+          background: var(--card);
+          -webkit-backdrop-filter: saturate(180%) blur(20px);
+          backdrop-filter: saturate(180%) blur(20px);
+          border-radius: var(--radius);
+          box-shadow: var(--shadow);
+          border: 1px solid var(--line);
+          overflow: hidden;
+          animation: fadeUp .65s cubic-bezier(.22,1,.36,1) both;
+       }
+       .card.c1 { animation-delay: .08s; order: 1; }
+       .card.c2 { animation-delay: .16s; order: 2; }
+       .card-head {
+          padding: 18px 22px;
+          border-bottom: 1px solid var(--line);
+          display: flex; align-items: center; justify-content: space-between; gap: 8px;
+       }
+       .card-head h2 {
+          font-family: var(--font-display);
+          font-size: 17px; margin: 0; font-weight: 600; letter-spacing: -.02em;
+          display: flex; align-items: center; gap: 9px;
+       }
+       .card-body { padding: 22px; }
+
+       #form {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+          gap: 2px 18px;
+          align-items: end;
+       }
+       .field { margin-bottom: 16px; }
+       .field label {
+          display: block; font-size: 11px; color: var(--muted); margin-bottom: 8px;
+          font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+       }
+       .field input {
+          width: 100%; padding: 12px 14px; font-size: 15px;
+          border: 1px solid var(--line); border-radius: 12px;
+          background: var(--input-bg); color: var(--ink);
+          transition: border-color .2s, box-shadow .2s, background .2s;
+          font-family: inherit;
+       }
+       .field input::placeholder { color: var(--muted); opacity: .7; }
+       .field input:focus {
+          outline: none; border-color: var(--brand);
+          background: var(--card-solid);
+          box-shadow: 0 0 0 4px var(--brand-soft);
+       }
+       .field input:read-only { opacity: .55; cursor: not-allowed; }
+       .err-msg { display: block; color: var(--danger); font-size: 11.5px; margin-top: 5px; font-weight: 500; letter-spacing: -.005em; min-height: 14px; }
+       .field.invalid input { border-color: var(--danger); background: var(--danger-soft); }
+       .field.invalid input:focus { box-shadow: 0 0 0 4px var(--danger-soft); }
+
+       .head-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+       .search { position: relative; display: flex; align-items: center; }
+       .search svg { position: absolute; left: 12px; color: var(--muted); pointer-events: none; }
+       .search input {
+          width: 220px; max-width: 46vw; padding: 8px 14px 8px 34px; font-size: 13.5px;
+          border: 1px solid var(--line); border-radius: 980px; background: var(--input-bg);
+          color: var(--ink); font-family: inherit;
+          transition: border-color .2s, box-shadow .2s, background .2s;
+       }
+       .search input::placeholder { color: var(--muted); opacity: .8; }
+       .search input:focus { outline: none; border-color: var(--brand); background: var(--card-solid); box-shadow: 0 0 0 4px var(--brand-soft); }
+
+       .actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 4px; margin-bottom: 6px; grid-column: 1 / -1; }
+       button {
+          font: inherit; font-weight: 500; font-size: 14.5px; letter-spacing: -.01em;
+          border: none; border-radius: 980px; padding: 11px 20px;
+          cursor: pointer;
+          transition: transform .18s cubic-bezier(.22,1,.36,1), filter .2s, background .2s, box-shadow .2s;
+       }
+       button:hover { transform: scale(1.03); }
+       button:active { transform: scale(.97); }
+       .btn-primary { background: var(--brand); color: #fff; }
+       .btn-primary:hover { background: var(--brand-ink); }
+       .btn-ghost { background: color-mix(in srgb, var(--muted) 12%, transparent); color: var(--ink); }
+       .btn-ghost:hover { filter: brightness(1.06); }
+       .btn-warn { background: var(--warn); color: #fff; }
+
+       #btnRefrescar { padding: 8px 16px; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; }
+       #btnRefrescar.loading span { display: inline-block; animation: spin .7s linear infinite; }
+
+       table { width: 100%; border-collapse: collapse; font-size: 14px; }
+       thead th {
+          text-align: left; padding: 13px 14px; color: var(--muted);
+          font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+          border-bottom: 1px solid var(--line);
+       }
+       tbody td { padding: 14px; border-bottom: 1px solid var(--line); letter-spacing: -.01em; }
+       tbody td:first-child { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+       tbody tr { animation: rowIn .34s cubic-bezier(.22,1,.36,1) both; transition: background .18s; }
+       tbody tr:hover { background: var(--brand-soft); }
+       tbody tr:last-child td { border-bottom: none; }
+       .row-actions { display: flex; gap: 7px; justify-content: flex-end; }
+       .icon-btn {
+          border: 1px solid var(--line); background: var(--card-solid); border-radius: 980px;
+          padding: 6px 13px; font-size: 12.5px; cursor: pointer; color: var(--ink); font-weight: 500;
+          transition: transform .16s cubic-bezier(.22,1,.36,1), border-color .2s, color .2s, background .2s;
+       }
+       .icon-btn:hover { transform: scale(1.05); }
+       .icon-btn.edit:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); }
+       .icon-btn.del:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
+
+       .empty { text-align: center; padding: 48px 20px; color: var(--muted); animation: fadeUp .4s ease both; }
+       .empty .em-ic { font-size: 38px; opacity: .45; display: block; margin-bottom: 8px; }
+
+       .count-badge {
+          background: var(--brand-soft); color: var(--brand);
+          border-radius: 980px; padding: 3px 11px; font-size: 12.5px; font-weight: 600;
+          display: inline-block;
+       }
+       .count-badge.bump { animation: pop .45s cubic-bezier(.22,1,.36,1); }
+
+       #toast { position: fixed; right: 22px; bottom: 22px; z-index: 50; display: flex; flex-direction: column; gap: 10px; }
+       .toast {
+          min-width: 240px; max-width: 340px; padding: 13px 16px;
+          border-radius: 15px; color: #fff; font-size: 14px; font-weight: 500; letter-spacing: -.01em;
+          box-shadow: var(--shadow-lg); animation: slidein .3s cubic-bezier(.22,1,.36,1);
+          display: flex; align-items: center; gap: 10px;
+          -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+       }
+       .toast.leaving { animation: slidein .25s ease reverse forwards; }
+       .toast.ok { background: var(--ok); }
+       .toast.err { background: var(--danger); }
+       .toast.info { background: #48484a; }
+
+       footer.foot { color: var(--muted); text-align: center; margin-top: 40px; font-size: 13px; letter-spacing: -.01em; animation: fadeUp .7s ease both; }
+       footer.foot code { background: var(--brand-soft); color: var(--brand); padding: 2px 7px; border-radius: 6px; font-size: 12.5px; }
+
+       @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after { animation: none !important; transition: none !important; }
+       }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+       <header class="top">
+          <div class="logo">
+             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+             </svg>
+          </div>
+          <div>
+             <h1>Gestión de Usuarios</h1>
+             <p>Ciclo 3 · Spring Boot + JPA · CRUD REST</p>
+          </div>
+       </header>
+
+       <div class="grid">
+          <!-- Formulario -->
+          <section class="card c1">
+             <div class="card-head">
+                <h2 id="formTitle">Nuevo usuario</h2>
+             </div>
+             <div class="card-body">
+                <form id="form" autocomplete="off" novalidate>
+                   <div class="field" id="f-cedula">
+                      <label for="cedula">Cédula <span style="color:var(--danger)">*</span></label>
+                      <input type="number" id="cedula" placeholder="Ej: 1020304050">
+                      <small class="err-msg" id="err-cedula"></small>
+                   </div>
+                   <div class="field" id="f-nombre">
+                      <label for="nombre">Nombre <span style="color:var(--danger)">*</span></label>
+                      <input type="text" id="nombre" placeholder="Nombre completo" maxlength="100">
+                      <small class="err-msg" id="err-nombre"></small>
+                   </div>
+                   <div class="field" id="f-email">
+                      <label for="email">Email <span style="color:var(--danger)">*</span></label>
+                      <input type="email" id="email" placeholder="correo@ejemplo.com" maxlength="120">
+                      <small class="err-msg" id="err-email"></small>
+                   </div>
+                   <div class="field" id="f-usuario">
+                      <label for="usuario">Usuario <span style="color:var(--danger)">*</span></label>
+                      <input type="text" id="usuario" placeholder="nombre de usuario" maxlength="30">
+                      <small class="err-msg" id="err-usuario"></small>
+                   </div>
+                   <div class="field" id="f-password">
+                      <label for="password">Contraseña <span style="color:var(--danger)">*</span></label>
+                      <input type="text" id="password" placeholder="Mínimo 6 caracteres" maxlength="100">
+                      <small class="err-msg" id="err-password"></small>
+                   </div>
+                   <div class="actions">
+                      <button type="submit" class="btn-primary" id="btnGuardar">Guardar</button>
+                      <button type="button" class="btn-warn" id="btnActualizar" hidden>Actualizar</button>
+                      <button type="button" class="btn-ghost" id="btnLimpiar">Limpiar</button>
+                   </div>
+                </form>
+             </div>
+          </section>
+
+          <!-- Tabla -->
+          <section class="card c2">
+             <div class="card-head">
+                <h2>Usuarios registrados <span class="count-badge" id="count">0</span></h2>
+                <div class="head-tools">
+                   <div class="search">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                      </svg>
+                      <input type="search" id="buscar" placeholder="Buscar usuario…">
+                   </div>
+                   <button class="btn-ghost" id="btnRefrescar"><span>↻</span> Refrescar</button>
+                </div>
+             </div>
+             <div class="card-body" style="padding:0">
+                <div style="overflow-x:auto">
+                   <table>
+                      <thead>
+                         <tr>
+                            <th>Cédula</th>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Usuario</th>
+                            <th style="text-align:right">Acciones</th>
+                         </tr>
+                      </thead>
+                      <tbody id="tbody"></tbody>
+                   </table>
+                </div>
+                <div class="empty" id="empty">
+                   Aún no hay usuarios. Crea el primero con el formulario.
+                </div>
+             </div>
+          </section>
+       </div>
+
+       <footer class="foot">
+          API REST en <code>/usuarios</code> · Base de datos MySQL (<code>tiendagenerica</code>)
+       </footer>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+       const API = '/usuarios';
+       const $ = (id) => document.getElementById(id);
+       const CAMPOS = ['cedula', 'nombre', 'email', 'usuario', 'password'];
+       let modoEdicion = false;
+       let todos = [];   // caché de usuarios para filtrar sin volver a consultar
+
+       function toast(msg, tipo = 'info') {
+          const t = document.createElement('div');
+          t.className = 'toast ' + tipo;
+          t.innerHTML = `<span>${msg}</span>`;
+          $('toast').appendChild(t);
+          setTimeout(() => { t.classList.add('leaving'); setTimeout(() => t.remove(), 250); }, 3000);
+       }
+
+       function leerForm() {
+          return {
+             cedula_usuario: Number($('cedula').value),
+             nombre_usuario: $('nombre').value.trim(),
+             email_usuario: $('email').value.trim(),
+             usuario: $('usuario').value.trim(),
+             password: $('password').value
+          };
+       }
+       // ---------- Validación en el cliente ----------
+       // Devuelve un objeto { campo: mensaje } con los errores encontrados.
+       function validar(u) {
+          const e = {};
+          if (!u.cedula_usuario || u.cedula_usuario <= 0) e.cedula = 'La cédula debe ser un número positivo';
+          else if (String(u.cedula_usuario).length < 6) e.cedula = 'La cédula debe tener al menos 6 dígitos';
+
+          if (!u.nombre_usuario) e.nombre = 'El nombre es obligatorio';
+          else if (u.nombre_usuario.length < 3) e.nombre = 'Debe tener al menos 3 caracteres';
+
+          if (!u.email_usuario) e.email = 'El email es obligatorio';
+          else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u.email_usuario)) e.email = 'El email no tiene un formato válido';
+
+          if (!u.usuario) e.usuario = 'El usuario es obligatorio';
+          else if (u.usuario.length < 3) e.usuario = 'Debe tener al menos 3 caracteres';
+
+          if (!u.password) e.password = 'La contraseña es obligatoria';
+          else if (u.password.length < 6) e.password = 'Debe tener al menos 6 caracteres';
+          return e;
+       }
+
+       function limpiarErrores() {
+          CAMPOS.forEach(c => { $('f-' + c).classList.remove('invalid'); $('err-' + c).textContent = ''; });
+       }
+
+       // Pinta los errores junto a cada campo. Acepta claves del cliente (cedula…)
+       // o del servidor (cedula_usuario…), traduciéndolas a los ids del formulario.
+       function pintarErrores(errores) {
+          limpiarErrores();
+          const mapa = {
+             cedula_usuario: 'cedula', nombre_usuario: 'nombre',
+             email_usuario: 'email', usuario: 'usuario', password: 'password'
+          };
+          let primero = null;
+          Object.entries(errores).forEach(([k, msg]) => {
+             const campo = mapa[k] || k;
+             const f = $('f-' + campo), e = $('err-' + campo);
+             if (f && e) { f.classList.add('invalid'); e.textContent = msg; if (!primero) primero = campo; }
+          });
+          if (primero) $(primero).focus();
+       }
+
+       function limpiarForm() {
+          $('form').reset();
+          $('cedula').readOnly = false;
+          modoEdicion = false;
+          $('formTitle').textContent = 'Nuevo usuario';
+          $('btnGuardar').hidden = false;
+          $('btnActualizar').hidden = true;
+          limpiarErrores();
+          $('cedula').focus();
+       }
+       function cargarEnForm(u) {
+          $('cedula').value = u.cedula_usuario;
+          $('nombre').value = u.nombre_usuario ?? '';
+          $('email').value = u.email_usuario ?? '';
+          $('usuario').value = u.usuario ?? '';
+          $('password').value = u.password ?? '';
+          $('cedula').readOnly = true;
+          modoEdicion = true;
+          $('formTitle').textContent = 'Editar usuario';
+          $('btnGuardar').hidden = true;
+          $('btnActualizar').hidden = false;
+          limpiarErrores();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+       }
+
+       async function listar() {
+          const btn = $('btnRefrescar');
+          btn.classList.add('loading');
+          try {
+             const res = await fetch(`${API}/listar`);
+             todos = await res.json();
+             render();
+          } catch (e) {
+             toast('No se pudo conectar con el servidor', 'err');
+          } finally {
+             setTimeout(() => btn.classList.remove('loading'), 400);
+          }
+       }
+
+       async function guardar() {
+          const u = leerForm();
+          const errores = validar(u);
+          if (Object.keys(errores).length) { pintarErrores(errores); toast('Revisa los campos marcados', 'err'); return; }
+          limpiarErrores();
+          const res = await fetch(`${API}/guardar`, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify(u)
+          });
+          if (res.ok) { toast('Usuario guardado', 'ok'); limpiarForm(); listar(); }
+          else if (res.status === 409) { toast(await res.text(), 'err'); }
+          else if (res.status === 400) { pintarErrores(await res.json()); toast('Datos inválidos', 'err'); }
+          else { toast('Error al guardar (' + res.status + ')', 'err'); }
+       }
+
+       async function actualizar() {
+          const u = leerForm();
+          const errores = validar(u);
+          if (Object.keys(errores).length) { pintarErrores(errores); toast('Revisa los campos marcados', 'err'); return; }
+          limpiarErrores();
+          const res = await fetch(`${API}/actualizar`, {
+             method: 'PUT',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify(u)
+          });
+          if (res.ok) { toast('Usuario actualizado', 'ok'); limpiarForm(); listar(); }
+          else if (res.status === 400) { pintarErrores(await res.json()); toast('Datos inválidos', 'err'); }
+          else { toast('Error al actualizar (' + res.status + ')', 'err'); }
+       }
+
+       async function eliminar(id, nombre) {
+          if (!confirm(`¿Eliminar al usuario ${nombre || id}?`)) return;
+          const res = await fetch(`${API}/eliminar/${id}`, { method: 'DELETE' });
+          if (res.ok) { toast('Usuario eliminado', 'ok'); listar(); }
+          else { toast('Error al eliminar (' + res.status + ')', 'err'); }
+       }
+
+       // Filtra la caché según el buscador y repinta la tabla.
+       function render() {
+          const q = $('buscar').value.trim().toLowerCase();
+          const lista = q
+             ? todos.filter(u => [u.cedula_usuario, u.nombre_usuario, u.email_usuario, u.usuario]
+                  .some(v => (v ?? '').toString().toLowerCase().includes(q)))
+             : todos;
+          pintarTabla(lista, q);
+       }
+
+       function pintarTabla(lista, q) {
+          const tbody = $('tbody');
+          tbody.innerHTML = '';
+          const badge = $('count');
+          badge.textContent = q ? `${lista.length}/${todos.length}` : todos.length;
+          badge.classList.remove('bump'); void badge.offsetWidth; badge.classList.add('bump');
+
+          const empty = $('empty');
+          if (!lista.length) {
+             empty.style.display = 'block';
+             empty.textContent = q
+                ? `No hay usuarios que coincidan con "${q}".`
+                : 'Aún no hay usuarios. Crea el primero con el formulario.';
+          } else {
+             empty.style.display = 'none';
+          }
+
+          lista.forEach((u, i) => {
+             const tr = document.createElement('tr');
+             tr.style.animationDelay = (i * 40) + 'ms';   // aparición escalonada
+             tr.innerHTML = `
+                <td><strong>${u.cedula_usuario}</strong></td>
+                <td>${escapeHtml(u.nombre_usuario)}</td>
+                <td>${escapeHtml(u.email_usuario)}</td>
+                <td>${escapeHtml(u.usuario)}</td>
+                <td>
+                   <div class="row-actions">
+                      <button class="icon-btn edit">Editar</button>
+                      <button class="icon-btn del">Eliminar</button>
+                   </div>
+                </td>`;
+             tr.querySelector('.edit').addEventListener('click', () => cargarEnForm(u));
+             tr.querySelector('.del').addEventListener('click', () => eliminar(u.cedula_usuario, u.nombre_usuario));
+             tbody.appendChild(tr);
+          });
+       }
+
+       function escapeHtml(s) {
+          return (s ?? '').toString()
+             .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+       }
+
+       $('form').addEventListener('submit', (e) => { e.preventDefault(); guardar(); });
+       $('btnActualizar').addEventListener('click', actualizar);
+       $('btnLimpiar').addEventListener('click', limpiarForm);
+       $('btnRefrescar').addEventListener('click', listar);
+       $('buscar').addEventListener('input', render);
+       // Al escribir en un campo, se limpia su error para dar feedback inmediato.
+       CAMPOS.forEach(c => $(c).addEventListener('input', () => {
+          $('f-' + c).classList.remove('invalid'); $('err-' + c).textContent = '';
+       }));
+
+       listar();
+    </script>
+</body>
+</html>

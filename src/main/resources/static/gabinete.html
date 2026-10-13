@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gabinete de Abogados · Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600;700&family=Pridi:wght@400;500&family=Fira+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+       /* Paleta 60/30/10: Justice Blue domina (barra lateral, títulos, botones),
+          Mahogany como secundario (acentos y estados) y Parchment como acento suave. */
+       :root {
+          --blue: #1B3A5F; --blue-2: #24507f; --blue-soft: rgba(27,58,95,.08);
+          --mahogany: #7A3E3E; --mahogany-soft: rgba(122,62,62,.10);
+          --parchment: #F0E7D5; --parchment-2: #f7f2e7;
+          --ink: #1d2733; --muted: #6b7584; --line: #e3e6ec;
+          --surface: #ffffff; --bg: #e8ecf1;
+          --ok: #2f7a4f; --ok-soft: #e3f3ea; --warn: #9a6408; --warn-soft: #fbf0d9;
+          --gray-soft: #eceef2;
+          --display: "Spectral", Georgia, serif;
+          --second: "Pridi", Georgia, serif;
+          --body: "Fira Sans", "Segoe UI", Arial, sans-serif;
+          --radius: 18px;
+          --shadow: 0 10px 30px -18px rgba(27,58,95,.45);
+       }
+       * { box-sizing: border-box; }
+       html, body { height: 100%; }
+       body {
+          margin: 0; font-family: var(--body); font-size: 14px; color: var(--ink);
+          background:
+             radial-gradient(40vw 40vw at 92% 95%, rgba(27,58,95,.18), transparent 70%),
+             radial-gradient(30vw 30vw at 8% 0%, rgba(122,62,62,.12), transparent 70%),
+             var(--bg);
+          padding: 24px;
+       }
+       [hidden] { display: none !important; }
+       button, input, select { font: inherit; color: inherit; }
+       :focus-visible { outline: 2px solid var(--blue-2); outline-offset: 2px; }
+
+       /* ---------- Marco de la aplicación ---------- */
+       .shell {
+          max-width: 1320px; margin: 0 auto; min-height: calc(100vh - 48px);
+          display: grid; grid-template-columns: 96px minmax(0, 1fr);
+          background: rgba(255,255,255,.55); backdrop-filter: blur(18px);
+          border: 1px solid rgba(255,255,255,.8); border-radius: 30px;
+          box-shadow: 0 30px 70px -40px rgba(27,58,95,.6); overflow: hidden;
+       }
+
+       /* ---------- Barra lateral ---------- */
+       .side { background: linear-gradient(180deg, var(--blue) 0%, #15304f 100%); color: #dfe6ef; display: flex; flex-direction: column; align-items: stretch; }
+       .side .brand { background: #102640; display: grid; place-items: center; padding: 14px 0; }
+       .side .brand svg { width: 58px; height: 58px; }
+       .side nav { display: flex; flex-direction: column; gap: 6px; padding: 16px 10px; }
+       .nav-btn {
+          display: flex; flex-direction: column; align-items: center; gap: 6px;
+          background: none; border: 0; border-radius: 14px; padding: 12px 4px; cursor: pointer; color: #c3cfdd;
+          font-family: var(--second); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+          transition: background .15s, color .15s;
+       }
+       .nav-btn svg { width: 22px; height: 22px; }
+       .nav-btn:hover { background: rgba(255,255,255,.08); color: #fff; }
+       .nav-btn[aria-current="page"] { background: var(--parchment); color: var(--blue); }
+       .side .grow { flex: 1; }
+       .side .api { font-size: 10px; text-align: center; color: #8ea3bb; padding: 0 8px 16px; line-height: 1.5; }
+       .side .api a { color: var(--parchment); }
+
+       /* ---------- Contenido ---------- */
+       .main { display: flex; flex-direction: column; min-width: 0; }
+       .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 28px 10px; flex-wrap: wrap; }
+       .topbar h1 { font-family: var(--display); font-size: 28px; font-weight: 600; color: var(--blue); margin: 0; }
+       .topbar p { margin: 2px 0 0; color: var(--muted); font-family: var(--second); }
+       .top-tools { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.75); border: 1px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 16px; }
+       .top-tools .date { font-family: var(--second); color: var(--muted); font-size: 13px; }
+       .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; font-size: 12px; background: var(--mahogany); color: #fff; flex: none; }
+       .view { padding: 10px 28px 28px; display: flex; flex-direction: column; gap: 16px; }
+
+       /* Indicadores */
+       .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+       .kpi { background: var(--surface); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 14px; }
+       .kpi .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+       .kpi .ic svg { width: 20px; height: 20px; }
+       .kpi b { display: block; font-family: var(--display); font-size: 26px; line-height: 1; color: var(--blue); }
+       .kpi span { color: var(--muted); font-size: 12.5px; }
+       .ic-blue { background: var(--blue-soft); color: var(--blue); }
+       .ic-warn { background: var(--warn-soft); color: var(--warn); }
+       .ic-ok { background: var(--ok-soft); color: var(--ok); }
+       .ic-mah { background: var(--mahogany-soft); color: var(--mahogany); }
+
+       /* Barra de herramientas */
+       .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: rgba(255,255,255,.75); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
+       .search { flex: 1 1 220px; position: relative; }
+       .search input { width: 100%; border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 10px 14px 10px 38px; }
+       .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--muted); }
+       .seg { display: flex; background: var(--gray-soft); border-radius: 12px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+       .seg button { border: 0; background: none; border-radius: 9px; padding: 7px 12px; cursor: pointer; color: var(--muted); white-space: nowrap; }
+       .seg button b { font-weight: 600; margin-left: 4px; color: var(--ink); }
+       .seg button[aria-pressed="true"] { background: #fff; color: var(--blue); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+       .select { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 9px 12px; }
+       .btn { border: 0; border-radius: 12px; padding: 10px 16px; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+       .btn svg { width: 16px; height: 16px; }
+       .btn-primary { background: var(--blue); color: #fff; }
+       .btn-primary:hover { background: var(--blue-2); }
+       .btn-outline { background: #fff; border: 1px solid var(--blue); color: var(--blue); }
+       .btn-ghost { background: var(--gray-soft); color: var(--ink); }
+
+       /* Tabla con filas en tarjeta */
+       .table-wrap { overflow-x: auto; padding: 2px; }
+       table.cards { width: 100%; border-collapse: separate; border-spacing: 0 10px; min-width: 880px; }
+       .cards thead th { text-align: left; font-family: var(--second); font-weight: 400; color: var(--muted); font-size: 12.5px; padding: 0 14px; }
+       .cards tbody td { background: var(--surface); padding: 14px; vertical-align: middle; }
+       .cards tbody tr { box-shadow: var(--shadow); border-radius: 16px; }
+       .cards tbody td:first-child { border-radius: 16px 0 0 16px; }
+       .cards tbody td:last-child { border-radius: 0 16px 16px 0; }
+       .cards tbody tr:hover td { background: var(--parchment-2); }
+       .who { display: flex; align-items: center; gap: 12px; }
+       .who strong { font-weight: 600; font-size: 14.5px; display: block; }
+       .sub { color: var(--muted); font-size: 12px; }
+       .mono-badge { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; flex: none; background: var(--blue); color: var(--parchment); font-family: var(--display); font-weight: 700; font-size: 15px; }
+       .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 11px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+       .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+       .s-EN_TRAMITE { background: var(--blue-soft); color: var(--blue); }
+       .s-SUSPENDIDO { background: var(--warn-soft); color: var(--warn); }
+       .s-ARCHIVADO { background: var(--ok-soft); color: var(--ok); }
+       .s-FINALIZADO { background: var(--gray-soft); color: #4b5563; }
+       .s-CUENTA { background: var(--mahogany-soft); color: var(--mahogany); }
+       .s-SIN { background: var(--gray-soft); color: var(--muted); }
+       .stack { display: flex; align-items: center; }
+       .stack .avatar { width: 28px; height: 28px; font-size: 10.5px; border: 2px solid #fff; margin-left: -8px; background: var(--blue-2); }
+       .stack .avatar:first-child { margin-left: 0; }
+       .names { margin-left: 8px; font-size: 12px; color: var(--muted); line-height: 1.35; }
+       .actions { display: flex; gap: 6px; justify-content: flex-end; }
+       .icon-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: #fff; display: grid; place-items: center; cursor: pointer; color: var(--blue); }
+       .icon-btn svg { width: 17px; height: 17px; }
+       .icon-btn:hover { background: var(--blue-soft); }
+       .icon-btn.del { color: var(--mahogany); }
+       .icon-btn.del:hover { background: var(--mahogany-soft); }
+       .icon-btn.arch { color: var(--ok); }
+       .icon-btn.arch:hover { background: var(--ok-soft); }
+       .empty { text-align: center; padding: 34px; color: var(--muted); background: #fff; border-radius: var(--radius); }
+
+       /* ---------- Panel lateral (formularios) ---------- */
+       .backdrop { position: fixed; inset: 0; background: rgba(16,38,64,.35); z-index: 40; }
+       .drawer {
+          position: fixed; top: 16px; right: 16px; bottom: 16px; width: min(440px, calc(100vw - 32px)); z-index: 41;
+          background: var(--surface); border-radius: 24px; box-shadow: 0 30px 60px -20px rgba(16,38,64,.5);
+          display: flex; flex-direction: column; overflow: hidden;
+       }
+       .drawer-head { background: var(--parchment); padding: 20px 22px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+       .drawer-head h2 { font-family: var(--display); color: var(--blue); font-size: 22px; margin: 0; font-weight: 600; }
+       .drawer-head p { margin: 2px 0 0; color: var(--mahogany); font-family: var(--second); }
+       .drawer form { padding: 18px 22px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+       .f { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
+       .f label { font-size: 12px; font-weight: 500; color: var(--muted); }
+       .f input, .f select { border: 1px solid var(--line); border-radius: 11px; padding: 10px 12px; background: #fbfcfd; width: 100%; }
+       .f input:focus, .f select:focus { border-color: var(--blue-2); outline: none; box-shadow: 0 0 0 3px var(--blue-soft); }
+       .f input:read-only { background: var(--gray-soft); color: var(--muted); }
+       .f2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+       .checks { border: 1px solid var(--line); border-radius: 11px; padding: 8px 12px; display: grid; gap: 7px; max-height: 150px; overflow-y: auto; background: #fbfcfd; }
+       /* Lista de abogados: una fila por abogado con iniciales, nombre, tarjeta y sello de verificación */
+       .checks { padding: 8px; gap: 8px; max-height: 260px; }
+       .f .checks .abo-opt { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr) 26px; align-items: center; gap: 12px;
+          padding: 8px 12px 8px 8px; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer;
+          color: var(--ink); font-size: 13.5px; font-weight: 400; transition: border-color .15s, background .15s; }
+       .f .checks .abo-opt input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+       .abo-opt .avatar { width: 34px; height: 34px; font-size: 11.5px; background: var(--mahogany); }
+       .abo-opt strong { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+       .abo-opt .badge { width: 26px; height: 26px; color: #d5dae2; transition: color .15s, transform .15s; }
+       .abo-opt:hover { border-color: #c5ccd6; }
+       .abo-opt:has(input:checked) { border-color: var(--blue); background: var(--blue-soft); }
+       .abo-opt:has(input:checked) .badge { color: var(--blue); transform: scale(1.06); }
+       .abo-opt:has(input:focus-visible) { outline: 2px solid var(--blue-2); outline-offset: 2px; }
+       .err-msg { min-height: 14px; font-size: 11.5px; color: var(--mahogany); }
+       .f.invalid input, .f.invalid select, .f.invalid .checks { border-color: var(--mahogany); background: #fdf6f5; }
+       .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: auto; padding-top: 12px; }
+
+       #toast { position: fixed; right: 24px; bottom: 24px; z-index: 60; display: flex; flex-direction: column; gap: 8px; }
+       .toast { max-width: 380px; padding: 12px 16px; border-radius: 14px; color: #fff; box-shadow: 0 14px 30px -14px rgba(0,0,0,.6); }
+       .toast.ok { background: var(--blue); } .toast.err { background: var(--mahogany); }
+
+       /* ---------- Vista celular flotante ----------
+          Un teléfono dibujado en CSS con la aplicación real dentro (iframe de 390×844 px escalado). */
+       .btn-cel { background: none; border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; color: var(--blue); font-size: 13px; }
+       .btn-cel svg { width: 16px; height: 16px; }
+       .btn-cel[aria-pressed="true"] { background: var(--blue); color: #fff; border-color: var(--blue); }
+       .phone { --k: .78; position: fixed; right: 36px; bottom: 20px; z-index: 50; width: calc(390px * var(--k) + 26px); touch-action: none; user-select: none; }
+       .phone-body {
+          position: relative; padding: 13px; border-radius: calc(54px * var(--k) + 13px); cursor: grab;
+          background: linear-gradient(145deg, #3a3d42, #111317 45%, #2b2e33);
+          box-shadow: 0 0 0 2px #8d9097 inset, 0 30px 60px -20px rgba(16,38,64,.65), 0 0 0 1px rgba(0,0,0,.5);
+       }
+       .phone.arrastrando .phone-body { cursor: grabbing; }
+       .phone-screen { position: relative; width: calc(390px * var(--k)); height: calc(844px * var(--k)); border-radius: calc(46px * var(--k)); overflow: hidden; overflow: clip; background: #fff; }
+       .phone-screen iframe { width: 390px; height: 844px; border: 0; transform: scale(var(--k)); transform-origin: 0 0; display: block; }
+       .phone-island { position: absolute; top: calc(11px * var(--k)); left: 50%; transform: translateX(-50%); width: calc(120px * var(--k)); height: calc(34px * var(--k)); background: #000; border-radius: 99px; z-index: 2; pointer-events: none; }
+       .phone-island::after { content: ""; position: absolute; right: 18%; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #3b5bdb, #0b1a3a 70%); }
+       .phone-btn { position: absolute; width: 4px; border-radius: 2px; background: #5a5d63; }
+       .phone-tools { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+       .phone-tools button { border: 0; border-radius: 999px; padding: 6px 12px; background: rgba(255,255,255,.92); box-shadow: var(--shadow); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--blue); }
+       .phone-tools svg { width: 14px; height: 14px; }
+       /* Dentro del celular: espacio para la isla de la cámara (área segura) */
+       .en-celular .side { padding-top: 34px; }
+
+       @media (max-width: 600px) {
+          table.cards { min-width: 0; border-spacing: 0; }
+          .cards thead { display: none; }
+          .cards tbody, .cards tbody tr, .cards tbody td { display: block; }
+          .cards tbody tr { margin-bottom: 12px; border-radius: 16px; overflow: hidden; background: var(--surface); }
+          .cards tbody td, .cards tbody td:first-child, .cards tbody td:last-child { border-radius: 0; padding: 7px 14px; }
+          .cards tbody td:first-child { padding-top: 14px; }
+          .cards tbody td[data-label] { position: relative; padding-left: 128px; min-height: 34px; }
+          .cards tbody td[data-label]::before { content: attr(data-label); position: absolute; left: 14px; top: 8px; width: 104px; color: var(--muted); font-family: var(--second); font-size: 12px; }
+          .cards tbody td.td-acc { padding-bottom: 14px; }
+          .cards .actions { justify-content: flex-start; }
+          .table-wrap { overflow-x: visible; }
+       }       @media (max-width: 900px) {
+          body { padding: 0; }
+          .shell { border-radius: 0; grid-template-columns: 1fr; min-height: 100vh; }
+          .side { flex-direction: row; align-items: center; position: sticky; top: 0; z-index: 20; }
+          .side .brand { padding: 8px 12px; } .side .brand svg { width: 40px; height: 40px; }
+          .side nav { flex-direction: row; padding: 6px; overflow-x: auto; }
+          .nav-btn { padding: 8px 10px; } .side .grow, .side .api { display: none; }
+          .topbar, .view { padding-left: 16px; padding-right: 16px; }
+          .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+       }
+       @media (prefers-reduced-motion: no-preference) {
+          .drawer { animation: entrar .22s ease-out; }
+          @keyframes entrar { from { transform: translateX(24px); opacity: 0; } }
+       }
+    </style>
+</head>
+<body>
+
+<!-- Íconos reutilizables -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M17 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/></symbol>
+    <symbol id="i-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M4 7h16M6 7l-3 7a3 3 0 0 0 6 0zM18 7l-3 7a3 3 0 0 0 6 0z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10h14V9M10 13h4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></symbol>
+    <symbol id="i-badge" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="12" cy="12" r="8"/><circle cx="20" cy="12" r="3.2"/><circle cx="17.66" cy="17.66" r="3.2"/><circle cx="12" cy="20" r="3.2"/><circle cx="6.34" cy="17.66" r="3.2"/><circle cx="4" cy="12" r="3.2"/><circle cx="6.34" cy="6.34" r="3.2"/><circle cx="12" cy="4" r="3.2"/><circle cx="17.66" cy="6.34" r="3.2"/></g><path d="m8.2 12.3 2.6 2.6 5-5.2" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+</svg>
+
+<div class="shell">
+    <!-- ================= Barra lateral ================= -->
+    <aside class="side">
+        <div class="brand" title="Gabinete de Abogados">
+            <!-- Logo: monograma GA dentro de un escudo, con capitel griego y balanza -->
+            <svg viewBox="0 0 120 120" role="img" aria-label="Logo del Gabinete de Abogados">
+                <g fill="#F0E7D5">
+                    <rect x="56" y="4" width="8" height="8" rx="2"/>
+                    <rect x="10" y="12" width="100" height="7" rx="3.5"/>
+                    <rect x="28" y="22" width="64" height="4" rx="2"/>
+                    <rect x="34" y="29" width="52" height="4" rx="2"/>
+                </g>
+                <g fill="none" stroke="#F0E7D5" stroke-width="4">
+                    <circle cx="16" cy="22" r="6"/><circle cx="104" cy="22" r="6"/>
+                </g>
+                <g stroke="#F0E7D5" stroke-width="1.6" fill="none">
+                    <path d="M16 28 7 60M16 28l9 32M104 28l-9 32M104 28l9 32"/>
+                </g>
+                <g fill="#F0E7D5">
+                    <path d="M4 60h24a12 8 0 0 1-24 0z"/><path d="M92 60h24a12 8 0 0 1-24 0z"/>
+                </g>
+                <path d="M32 38h56v38c0 18-14 28-28 36-14-8-28-18-28-36z" fill="none" stroke="#F0E7D5" stroke-width="4"/>
+                <g stroke="#F0E7D5" stroke-width="4" stroke-linecap="round"><path d="M48 48v44M60 48v54M72 48v44"/></g>
+            </svg>
+        </div>
+        <nav aria-label="Secciones">
+            <button class="nav-btn" data-view="asuntos" aria-current="page"><svg><use href="#i-folder"/></svg>Asuntos</button>
+            <button class="nav-btn" data-view="clientes"><svg><use href="#i-users"/></svg>Clientes</button>
+            <button class="nav-btn" data-view="abogados"><svg><use href="#i-scale"/></svg>Abogados</button>
+        </nav>
+        <div class="grow"></div>
+        <div class="api">API REST<br><a href="index.html">Usuarios</a></div>
+    </aside>
+
+    <div class="main">
+        <header class="topbar">
+            <div>
+                <h1 id="titulo-vista">Asuntos del gabinete</h1>
+                <p id="sub-vista">Expedientes, su cliente, periodo, estado y abogados</p>
+            </div>
+            <div class="top-tools">
+                <button class="btn-cel" id="btn-celular" aria-pressed="false" title="Ver cómo se ve en un celular"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 18h4"/></svg>Vista celular</button>
+                <span class="date" id="hoy"></span>
+                <span class="date" id="hb-resumen">Cargando…</span>
+                <span class="avatar" aria-hidden="true" style="background:var(--blue)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#F0E7D5" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v18M7 21h10M4 7h16M6 7l-3 7a3 3 0 0 0 6 0zM18 7l-3 7a3 3 0 0 0 6 0z"/></svg></span>
+            </div>
+        </header>
+
+        <!-- ================= Vista: Asuntos ================= -->
+        <section class="view" id="asuntos" data-vista="asuntos">
+            <div class="kpis">
+                <div class="kpi"><div class="ic ic-blue"><svg><use href="#i-clock"/></svg></div><div><b id="k-tramite">0</b><span>En trámite</span></div></div>
+                <div class="kpi"><div class="ic ic-warn"><svg><use href="#i-pause"/></svg></div><div><b id="k-susp">0</b><span>Suspendidos</span></div></div>
+                <div class="kpi"><div class="ic ic-ok"><svg><use href="#i-check"/></svg></div><div><b id="k-cerr">0</b><span>Cerrados</span></div></div>
+                <div class="kpi"><div class="ic ic-mah"><svg><use href="#i-alert"/></svg></div><div><b id="k-sin">0</b><span>Sin abogado asignado</span></div></div>
+            </div>
+
+            <div class="toolbar">
+                <label class="search"><svg><use href="#i-search"/></svg><input type="search" id="as-buscar" placeholder="Expediente, cliente o abogado" aria-label="Buscar asuntos"></label>
+                <div class="seg" id="states" role="group" aria-label="Filtrar por estado"></div>
+                <select class="select" id="as-filtro-tipo" aria-label="Filtrar por">
+                    <option value="">Sin filtro de persona</option>
+                    <option value="cliente">Por cliente</option>
+                    <option value="abogado">Por abogado</option>
+                    <option value="estado" hidden>Por estado</option>
+                </select>
+                <select class="select" id="as-filtro-valor" aria-label="Valor del filtro" hidden></select>
+                <button class="btn btn-primary" id="nuevo-asunto"><svg><use href="#i-plus"/></svg>Nuevo asunto</button>
+            </div>
+
+            <div class="table-wrap">
+                <table class="cards">
+                    <thead><tr><th>Expediente</th><th>Cliente</th><th>Periodo</th><th>Estado</th><th>Abogados</th><th style="text-align:right">Acciones</th></tr></thead>
+                    <tbody id="as-tbody"></tbody>
+                </table>
+                <div class="empty" id="as-empty" hidden>No hay asuntos que coincidan con el filtro.</div>
+            </div>
+            <p class="sub" id="as-count"></p>
+        </section>
+
+        <!-- ================= Vista: Clientes ================= -->
+        <section class="view" id="clientes" data-vista="clientes" hidden>
+            <div class="toolbar">
+                <label class="search"><svg><use href="#i-search"/></svg><input type="search" id="cl-buscar" placeholder="Buscar cliente por nombre, identificación o email" aria-label="Buscar clientes"></label>
+                <button class="btn btn-primary" id="nuevo-cliente"><svg><use href="#i-plus"/></svg>Nuevo cliente</button>
+            </div>
+            <div class="table-wrap">
+                <table class="cards">
+                    <thead><tr><th>Cliente</th><th>Dirección</th><th>Teléfono</th><th>Email</th><th>Asuntos</th><th style="text-align:right">Acciones</th></tr></thead>
+                    <tbody id="cl-tbody"></tbody>
+                </table>
+                <div class="empty" id="cl-empty" hidden>No hay clientes que coincidan.</div>
+            </div>
+            <p class="sub" id="cl-count"></p>
+        </section>
+
+        <!-- ================= Vista: Abogados ================= -->
+        <section class="view" id="abogados" data-vista="abogados" hidden>
+            <div class="toolbar">
+                <label class="search"><svg><use href="#i-search"/></svg><input type="search" id="ab-buscar" placeholder="Buscar abogado por nombre, tarjeta o email" aria-label="Buscar abogados"></label>
+                <button class="btn btn-primary" id="nuevo-abogado"><svg><use href="#i-plus"/></svg>Nuevo abogado</button>
+            </div>
+            <div class="table-wrap">
+                <table class="cards">
+                    <thead><tr><th>Abogado</th><th>Tarjeta profesional</th><th>Cuenta en el sistema</th><th>Teléfono</th><th>Email</th><th style="text-align:right">Acciones</th></tr></thead>
+                    <tbody id="ab-tbody"></tbody>
+                </table>
+                <div class="empty" id="ab-empty" hidden>No hay abogados que coincidan.</div>
+            </div>
+            <p class="sub" id="ab-count"></p>
+        </section>
+    </div>
+</div>
+
+<!-- ================= Panel lateral con los formularios ================= -->
+<div class="backdrop" id="backdrop" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-modal="true" role="dialog" aria-labelledby="drawer-title">
+    <div class="drawer-head">
+        <div><h2 id="drawer-title">Nuevo asunto</h2><p id="drawer-sub">Complete los datos del expediente</p></div>
+        <button class="icon-btn" id="cerrar-drawer" aria-label="Cerrar"><svg><use href="#i-x"/></svg></button>
+    </div>
+
+    <form id="as-form" novalidate hidden>
+        <div class="f" id="f-numero_expediente"><label for="numero_expediente">N.º de expediente *</label><input id="numero_expediente" placeholder="EXP-2026-004" maxlength="20"><small class="err-msg"></small></div>
+        <div class="f" id="f-id_cliente"><label for="id_cliente">Cliente *</label><select id="id_cliente"></select><small class="err-msg"></small></div>
+        <div class="f2">
+            <div class="f" id="f-fecha_inicio"><label for="fecha_inicio">Fecha de inicio *</label><input type="date" id="fecha_inicio"><small class="err-msg"></small></div>
+            <div class="f" id="f-fecha_archivo"><label for="fecha_archivo">Fecha de archivo</label><input type="date" id="fecha_archivo"><small class="err-msg"></small></div>
+        </div>
+        <div class="f" id="f-estado"><label for="estado">Estado *</label>
+            <select id="estado">
+                <option value="EN_TRAMITE">En trámite</option>
+                <option value="SUSPENDIDO">Suspendido</option>
+                <option value="ARCHIVADO">Archivado</option>
+                <option value="FINALIZADO">Finalizado</option>
+            </select><small class="err-msg"></small></div>
+        <div class="f" id="f-ids_abogados"><label>Abogados que lo llevan</label><div class="checks" id="ids_abogados"></div><small class="err-msg"></small></div>
+        <div class="form-actions">
+            <button type="button" class="btn btn-ghost" data-reset="as">Limpiar</button>
+            <button type="submit" class="btn btn-primary" id="as-submit">Guardar asunto</button>
+        </div>
+    </form>
+
+    <form id="cl-form" novalidate hidden>
+        <div class="f"><label for="c-id">Identificación *</label><input type="number" id="c-id" data-key="id_cliente"><small class="err-msg"></small></div>
+        <div class="f"><label for="c-nombre">Nombre *</label><input id="c-nombre" data-key="nombre_cliente" maxlength="100"><small class="err-msg"></small></div>
+        <div class="f"><label for="c-dir">Dirección *</label><input id="c-dir" data-key="direccion_cliente" maxlength="150"><small class="err-msg"></small></div>
+        <div class="f2">
+            <div class="f"><label for="c-tel">Teléfono *</label><input id="c-tel" data-key="telefono_cliente" maxlength="15"><small class="err-msg"></small></div>
+            <div class="f"><label for="c-email">Email *</label><input type="email" id="c-email" data-key="email_cliente" maxlength="120"><small class="err-msg"></small></div>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn btn-ghost" data-reset="cl">Limpiar</button>
+            <button type="submit" class="btn btn-primary" id="cl-submit">Guardar cliente</button>
+        </div>
+    </form>
+
+    <form id="ab-form" novalidate hidden>
+        <div class="f2">
+            <div class="f"><label for="a-id">Identificación *</label><input type="number" id="a-id" data-key="id_abogado"><small class="err-msg"></small></div>
+            <div class="f"><label for="a-tp">Tarjeta profesional *</label><input id="a-tp" data-key="tarjeta_profesional" maxlength="10"><small class="err-msg"></small></div>
+        </div>
+        <div class="f"><label for="a-nombre">Nombre *</label><input id="a-nombre" data-key="nombre_abogado" maxlength="100"><small class="err-msg"></small></div>
+        <div class="f"><label for="a-dir">Dirección *</label><input id="a-dir" data-key="direccion_abogado" maxlength="150"><small class="err-msg"></small></div>
+        <div class="f2">
+            <div class="f"><label for="a-tel">Teléfono *</label><input id="a-tel" data-key="telefono_abogado" maxlength="15"><small class="err-msg"></small></div>
+            <div class="f"><label for="a-email">Email *</label><input type="email" id="a-email" data-key="email_abogado" maxlength="120"><small class="err-msg"></small></div>
+        </div>
+        <div class="f"><label for="a-usuario">Cuenta de usuario (cédula) · opcional</label><input type="number" id="a-usuario" data-key="cedula_usuario" data-opcional placeholder="Vacío = sin cuenta en el sistema"><small class="err-msg"></small></div>
+        <div class="form-actions">
+            <button type="button" class="btn btn-ghost" data-reset="ab">Limpiar</button>
+            <button type="submit" class="btn btn-primary" id="ab-submit">Guardar abogado</button>
+        </div>
+    </form>
+</aside>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- ================= Vista celular flotante (se puede arrastrar) ================= -->
+<div class="phone" id="phone" hidden>
+    <div class="phone-body" id="phone-body">
+        <span class="phone-btn" style="left:-3px; top:110px; height:26px"></span>
+        <span class="phone-btn" style="left:-3px; top:150px; height:48px"></span>
+        <span class="phone-btn" style="left:-3px; top:206px; height:48px"></span>
+        <span class="phone-btn" style="right:-3px; top:170px; height:72px"></span>
+        <div class="phone-screen">
+            <div class="phone-island"></div>
+            <iframe id="phone-frame" title="Gabinete en un celular de 390 px"></iframe>
+        </div>
+    </div>
+    <div class="phone-tools">
+        <button id="cel-recargar" title="Recargar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Recargar</button>
+        <button id="cel-cerrar" title="Cerrar"><svg><use href="#i-x"/></svg>Cerrar</button>
+    </div>
+</div>
+
+<script>
+    const $ = (id) => document.getElementById(id);
+    const ESTADOS = { EN_TRAMITE: 'En trámite', SUSPENDIDO: 'Suspendido', ARCHIVADO: 'Archivado', FINALIZADO: 'Finalizado' };
+    const CIERRE = ['ARCHIVADO', 'FINALIZADO'];
+    const icon = (id) => `<svg><use href="#i-${id}"/></svg>`;
+    let clientes = [], abogados = [], asuntos = [], todosAsuntos = [];
+    const edicion = { as: false, cl: false, ab: false };
+
+    function toast(msg, tipo) {
+        const t = document.createElement('div');
+        t.className = 'toast ' + tipo;
+        t.textContent = msg;
+        $('toast').appendChild(t);
+        setTimeout(() => t.remove(), 4000);
+    }
+    const esc = (s) => (s ?? '').toString().replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+    const fecha = (f) => f ? new Date(f + 'T00:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+    const iniciales = (n) => (n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
+    const coincide = (q, ...campos) => !q || campos.some(c => (c ?? '').toString().toLowerCase().includes(q));
+
+    // Llama al backend y devuelve { ok, status, data }. Muestra el error de negocio si lo hay.
+    async function api(url, opts = {}) {
+        if (opts.body) { opts.headers = { 'Content-Type': 'application/json' }; opts.body = JSON.stringify(opts.body); }
+        let res;
+        try { res = await fetch(url, opts); } catch (e) { toast('No se pudo conectar con el servidor', 'err'); return { ok: false }; }
+        const txt = await res.text();
+        let data = null;
+        try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = txt; }
+        if (!res.ok && data && data.error) toast(data.error, 'err');
+        return { ok: res.ok, status: res.status, data };
+    }
+
+    // Pinta errores { campo: mensaje } de Bean Validation junto a cada campo del formulario.
+    function pintarErrores(form, errores) {
+        form.querySelectorAll('.f').forEach(f => { f.classList.remove('invalid'); const e = f.querySelector('.err-msg'); if (e) e.textContent = ''; });
+        Object.entries(errores || {}).forEach(([campo, msg]) => {
+            const el = form.querySelector(`[data-key="${campo}"]`) || form.querySelector('#' + campo);
+            const f = el && el.closest('.f');
+            if (f) { f.classList.add('invalid'); f.querySelector('.err-msg').textContent = msg; }
+        });
+    }
+
+    // ---------------- Navegación entre vistas ----------------
+    const VISTAS = {
+        asuntos: ['Asuntos del gabinete', 'Expedientes, su cliente, periodo, estado y abogados'],
+        clientes: ['Clientes', 'Personas y empresas a las que pertenecen los asuntos'],
+        abogados: ['Abogados', 'Profesionales del gabinete y su cuenta en el sistema']
+    };
+    function mostrarVista(v) {
+        if (!VISTAS[v]) v = 'asuntos';
+        document.querySelectorAll('[data-vista]').forEach(s => s.hidden = s.dataset.vista !== v);
+        document.querySelectorAll('.nav-btn').forEach(b => {
+            if (b.dataset.view === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+        });
+        $('titulo-vista').textContent = VISTAS[v][0];
+        $('sub-vista').textContent = VISTAS[v][1];
+        if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v);
+    }
+    document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => mostrarVista(b.dataset.view)));
+
+    // ---------------- Panel lateral ----------------
+    function abrirDrawer(tipo, titulo, sub) {
+        ['as', 'cl', 'ab'].forEach(k => $(k + '-form').hidden = k !== tipo);
+        $('drawer-title').textContent = titulo;
+        $('drawer-sub').textContent = sub;
+        $('drawer').hidden = false; $('backdrop').hidden = false;
+        const primero = $(tipo + '-form').querySelector('input:not([readonly]), select');
+        if (primero) primero.focus();
+    }
+    function cerrarDrawer() { $('drawer').hidden = true; $('backdrop').hidden = true; }
+    $('cerrar-drawer').onclick = cerrarDrawer;
+    $('backdrop').onclick = cerrarDrawer;
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('drawer').hidden) cerrarDrawer(); });
+
+    // ---------------- Indicadores ----------------
+    function pintarIndicadores() {
+        const n = (e) => todosAsuntos.filter(a => a.estado === e).length;
+        $('k-tramite').textContent = n('EN_TRAMITE');
+        $('k-susp').textContent = n('SUSPENDIDO');
+        $('k-cerr').textContent = n('ARCHIVADO') + n('FINALIZADO');
+        $('k-sin').textContent = todosAsuntos.filter(a => !a.abogados.length).length;
+        $('hb-resumen').textContent = `${todosAsuntos.length} asuntos · ${clientes.length} clientes`;
+        // Filtro segmentado por estado (usa /asuntos/estado/{estado})
+        const actual = $('as-filtro-tipo').value === 'estado' ? $('as-filtro-valor').value : '';
+        $('states').innerHTML = `<button data-estado="" aria-pressed="${!actual}">Todos<b>${todosAsuntos.length}</b></button>` +
+            Object.entries(ESTADOS).map(([k, v]) => `<button data-estado="${k}" aria-pressed="${actual === k}">${v}<b>${n(k)}</b></button>`).join('');
+        $('states').querySelectorAll('button').forEach(b => b.onclick = () => {
+            $('as-filtro-tipo').value = b.dataset.estado ? 'estado' : '';
+            opcionesFiltro();
+            if (b.dataset.estado) $('as-filtro-valor').value = b.dataset.estado;
+            $('states').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+            cargarAsuntos();
+        });
+    }
+
+    // ---------------- Clientes y abogados (CRUD genérico) ----------------
+    const PERSONAS = {
+        cl: { url: '/clientes', id: 'id_cliente', nombre: 'nombre_cliente', titulo: 'cliente' },
+        ab: { url: '/abogados', id: 'id_abogado', nombre: 'nombre_abogado', titulo: 'abogado' }
+    };
+
+    function leerPersona(p) {
+        const obj = {};
+        // Un número opcional vacío viaja como null (p. ej. abogado sin cuenta de usuario).
+        $(p + '-form').querySelectorAll('[data-key]').forEach(i => obj[i.dataset.key] =
+            i.type !== 'number' ? i.value.trim() : (i.value === '' && 'opcional' in i.dataset ? null : Number(i.value)));
+        return obj;
+    }
+
+    function limpiarPersona(p) {
+        const form = $(p + '-form');
+        form.reset();
+        pintarErrores(form, {});
+        edicion[p] = false;
+        form.querySelector('[type=number]').readOnly = false;
+        $(p + '-submit').textContent = 'Guardar ' + PERSONAS[p].titulo;
+    }
+
+    function nuevaPersona(p) {
+        limpiarPersona(p);
+        abrirDrawer(p, 'Nuevo ' + PERSONAS[p].titulo, p === 'cl' ? 'Datos personales del cliente' : 'Datos del abogado y su cuenta');
+    }
+
+    function editarPersona(p, obj) {
+        limpiarPersona(p);
+        const form = $(p + '-form');
+        form.querySelectorAll('[data-key]').forEach(i => i.value = obj[i.dataset.key] ?? '');
+        form.querySelector('[type=number]').readOnly = true;
+        edicion[p] = true;
+        $(p + '-submit').textContent = 'Actualizar ' + PERSONAS[p].titulo;
+        abrirDrawer(p, 'Editar ' + PERSONAS[p].titulo, obj[PERSONAS[p].nombre]);
+    }
+
+    async function guardarPersona(p) {
+        const cfg = PERSONAS[p];
+        const r = await api(cfg.url + (edicion[p] ? '/actualizar' : '/guardar'),
+            { method: edicion[p] ? 'PUT' : 'POST', body: leerPersona(p) });
+        if (r.ok) { toast(`${cfg.titulo[0].toUpperCase() + cfg.titulo.slice(1)} guardado`, 'ok'); limpiarPersona(p); cerrarDrawer(); cargarTodo(); }
+        else if (r.status === 400 && r.data && !r.data.error) { pintarErrores($(p + '-form'), r.data); toast('Revise los campos marcados', 'err'); }
+    }
+
+    async function eliminarPersona(p, obj) {
+        const cfg = PERSONAS[p];
+        if (!confirm(`¿Eliminar a ${obj[cfg.nombre]}?`)) return;
+        const r = await api(`${cfg.url}/eliminar/${obj[cfg.id]}`, { method: 'DELETE' });
+        if (r.ok) { toast(`${obj[cfg.nombre]} eliminado`, 'ok'); cargarTodo(); }
+    }
+
+    function acciones(extra = '') {
+        return `<div class="actions"><button class="icon-btn edit" title="Editar" aria-label="Editar">${icon('edit')}</button>${extra}<button class="icon-btn del" title="Eliminar" aria-label="Eliminar">${icon('trash')}</button></div>`;
+    }
+
+    function pintarClientes() {
+        const q = $('cl-buscar').value.trim().toLowerCase();
+        const lista = clientes.filter(c => coincide(q, c.id_cliente, c.nombre_cliente, c.email_cliente, c.telefono_cliente));
+        $('cl-count').textContent = `${lista.length} de ${clientes.length} cliente(s)`;
+        $('cl-empty').hidden = lista.length > 0;
+        const tbody = $('cl-tbody');
+        tbody.innerHTML = '';
+        lista.forEach(c => {
+            const n = todosAsuntos.filter(a => a.cliente.id_cliente === c.id_cliente).length;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><div class="who"><span class="mono-badge">${esc(iniciales(c.nombre_cliente))}</span><div><strong>${esc(c.nombre_cliente)}</strong><span class="sub">${c.id_cliente}</span></div></div></td>
+                <td data-label="Dirección">${esc(c.direccion_cliente)}</td>
+                <td data-label="Teléfono">${esc(c.telefono_cliente)}</td>
+                <td data-label="Email">${esc(c.email_cliente)}</td>
+                <td data-label="Asuntos"><span class="pill ${n ? 's-EN_TRAMITE' : 's-SIN'}">${n} asunto(s)</span></td>
+                <td class="td-acc">${acciones()}</td>`;
+            tr.querySelector('.edit').onclick = () => editarPersona('cl', c);
+            tr.querySelector('.del').onclick = () => eliminarPersona('cl', c);
+            tbody.appendChild(tr);
+        });
+    }
+
+    function pintarAbogados() {
+        const q = $('ab-buscar').value.trim().toLowerCase();
+        const lista = abogados.filter(a => coincide(q, a.id_abogado, a.nombre_abogado, a.tarjeta_profesional, a.email_abogado));
+        $('ab-count').textContent = `${lista.length} de ${abogados.length} abogado(s)`;
+        $('ab-empty').hidden = lista.length > 0;
+        const tbody = $('ab-tbody');
+        tbody.innerHTML = '';
+        lista.forEach(a => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><div class="who"><span class="mono-badge" style="background:var(--mahogany)">${esc(iniciales(a.nombre_abogado))}</span><div><strong>${esc(a.nombre_abogado)}</strong><span class="sub">${a.id_abogado}</span></div></div></td>
+                <td data-label="Tarjeta profesional">TP ${esc(a.tarjeta_profesional)}</td>
+                <td data-label="Cuenta en el sistema">${a.cedula_usuario != null ? `<span class="pill s-CUENTA">Cuenta ${a.cedula_usuario}</span>` : '<span class="pill s-SIN">Sin cuenta</span>'}</td>
+                <td data-label="Teléfono">${esc(a.telefono_abogado)}</td>
+                <td data-label="Email">${esc(a.email_abogado)}</td>
+                <td class="td-acc">${acciones()}</td>`;
+            tr.querySelector('.edit').onclick = () => editarPersona('ab', a);
+            tr.querySelector('.del').onclick = () => eliminarPersona('ab', a);
+            tbody.appendChild(tr);
+        });
+    }
+
+    // ---------------- Asuntos ----------------
+    function opcionesAsunto() {
+        const sel = $('id_cliente'), actual = sel.value;
+        sel.innerHTML = '<option value="">Seleccione…</option>' +
+            clientes.map(c => `<option value="${c.id_cliente}">${esc(c.nombre_cliente)} (${c.id_cliente})</option>`).join('');
+        sel.value = actual;
+        const marcados = new Set([...$('ids_abogados').querySelectorAll('input:checked')].map(i => Number(i.value)));
+        $('ids_abogados').innerHTML = abogados.length
+            ? abogados.map(a => `<label class="abo-opt">
+                    <input type="checkbox" value="${a.id_abogado}" ${marcados.has(a.id_abogado) ? 'checked' : ''}>
+                    <span class="avatar" aria-hidden="true">${esc(iniciales(a.nombre_abogado))}</span>
+                    <span><strong>${esc(a.nombre_abogado)}</strong><span class="sub">TP ${esc(a.tarjeta_profesional)}</span></span>
+                    <svg class="badge" aria-hidden="true"><use href="#i-badge"/></svg>
+                </label>`).join('')
+            : '<span class="sub">No hay abogados registrados</span>';
+    }
+
+    function leerAsunto() {
+        return {
+            numero_expediente: $('numero_expediente').value.trim(),
+            id_cliente: Number($('id_cliente').value),
+            fecha_inicio: $('fecha_inicio').value || null,
+            fecha_archivo: $('fecha_archivo').value || null,
+            estado: $('estado').value,
+            ids_abogados: [...$('ids_abogados').querySelectorAll('input:checked')].map(i => Number(i.value))
+        };
+    }
+
+    function limpiarAsunto() {
+        $('as-form').reset();
+        pintarErrores($('as-form'), {});
+        edicion.as = false;
+        $('numero_expediente').readOnly = false;
+        $('as-submit').textContent = 'Guardar asunto';
+    }
+
+    function nuevoAsunto() {
+        limpiarAsunto();
+        abrirDrawer('as', 'Nuevo asunto', 'Complete los datos del expediente');
+    }
+
+    function editarAsunto(a) {
+        limpiarAsunto();
+        $('numero_expediente').value = a.numero_expediente;
+        $('numero_expediente').readOnly = true;
+        $('id_cliente').value = a.cliente.id_cliente;
+        $('fecha_inicio').value = a.fecha_inicio;
+        $('fecha_archivo').value = a.fecha_archivo || '';
+        $('estado').value = a.estado;
+        const ids = new Set(a.abogados.map(x => x.id_abogado));
+        $('ids_abogados').querySelectorAll('input').forEach(i => i.checked = ids.has(Number(i.value)));
+        edicion.as = true;
+        $('as-submit').textContent = 'Actualizar asunto';
+        abrirDrawer('as', 'Editar asunto', 'Expediente ' + a.numero_expediente);
+    }
+
+    async function guardarAsunto() {
+        const r = await api('/asuntos' + (edicion.as ? '/actualizar' : '/guardar'),
+            { method: edicion.as ? 'PUT' : 'POST', body: leerAsunto() });
+        if (r.ok) { toast('Asunto ' + r.data.numero_expediente + ' guardado', 'ok'); limpiarAsunto(); cerrarDrawer(); cargarTodo(); }
+        else if (r.status === 400 && r.data && !r.data.error) { pintarErrores($('as-form'), r.data); toast('Revise los campos marcados', 'err'); }
+    }
+
+    async function archivarAsunto(a) {
+        if (!confirm(`¿Archivar el asunto ${a.numero_expediente} con fecha de hoy?`)) return;
+        const r = await api(`/asuntos/${encodeURIComponent(a.numero_expediente)}/archivar`, { method: 'PUT' });
+        if (r.ok) { toast('Asunto ' + a.numero_expediente + ' archivado', 'ok'); cargarTodo(); }
+    }
+
+    async function eliminarAsunto(a) {
+        if (!confirm(`¿Eliminar el asunto ${a.numero_expediente}?`)) return;
+        const r = await api(`/asuntos/eliminar/${encodeURIComponent(a.numero_expediente)}`, { method: 'DELETE' });
+        if (r.ok) { toast('Asunto eliminado', 'ok'); cargarTodo(); }
+    }
+
+    function pintarAsuntos() {
+        const q = $('as-buscar').value.trim().toLowerCase();
+        const lista = asuntos.filter(a => coincide(q, a.numero_expediente, a.cliente.nombre_cliente, ...a.abogados.map(x => x.nombre_abogado)));
+        $('as-count').textContent = `${lista.length} asunto(s) mostrados de ${todosAsuntos.length}`;
+        $('as-empty').hidden = lista.length > 0;
+        const tbody = $('as-tbody');
+        tbody.innerHTML = '';
+        lista.forEach(a => {
+            const abierto = !CIERRE.includes(a.estado);
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><div class="who"><span class="mono-badge">${icon('folder').replace('<svg>', '<svg style="width:18px;height:18px">')}</span><div><strong>${esc(a.numero_expediente)}</strong><span class="sub">${a.abogados.length} abogado(s)</span></div></div></td>
+                <td data-label="Cliente"><strong style="font-weight:500">${esc(a.cliente.nombre_cliente)}</strong><br><span class="sub">${a.cliente.id_cliente}</span></td>
+                <td data-label="Periodo">${fecha(a.fecha_inicio)}<br><span class="sub">${a.fecha_archivo ? 'hasta ' + fecha(a.fecha_archivo) : 'abierto'}</span></td>
+                <td data-label="Estado"><span class="pill s-${a.estado}">${ESTADOS[a.estado] || a.estado}</span></td>
+                <td data-label="Abogados">${a.abogados.length
+                    ? `<div class="stack">${a.abogados.map(x => `<span class="avatar" title="${esc(x.nombre_abogado)}">${esc(iniciales(x.nombre_abogado))}</span>`).join('')}<span class="names">${a.abogados.map(x => esc(x.nombre_abogado)).join('<br>')}</span></div>`
+                    : '<span class="pill s-SIN">Sin asignar</span>'}</td>
+                <td class="td-acc">${acciones(abierto ? `<button class="icon-btn arch" title="Archivar" aria-label="Archivar">${icon('archive')}</button>` : '')}</td>`;
+            tr.querySelector('.edit').onclick = () => editarAsunto(a);
+            if (abierto) tr.querySelector('.arch').onclick = () => archivarAsunto(a);
+            tr.querySelector('.del').onclick = () => eliminarAsunto(a);
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Filtros: usan los endpoints /asuntos/estado/{e}, /asuntos/cliente/{id} y /asuntos/abogado/{id}.
+    function opcionesFiltro() {
+        const tipo = $('as-filtro-tipo').value, sel = $('as-filtro-valor');
+        sel.hidden = !tipo || tipo === 'estado';
+        const ops = tipo === 'estado' ? Object.entries(ESTADOS)
+            : tipo === 'cliente' ? clientes.map(c => [c.id_cliente, c.nombre_cliente])
+            : tipo === 'abogado' ? abogados.map(a => [a.id_abogado, a.nombre_abogado]) : [];
+        sel.innerHTML = ops.map(([v, t]) => `<option value="${v}">${esc(t)}</option>`).join('');
+    }
+
+    async function cargarAsuntos() {
+        const tipo = $('as-filtro-tipo').value, valor = $('as-filtro-valor').value;
+        const url = tipo && valor ? `/asuntos/${tipo}/${encodeURIComponent(valor)}` : '/asuntos/listar';
+        const r = await api(url);
+        if (r.ok) { asuntos = r.data; pintarAsuntos(); }
+    }
+
+    async function cargarTodo() {
+        const [c, a, t] = await Promise.all([api('/clientes/listar'), api('/abogados/listar'), api('/asuntos/listar')]);
+        if (c.ok) clientes = c.data;
+        if (a.ok) abogados = a.data;
+        if (t.ok) todosAsuntos = t.data;
+        pintarClientes();
+        pintarAbogados();
+        opcionesAsunto();
+        const tipo = $('as-filtro-tipo').value, valor = $('as-filtro-valor').value;
+        opcionesFiltro();
+        if (tipo) $('as-filtro-valor').value = valor;
+        pintarIndicadores();
+        await cargarAsuntos();
+    }
+
+    // ---------------- Eventos ----------------
+    $('nuevo-asunto').onclick = nuevoAsunto;
+    $('nuevo-cliente').onclick = () => nuevaPersona('cl');
+    $('nuevo-abogado').onclick = () => nuevaPersona('ab');
+    $('as-form').addEventListener('submit', e => { e.preventDefault(); guardarAsunto(); });
+    $('cl-form').addEventListener('submit', e => { e.preventDefault(); guardarPersona('cl'); });
+    $('ab-form').addEventListener('submit', e => { e.preventDefault(); guardarPersona('ab'); });
+    document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () =>
+        b.dataset.reset === 'as' ? limpiarAsunto() : limpiarPersona(b.dataset.reset)));
+    $('as-filtro-tipo').addEventListener('change', () => {
+        opcionesFiltro();
+        $('states').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.estado === ''));
+        cargarAsuntos();
+    });
+    $('as-filtro-valor').addEventListener('change', cargarAsuntos);
+    $('as-buscar').addEventListener('input', pintarAsuntos);
+    $('cl-buscar').addEventListener('input', pintarClientes);
+    $('ab-buscar').addEventListener('input', pintarAbogados);
+    // Al pasar a un estado de cierre se sugiere la fecha de hoy como fecha de archivo.
+    $('estado').addEventListener('change', () => {
+        const cierre = CIERRE.includes($('estado').value);
+        if (cierre && !$('fecha_archivo').value) $('fecha_archivo').value = new Date().toLocaleDateString('en-CA');   // AAAA-MM-DD en hora local
+        if (!cierre) $('fecha_archivo').value = '';
+    });
+
+    // ---------------- Vista celular flotante ----------------
+    // Dentro del celular la misma página se carga en un iframe; ahí no se muestra el botón.
+    if (window.self !== window.top) {
+        $('btn-celular').hidden = true;
+        document.documentElement.classList.add('en-celular');
+    } else {
+        const phone = $('phone');
+        // Escala para que el teléfono quepa en la ventana (máx. 0.78)
+        const ajustarEscala = () => phone.style.setProperty('--k', Math.min(.78, (window.innerHeight - 90) / 870).toFixed(3));
+        const abrirCelular = () => {
+            ajustarEscala();
+            const vista = document.querySelector('.nav-btn[aria-current="page"]').dataset.view;
+            if (!$('phone-frame').src) {
+                // La vista va por parámetro y no por ancla (#): un ancla haría que el navegador desplace el contenedor del teléfono
+                $('phone-frame').onload = () => { document.querySelector('.phone-screen').scrollTop = 0; };
+                $('phone-frame').src = 'gabinete.html?vista=' + vista;
+            }
+            phone.hidden = false;
+            $('btn-celular').setAttribute('aria-pressed', 'true');
+        };
+        const cerrarCelular = () => { phone.hidden = true; $('btn-celular').setAttribute('aria-pressed', 'false'); };
+        $('btn-celular').onclick = () => phone.hidden ? abrirCelular() : cerrarCelular();
+        $('cel-cerrar').onclick = cerrarCelular;
+        $('cel-recargar').onclick = () => $('phone-frame').contentWindow.location.reload();
+        window.addEventListener('resize', () => { if (!phone.hidden) ajustarEscala(); });
+        // Arrastrar desde el marco del teléfono
+        let inicio = null;
+        $('phone-body').addEventListener('pointerdown', e => {
+            if (e.target.closest('.phone-screen')) return;
+            const r = phone.getBoundingClientRect();
+            inicio = { x: e.clientX - r.left, y: e.clientY - r.top };
+            phone.classList.add('arrastrando');
+            $('phone-body').setPointerCapture(e.pointerId);
+        });
+        $('phone-body').addEventListener('pointermove', e => {
+            if (!inicio) return;
+            const x = Math.min(Math.max(0, e.clientX - inicio.x), window.innerWidth - phone.offsetWidth);
+            const y = Math.min(Math.max(0, e.clientY - inicio.y), window.innerHeight - phone.offsetHeight);
+            Object.assign(phone.style, { left: x + 'px', top: y + 'px', right: 'auto', bottom: 'auto' });
+        });
+        const soltar = () => { inicio = null; phone.classList.remove('arrastrando'); };
+        $('phone-body').addEventListener('pointerup', soltar);
+        $('phone-body').addEventListener('pointercancel', soltar);
+    }
+
+    $('hoy').textContent = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+    mostrarVista(location.hash.slice(1) || new URLSearchParams(location.search).get('vista'));
+    window.addEventListener('load', () => window.scrollTo(0, 0));
+    cargarTodo();
+</script>
+</body>
+</html>
