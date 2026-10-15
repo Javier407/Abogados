@@ -1,0 +1,11 @@
+# Scripts que se ejecutan en Linux (contenedores y servidor): siempre con fin de línea LF
+*.sh   text eol=lf
+mvnw   text eol=lf
+*.sql  text eol=lf
+
+# Scripts de Windows
+*.cmd  text eol=crlf
+
+# Binarios
+*.docx binary
+*.png  binary

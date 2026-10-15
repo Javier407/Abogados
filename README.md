@@ -78,6 +78,32 @@ File → Open → carpeta `Abogados` (abrir como proyecto Maven). En File → Pr
 
 27 pruebas de integración (MockMvc sobre H2) que recorren las tres capas: validaciones, reglas de negocio, filtros, archivado, conflictos 409 y la relación abogado–usuario.
 
+## Hacia el software jurídico (fase 0: planteamiento)
+
+El proyecto evoluciona hacia un sistema de microservicios para firmas de abogados que vigila los radicados en la Rama Judicial y avisa antes de que se venzan los términos. Antes de programar se dejó el planteamiento:
+
+| Documento | Contenido |
+|---|---|
+| [`docs/01-dominio.md`](docs/01-dominio.md) | Problema, glosario, ramas y tipos de proceso, estructura del radicado (23 dígitos), etapas, términos y tarifas Conalbos 2026 |
+| [`docs/02-arquitectura.md`](docs/02-arquitectura.md) | Opciones evaluadas con pros y contras, microservicios (Java + Python), eventos, orden del repositorio y despliegue |
+| [`docs/03-roadmap.md`](docs/03-roadmap.md) | Fases F0–F5 |
+| [`docs/adr/`](docs/adr/) | Decisiones de arquitectura (políglota, RabbitMQ, PostgreSQL por esquemas, JWT propio, fuente Rama Judicial) |
+
+### Base de datos de pruebas (PostgreSQL 16)
+
+Firma ficticia *Rodríguez & Asociados Abogados SAS*: 2 sedes, 14 personas, 29 clientes, 8 peritos, 30 procesos en las 7 ramas con providencias, términos (vencidos, por vencer y al día, calculados en días hábiles), honorarios, pagos, vigilancia y notificaciones. Todos los datos son ficticios.
+
+```bash
+cd infra
+cp .env.example .env        # escribir las claves en .env
+docker compose up -d        # crea esquemas y carga los datos la primera vez
+docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/consultas/ejemplos.sql
+```
+
+- Esquemas: `identidad`, `gabinete`, `procesos`, `vigilancia`, `notificaciones` (uno por microservicio, cada uno con su usuario `svc_*`).
+- Usuarios de prueba de la aplicación (tabla `identidad.usuarios`): contraseña `Prueba2026*`.
+- Para recargar desde cero: `docker compose down -v && docker compose up -d` (borra el volumen).
+
 ## Documento del laboratorio
 
 El informe completo (requerimientos, diagramas, pruebas, QA y evaluación ISO/IEC 25000) está en [`docs/`](docs/).
