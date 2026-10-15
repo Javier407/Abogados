@@ -1,0 +1,154 @@
+<div class="modulo-container">
+
+  <div class="page-header">
+    <h1>Abogados</h1>
+    <p>Socios, asociados y abogados junior de la firma</p>
+  </div>
+
+  @if (mensaje) { <div class="alerta alerta-exito">{{ mensaje }}</div> }
+  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+
+  <div class="card">
+    <div class="card-header"><h2>{{ editandoId ? 'Editar abogado' : 'Registrar abogado' }}</h2></div>
+    <div class="card-body">
+      <form #form="ngForm" (ngSubmit)="guardar(form)" novalidate>
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label class="form-label" for="idPersona">Cédula <span class="requerido">*</span></label>
+            <input id="idPersona" class="form-input" type="number" name="idPersona" [(ngModel)]="abogado.idPersona"
+              #ced="ngModel" required min="1" [readonly]="!!editandoId"
+              [class.input-error]="ced.invalid && (ced.touched || enviado)" />
+            @if (ced.invalid && (ced.touched || enviado)) { <span class="error-msg">La cédula es obligatoria</span> }
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="nombres">Nombres <span class="requerido">*</span></label>
+            <input id="nombres" class="form-input" name="nombres" [(ngModel)]="abogado.nombres" #nom="ngModel" required
+              maxlength="60" [class.input-error]="nom.invalid && (nom.touched || enviado)" />
+            @if (nom.invalid && (nom.touched || enviado)) { <span class="error-msg">Obligatorio</span> }
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="apellidos">Apellidos <span class="requerido">*</span></label>
+            <input id="apellidos" class="form-input" name="apellidos" [(ngModel)]="abogado.apellidos" #ape="ngModel" required
+              maxlength="60" [class.input-error]="ape.invalid && (ape.touched || enviado)" />
+            @if (ape.invalid && (ape.touched || enviado)) { <span class="error-msg">Obligatorio</span> }
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="tarjeta">Tarjeta profesional <span class="requerido">*</span></label>
+            <input id="tarjeta" class="form-input" name="tarjetaProfesional" [(ngModel)]="abogado.tarjetaProfesional"
+              #tp="ngModel" required pattern="[0-9]{3,10}" [class.input-error]="tp.invalid && (tp.touched || enviado)"
+              placeholder="Solo números" />
+            @if (tp.invalid && (tp.touched || enviado)) { <span class="error-msg">Entre 3 y 10 dígitos</span> }
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="email">Correo <span class="requerido">*</span></label>
+            <input id="email" class="form-input" type="email" name="email" [(ngModel)]="abogado.email" #mail="ngModel"
+              required email [class.input-error]="mail.invalid && (mail.touched || enviado)" />
+            @if (mail.invalid && (mail.touched || enviado)) { <span class="error-msg">Correo no válido</span> }
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="telefono">Teléfono</label>
+            <input id="telefono" class="form-input" name="telefono" [(ngModel)]="abogado.telefono" maxlength="20" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="idCargo">Cargo <span class="requerido">*</span></label>
+            <select id="idCargo" class="form-input" name="idCargo" [(ngModel)]="abogado.idCargo" required>
+              @for (c of cargos; track c.idCargo) { <option [ngValue]="c.idCargo">{{ c.nombre }}</option> }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="idSede">Sede <span class="requerido">*</span></label>
+            <select id="idSede" class="form-input" name="idSede" [(ngModel)]="abogado.idSede" required>
+              @for (s of sedes; track s.idSede) { <option [ngValue]="s.idSede">{{ s.nombre }}</option> }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="idArea">Área de práctica</label>
+            <select id="idArea" class="form-input" name="idArea" [(ngModel)]="abogado.idArea">
+              <option [ngValue]="null">Sin área</option>
+              @for (a of areas; track a.idArea) { <option [ngValue]="a.idArea">{{ a.nombre }}</option> }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="tarifa">Tarifa por hora (COP)</label>
+            <input id="tarifa" class="form-input" type="number" name="tarifaHora" [(ngModel)]="abogado.tarifaHora" min="0" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="ingreso">Fecha de ingreso</label>
+            <input id="ingreso" class="form-input" type="date" name="fechaIngreso" [(ngModel)]="abogado.fechaIngreso" />
+          </div>
+
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="guardando">
+            {{ guardando ? 'Guardando...' : (editandoId ? 'Guardar cambios' : 'Registrar abogado') }}
+          </button>
+          <button type="button" class="btn btn-secondary" (click)="cancelar(form)">
+            {{ editandoId ? 'Cancelar' : 'Limpiar' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Abogados ({{ abogados.length }})</h2></div>
+    <div class="card-body">
+      <div class="filtros">
+        <label class="resumen-chip">
+          <input type="checkbox" [(ngModel)]="soloActivos" (ngModelChange)="cargar()" /> Solo activos
+        </label>
+      </div>
+
+      @if (cargando) {
+        <div class="empty-state">Cargando abogados...</div>
+      } @else if (abogados.length === 0) {
+        <div class="empty-state">No hay abogados registrados.</div>
+      } @else {
+        <div class="tabla-wrapper">
+          <table class="tabla">
+            <thead>
+              <tr><th>Abogado</th><th>Cédula</th><th>T.P.</th><th>Cargo</th><th>Área</th><th>Sede</th><th>Tarifa/hora</th><th>Estado</th><th></th></tr>
+            </thead>
+            <tbody>
+              @for (a of abogados; track a.idPersona) {
+                <tr>
+                  <td class="titulo-celda">{{ a.nombres }} {{ a.apellidos }}<br><small>{{ a.email }}</small></td>
+                  <td class="mono">{{ a.idPersona }}</td>
+                  <td class="mono">{{ a.tarjetaProfesional }}</td>
+                  <td>{{ a.cargo }}</td>
+                  <td>{{ a.area ?? '—' }}</td>
+                  <td>{{ a.sede }}</td>
+                  <td>{{ a.tarifaHora != null ? (a.tarifaHora | currency:'COP':'symbol-narrow':'1.0-0') : '—' }}</td>
+                  <td>
+                    <span class="badge" [class.badge-success]="a.activo" [class.badge-muted]="!a.activo">
+                      {{ a.activo ? 'Activo' : 'Inactivo' }}
+                    </span>
+                  </td>
+                  <td class="acciones-celda">
+                    <button class="btn btn-secondary btn-sm" type="button" (click)="editar(a)">Editar</button>
+                    @if (a.activo) {
+                      <button class="btn btn-danger btn-sm" type="button" (click)="desactivar(a)">Desactivar</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+
+</div>

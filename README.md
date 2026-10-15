@@ -104,6 +104,53 @@ docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/consu
 - Usuarios de prueba de la aplicación (tabla `identidad.usuarios`): contraseña `Prueba2026*`.
 - Para recargar desde cero: `docker compose down -v && docker compose up -d` (borra el volumen).
 
+## Fase 1: microservicios funcionando
+
+```
+navegador ──► frontend (nginx :8090) ──/api──► gateway (:8091) ─┬─► gabinete  (clientes, abogados, sedes)
+                                                                 └─► procesos  (procesos, radicado, catálogos) ──► RabbitMQ
+                                                gabinete y procesos ──► PostgreSQL (un esquema cada uno)
+```
+
+| Carpeta | Qué es | Tecnología |
+|---|---|---|
+| [`servicios/procesos`](servicios/procesos) | Procesos con validación del radicado (23 dígitos y despacho registrado), responsable, catálogos; publica `proceso.creado` | Spring Boot 3.3 · Java 17 · JDBC |
+| [`servicios/gabinete`](servicios/gabinete) | Clientes y abogados (evolución de este laboratorio: `javax` → `jakarta`, MySQL → PostgreSQL) | Spring Boot 3.3 · Java 17 · JPA |
+| [`servicios/gateway`](servicios/gateway) | Entrada única: `/api/<recurso>` → servicio dueño | Spring Cloud Gateway |
+| [`frontend`](frontend) | Panel, procesos, clientes y abogados (basado en `gestion-juridica-frontend`) | Angular 21 · nginx |
+| [`docs/contratos`](docs/contratos) | OpenAPI de cada servicio y formato de los eventos | |
+
+Cada servicio Java tiene arquitectura hexagonal: `dominio` (reglas, sin frameworks), `aplicacion` (casos de uso) e `infraestructura` (REST, base de datos, HTTP y RabbitMQ).
+
+**Levantar todo** (solo necesita Docker; Maven y Node corren dentro de los contenedores):
+
+```bash
+cd infra
+cp .env.example .env              # escribir las claves
+docker compose up -d --build      # compila, prueba y arranca los 6 contenedores
+```
+
+Luego abrir http://localhost:8090 (en el servidor: http://100.65.152.112:8090). El gateway queda en el puerto 8091.
+
+**Desarrollo del frontend** con recarga en vivo, contra el gateway del servidor:
+
+```bash
+cd frontend
+npm ci
+npx ng serve                      # http://localhost:4200, /api va al gateway (proxy.conf.json)
+```
+
+**Pruebas:**
+
+| Dónde | Cuántas | Qué cubren |
+|---|---|---|
+| `servicios/procesos` | 35 | Radicado, reglas del proceso, casos de uso con dobles en memoria, API (códigos 400/404/409/422/503) |
+| `servicios/gabinete` | 25 | Reglas de clientes y abogados, casos de uso, API y persistencia JPA sobre H2 |
+| `servicios/gateway` | 1 | Rutas hacia cada servicio |
+| `frontend` | 5 | Arranque de la app, etiquetas y mensajes de error |
+
+Las pruebas Java se ejecutan solas al construir la imagen (`docker compose build`). Las del frontend, con `npx ng test --watch=false`.
+
 ## Documento del laboratorio
 
 El informe completo (requerimientos, diagramas, pruebas, QA y evaluación ISO/IEC 25000) está en [`docs/`](docs/).

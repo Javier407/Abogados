@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: procesos
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gabinete}
+    username: ${DB_USER:svc_procesos}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 5
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+  shutdown: graceful
+
+gabinete:
+  url: ${GABINETE_URL:http://localhost:8081}
+
+eventos:
+  exchange: gabinete.eventos
+
+management:
+  endpoints.web.exposure.include: health,info
+  endpoint.health.probes.enabled: true

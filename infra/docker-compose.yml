@@ -1,9 +1,25 @@
-# Infraestructura del gabinete (fase F0: solo la base de datos de pruebas).
-# Uso:  cd infra && cp .env.example .env  (cambiar las claves)  &&  docker compose up -d
-# La primera vez que se crea el volumen se ejecuta db/00-init.sh: crea los esquemas y carga los datos de prueba.
-# Para recargar desde cero: docker compose down -v && docker compose up -d   (borra el volumen de datos)
+# Infraestructura del gabinete (fase F1): PostgreSQL, RabbitMQ, microservicios, gateway y frontend.
+# Uso:  cd infra && cp .env.example .env  (escribir las claves)  &&  docker compose up -d --build
+# La primera vez que se crea el volumen de PostgreSQL se ejecuta db/00-init.sh: crea los esquemas y carga los datos de prueba.
+# Para recargar la base desde cero: docker compose down -v && docker compose up -d   (borra los volúmenes)
+#
+# Solo se publican el frontend (8090) y el gateway (8091). PostgreSQL, RabbitMQ y los servicios
+# solo son visibles dentro de la red interna de compose.
 
 name: abogados
+
+x-logs: &logs
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-java-salud: &java-salud
+  test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/liveness || exit 1"]
+  interval: 15s
+  timeout: 5s
+  retries: 5
+  start_period: 60s
 
 services:
   postgres:
@@ -17,7 +33,6 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ../db:/docker-entrypoint-initdb.d:ro
-    # Sin puerto publicado: los servicios la ven por la red interna.
     # Para conectarse desde el mismo equipo (DBeaver, pgAdmin), descomentar:
     # ports:
     #   - "127.0.0.1:55432:5432"
@@ -27,11 +42,106 @@ services:
       timeout: 5s
       retries: 10
     mem_limit: 512m
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *logs
+
+  rabbitmq:
+    image: rabbitmq:3.13.7-management-alpine
+    container_name: abogados-rabbitmq
+    restart: unless-stopped
+    hostname: abogados-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitdata:/var/lib/rabbitmq
+    # Consola de administración (solo desde el servidor, por túnel SSH):
+    # ports:
+    #   - "127.0.0.1:15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    mem_limit: 256m
+    logging: *logs
+
+  gabinete:
+    build: ../servicios/gabinete
+    image: abogados/gabinete:0.1.0
+    container_name: abogados-gabinete
+    restart: unless-stopped
+    environment:
+      TZ: America/Bogota
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USER: svc_gabinete
+      DB_PASSWORD: ${SVC_PASSWORD}
+      PROCESOS_URL: http://procesos:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck: *java-salud
+    mem_limit: 384m
+    logging: *logs
+
+  procesos:
+    build: ../servicios/procesos
+    image: abogados/procesos:0.1.0
+    container_name: abogados-procesos
+    restart: unless-stopped
+    environment:
+      TZ: America/Bogota
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USER: svc_procesos
+      DB_PASSWORD: ${SVC_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      GABINETE_URL: http://gabinete:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck: *java-salud
+    mem_limit: 384m
+    logging: *logs
+
+  gateway:
+    build: ../servicios/gateway
+    image: abogados/gateway:0.1.0
+    container_name: abogados-gateway
+    restart: unless-stopped
+    environment:
+      TZ: America/Bogota
+      GABINETE_URL: http://gabinete:8080
+      PROCESOS_URL: http://procesos:8080
+      CORS_ORIGINS: http://localhost:4200
+    ports:
+      - "8091:8080"
+    depends_on:
+      - gabinete
+      - procesos
+    healthcheck: *java-salud
+    mem_limit: 384m
+    logging: *logs
+
+  frontend:
+    build: ../frontend
+    image: abogados/frontend:0.1.0
+    container_name: abogados-frontend
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    depends_on:
+      - gateway
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 64m
+    logging: *logs
 
 volumes:
   pgdata:
+  rabbitdata:

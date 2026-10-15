@@ -1,0 +1,78 @@
+<div class="modulo-container">
+
+  <div class="page-header">
+    <h1>Procesos</h1>
+    <p>Procesos judiciales que lleva la firma, identificados por su radicado de 23 dígitos</p>
+  </div>
+
+  @if (mensaje) { <div class="alerta alerta-exito">{{ mensaje }}</div> }
+  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+
+  <div class="filtros">
+    <input class="form-input" type="search" [(ngModel)]="filtro.q" (keyup.enter)="cargar()"
+      placeholder="Radicado o asunto (Enter)" aria-label="Buscar procesos" />
+    <select class="form-input" [(ngModel)]="filtro.rama" (ngModelChange)="cargar()" aria-label="Rama">
+      <option value="">Todas las ramas</option>
+      @for (r of ramas; track r.codigo) { <option [value]="r.codigo">{{ r.nombre }}</option> }
+    </select>
+    <select class="form-input" [(ngModel)]="filtro.estado" (ngModelChange)="cargar()" aria-label="Estado">
+      <option value="">Todos los estados</option>
+      @for (e of estados; track e) { <option [value]="e">{{ etiqueta(e) }}</option> }
+    </select>
+    <button class="btn btn-secondary" type="button" (click)="limpiar()">Limpiar</button>
+    <a class="btn btn-primary" routerLink="/procesos/nuevo">Nuevo proceso</a>
+  </div>
+
+  <div class="resumen-bar">
+    <span class="resumen-chip">Total: <strong>{{ procesos.length }}</strong></span>
+    <span class="resumen-chip chip-abierto">Activos: <strong>{{ contar('ACTIVO') }}</strong></span>
+    <span class="resumen-chip chip-proceso">Suspendidos: <strong>{{ contar('SUSPENDIDO') }}</strong></span>
+    <span class="resumen-chip">Terminados: <strong>{{ contar('TERMINADO') }}</strong></span>
+    <span class="resumen-chip">Archivados: <strong>{{ contar('ARCHIVADO') }}</strong></span>
+  </div>
+
+  @if (cargando) {
+    <div class="empty-state">Cargando procesos...</div>
+  } @else if (procesos.length === 0) {
+    <div class="empty-state">No hay procesos con esos filtros.</div>
+  } @else {
+    <div class="card">
+      <div class="card-body" style="padding: 0">
+        <div class="tabla-wrapper" style="border: none">
+          <table class="tabla">
+            <thead>
+              <tr><th>Radicado</th><th>Rama / tipo</th><th>Asunto</th><th>Cliente</th><th>Responsable</th><th>Despacho</th><th>Estado</th><th>Radicado el</th><th></th></tr>
+            </thead>
+            <tbody>
+              @for (p of procesos; track p.idProceso) {
+                <tr>
+                  <td class="mono">{{ p.radicadoLegible }}
+                    @if (p.instancia > 0) { <br><span class="badge badge-warning">{{ p.instancia + 1 }}.ª instancia</span> }
+                  </td>
+                  <td><strong>{{ p.rama }}</strong><br><small>{{ p.tipoProceso }}</small></td>
+                  <td class="titulo-celda">{{ p.asunto }}</td>
+                  <td>{{ cliente(p.idCliente) }}<br><small>{{ etiqueta(p.rolCliente) }}</small></td>
+                  <td>{{ abogado(p.idResponsable) }}</td>
+                  <td><small>{{ p.despachoActual }}</small></td>
+                  <td>
+                    <span class="badge"
+                      [class.badge-success]="p.estado === 'ACTIVO'"
+                      [class.badge-warning]="p.estado === 'SUSPENDIDO'"
+                      [class.badge-muted]="p.estado === 'TERMINADO' || p.estado === 'ARCHIVADO'">{{ etiqueta(p.estado) }}</span>
+                    <br><small>{{ etiqueta(p.etapa) }}</small>
+                  </td>
+                  <td class="fecha-celda">{{ p.fechaRadicacion | date:'dd/MM/yyyy' }}</td>
+                  <td class="acciones-celda">
+                    <a class="btn btn-secondary btn-sm" [routerLink]="['/procesos', p.idProceso, 'editar']">Editar</a>
+                    <button class="btn btn-danger btn-sm" type="button" (click)="eliminar(p)">Eliminar</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

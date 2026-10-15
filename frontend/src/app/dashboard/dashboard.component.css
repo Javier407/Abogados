@@ -1,0 +1,126 @@
+.dashboard {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 24px;
+}
+
+.metricas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.metrica-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metrica-card-accent {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.metrica-card-accent .metrica-label { color: rgba(255,255,255,0.65); }
+.metrica-card-accent .metrica-sub   { color: rgba(255,255,255,0.5); }
+.metrica-card-accent .metrica-link  { color: rgba(255,255,255,0.75); }
+
+.metrica-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+.metrica-valor { font-size: 2rem; font-weight: 700; line-height: 1; color: var(--primary); }
+.metrica-card-accent .metrica-valor { color: #fff; }
+.metrica-sub { font-size: 0.78rem; color: var(--text-muted); }
+.metrica-link {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--secondary);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 4px;
+}
+.metrica-link:hover { text-decoration: underline; }
+
+.seccion { margin-bottom: 32px; }
+.seccion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.seccion-header h2 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--primary);
+}
+.ver-todos {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--secondary);
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.ver-todos:hover { text-decoration: underline; }
+
+.barra-fila { display: grid; grid-template-columns: 200px 1fr 60px; gap: 12px; align-items: center; margin-bottom: 8px; }
+.barra-nombre { font-size: 0.85rem; }
+.barra-pista { background: var(--secondary-light); border-radius: 99px; height: 10px; overflow: hidden; }
+.barra { display: block; height: 100%; background: var(--primary); border-radius: 99px; }
+.barra-valor { font-size: 0.8rem; color: var(--text-muted); text-align: right; }
+
+.accesos-rapidos h2 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--primary);
+}
+.accesos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.acceso-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+  text-decoration: none;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.acceso-card:hover {
+  border-color: var(--secondary);
+  box-shadow: 0 2px 8px rgba(74,144,217,0.15);
+}
+.acceso-title { font-size: 0.9rem; font-weight: 700; color: var(--primary); }
+.acceso-desc  { font-size: 0.8rem; color: var(--text-muted); }
+
+.estado-msg { padding: 20px; color: var(--text-muted); font-size: 0.9rem; }
+.estado-error { color: var(--danger-text); }
+
+@media (max-width: 600px) {
+  .metricas-grid { grid-template-columns: 1fr 1fr; }
+  .accesos-grid  { grid-template-columns: 1fr; }
+  .barra-fila    { grid-template-columns: 1fr 50px; }
+  .barra-pista   { display: none; }
+}

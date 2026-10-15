@@ -1,0 +1,184 @@
+<div class="modulo-container">
+
+  <div class="page-header">
+    <h1>{{ idProceso ? 'Editar proceso' : 'Nuevo proceso' }}</h1>
+    <p>El radicado se valida mientras se escribe: debe tener 23 dígitos y corresponder a un despacho registrado</p>
+  </div>
+
+  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+
+  <form #form="ngForm" (ngSubmit)="guardar(form)" novalidate>
+
+    <div class="card">
+      <div class="card-header"><h2>Radicado</h2></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group form-group-full">
+            <label class="form-label" for="radicado">Número de radicado <span class="requerido">*</span></label>
+            <input id="radicado" class="form-input mono" name="radicado" [(ngModel)]="proceso.radicado"
+              (ngModelChange)="radicadoCambio($event)" required autocomplete="off"
+              [class.input-error]="(enviado || proceso.radicado) && !radicadoValido && !!errorRadicado"
+              placeholder="11001-31-03-032-2026-00501-00" />
+            <span class="form-ayuda">Puede pegarlo con o sin guiones, tal como sale en la consulta de procesos de la Rama Judicial.</span>
+            @if (errorRadicado) { <span class="error-msg">{{ errorRadicado }}</span> }
+          </div>
+        </div>
+
+        @if (desglose) {
+          <div class="tabla-wrapper" style="margin-top: 16px">
+            <table class="tabla">
+              <thead>
+                <tr><th>DANE</th><th>Entidad</th><th>Especialidad</th><th>Despacho</th><th>Año</th><th>Consecutivo</th><th>Instancia</th></tr>
+              </thead>
+              <tbody>
+                <tr class="mono">
+                  <td>{{ desglose.codDane }}</td><td>{{ desglose.codEntidad }}</td><td>{{ desglose.codEspecialidad }}</td>
+                  <td>{{ desglose.codDespacho }}</td><td>{{ desglose.anio }}</td><td>{{ desglose.consecutivo }}</td>
+                  <td>{{ desglose.instancia === 0 ? 'Primera' : (desglose.instancia + 1) + '.ª' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          @if (desglose.despacho) {
+            <div class="alerta alerta-exito" style="margin-top: 12px">
+              Radicado en: <strong>{{ desglose.despacho.nombre }}</strong> ({{ desglose.despacho.ciudad }})
+            </div>
+          } @else {
+            <div class="alerta alerta-error" style="margin-top: 12px">
+              Los primeros 12 dígitos no corresponden a ningún despacho registrado.
+            </div>
+          }
+          @if (desglose.idProcesoExistente && desglose.idProcesoExistente !== idProceso) {
+            <div class="alerta alerta-error">Este radicado ya está registrado en el proceso {{ desglose.idProcesoExistente }}.</div>
+          }
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>Datos del proceso</h2></div>
+      <div class="card-body">
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label class="form-label" for="rama">Rama</label>
+            <select id="rama" class="form-input" name="rama" [(ngModel)]="rama" (ngModelChange)="ramaCambio()">
+              <option value="">Todas</option>
+              @for (r of ramas; track r.codigo) { <option [value]="r.codigo">{{ r.nombre }}</option> }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="idTipo">Tipo de proceso <span class="requerido">*</span></label>
+            <select id="idTipo" class="form-input" name="idTipo" [(ngModel)]="proceso.idTipo" #tipo="ngModel" required
+              [class.input-error]="tipo.invalid && (tipo.touched || enviado)">
+              <option [ngValue]="null">-- Seleccione --</option>
+              @for (t of tiposDeLaRama; track t.idTipo) { <option [ngValue]="t.idTipo">{{ t.nombre }}</option> }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="fecha">Fecha de radicación <span class="requerido">*</span></label>
+            <input id="fecha" class="form-input" type="date" name="fechaRadicacion" [(ngModel)]="proceso.fechaRadicacion" required />
+          </div>
+
+          <div class="form-group form-group-full">
+            <label class="form-label" for="asunto">Asunto <span class="requerido">*</span></label>
+            <input id="asunto" class="form-input" name="asunto" [(ngModel)]="proceso.asunto" #asunto="ngModel" required
+              maxlength="200" [class.input-error]="asunto.invalid && (asunto.touched || enviado)"
+              placeholder="Ej: Incumplimiento de contrato de obra" />
+            @if (asunto.invalid && (asunto.touched || enviado)) { <span class="error-msg">El asunto es obligatorio</span> }
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="idCliente">Cliente <span class="requerido">*</span></label>
+            <select id="idCliente" class="form-input" name="idCliente" [(ngModel)]="proceso.idCliente" #cli="ngModel" required
+              [class.input-error]="cli.invalid && (cli.touched || enviado)">
+              <option [ngValue]="null">-- Seleccione --</option>
+              @for (c of clientes; track c.idCliente) { <option [ngValue]="c.idCliente">{{ c.nombre }}</option> }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="rol">El cliente es <span class="requerido">*</span></label>
+            <select id="rol" class="form-input" name="rolCliente" [(ngModel)]="proceso.rolCliente" required>
+              @for (r of rolesCliente; track r) { <option [value]="r">{{ etiqueta(r) }}</option> }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="responsable">Abogado responsable <span class="requerido">*</span></label>
+            <select id="responsable" class="form-input" name="idResponsable" [(ngModel)]="proceso.idResponsable"
+              #resp="ngModel" required [class.input-error]="resp.invalid && (resp.touched || enviado)">
+              <option [ngValue]="null">-- Seleccione --</option>
+              @for (a of abogados; track a.idPersona) { <option [ngValue]="a.idPersona">{{ a.nombres }} {{ a.apellidos }} · {{ a.cargo }}</option> }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="clase">Cuantía <span class="requerido">*</span></label>
+            <select id="clase" class="form-input" name="claseCuantia" [(ngModel)]="proceso.claseCuantia"
+              (ngModelChange)="claseCambio()" required>
+              @for (c of clasesCuantia; track c) { <option [value]="c">{{ etiqueta(c) }}</option> }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cuantia">Valor de la cuantía (COP)</label>
+            <input id="cuantia" class="form-input" type="number" name="cuantia" [(ngModel)]="proceso.cuantia" min="0"
+              [disabled]="proceso.claseCuantia === 'SIN_CUANTIA'" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="servicio">Tipo de servicio <span class="requerido">*</span></label>
+            <select id="servicio" class="form-input" name="tipoServicio" [(ngModel)]="proceso.tipoServicio" required>
+              @for (s of tiposServicio; track s) { <option [value]="s">{{ etiqueta(s) }}</option> }
+            </select>
+          </div>
+
+          @if (idProceso) {
+            <div class="form-group">
+              <label class="form-label" for="estado">Estado</label>
+              <select id="estado" class="form-input" name="estado" [(ngModel)]="proceso.estado" (ngModelChange)="estadoCambio()">
+                @for (e of estados; track e) { <option [value]="e">{{ etiqueta(e) }}</option> }
+              </select>
+            </div>
+          }
+
+          <div class="form-group">
+            <label class="form-label" for="etapa">Etapa <span class="requerido">*</span></label>
+            <select id="etapa" class="form-input" name="etapa" [(ngModel)]="proceso.etapa" required>
+              @for (e of etapas; track e) { <option [value]="e">{{ etiqueta(e) }}</option> }
+            </select>
+          </div>
+
+          @if (desglose && desglose.instancia > 0) {
+            <div class="form-group">
+              <label class="form-label" for="despachoActual">Despacho que lo conoce ahora</label>
+              <select id="despachoActual" class="form-input" name="idDespachoActual" [(ngModel)]="proceso.idDespachoActual">
+                <option [ngValue]="null">El de origen</option>
+                @for (d of despachos; track d.idDespacho) { <option [ngValue]="d.idDespacho">{{ d.nombre }}</option> }
+              </select>
+            </div>
+          }
+
+          <div class="form-group form-group-full">
+            <label class="resumen-chip">
+              <input type="checkbox" name="vigilado" [(ngModel)]="proceso.vigilado" />
+              Vigilar este radicado en la Rama Judicial (avisos de autos nuevos)
+            </label>
+          </div>
+
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="guardando">
+            {{ guardando ? 'Guardando...' : (idProceso ? 'Guardar cambios' : 'Registrar proceso') }}
+          </button>
+          <a class="btn btn-secondary" routerLink="/procesos">Cancelar</a>
+        </div>
+      </div>
+    </div>
+
+  </form>
+</div>

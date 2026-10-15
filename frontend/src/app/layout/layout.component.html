@@ -1,0 +1,22 @@
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-title">Gestion Juridica</span>
+      <span class="brand-sub">Rodríguez &amp; Asociados</span>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Menú principal">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item">Panel</a>
+      <a routerLink="/procesos" routerLinkActive="active" class="nav-item">Procesos</a>
+      <a routerLink="/clientes" routerLinkActive="active" class="nav-item">Clientes</a>
+      <a routerLink="/abogados" routerLinkActive="active" class="nav-item">Abogados</a>
+      <a routerLink="/pagos" routerLinkActive="active" class="nav-item">Pagos</a>
+    </nav>
+  </aside>
+
+  <main class="content">
+    <router-outlet></router-outlet>
+  </main>
+
+</div>

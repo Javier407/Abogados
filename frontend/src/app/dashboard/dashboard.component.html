@@ -1,0 +1,99 @@
+<div class="dashboard">
+
+  <div class="dash-header page-header">
+    <h1>Panel</h1>
+    <p class="dash-subtitle">Resumen de la firma</p>
+  </div>
+
+  @if (cargando) {
+    <div class="estado-msg">Cargando...</div>
+  }
+
+  @if (error) {
+    <div class="estado-msg estado-error">{{ error }}</div>
+  }
+
+  @if (!cargando && !error) {
+
+    <div class="metricas-grid">
+      <div class="metrica-card">
+        <span class="metrica-label">Procesos</span>
+        <span class="metrica-valor">{{ totalProcesos }}</span>
+        <a routerLink="/procesos" class="metrica-link">Ver procesos</a>
+      </div>
+      <div class="metrica-card">
+        <span class="metrica-label">Activos</span>
+        <span class="metrica-valor">{{ activos }}</span>
+        <span class="metrica-sub">{{ suspendidos }} suspendido(s) · {{ cerrados }} cerrado(s)</span>
+      </div>
+      <div class="metrica-card">
+        <span class="metrica-label">Clientes</span>
+        <span class="metrica-valor">{{ totalClientes }}</span>
+        <a routerLink="/clientes" class="metrica-link">Ver clientes</a>
+      </div>
+      <div class="metrica-card metrica-card-accent">
+        <span class="metrica-label">Abogados activos</span>
+        <span class="metrica-valor">{{ abogadosActivos }}</span>
+        <a routerLink="/abogados" class="metrica-link">Ver abogados</a>
+      </div>
+    </div>
+
+    <div class="seccion">
+      <div class="seccion-header"><h2>Procesos por rama (activos / total)</h2></div>
+      @for (r of porRama; track r.rama) {
+        <div class="barra-fila">
+          <span class="barra-nombre">{{ r.rama }}</span>
+          <span class="barra-pista"><span class="barra" [style.width.%]="ancho(r)"></span></span>
+          <span class="barra-valor">{{ r.activos }} / {{ r.total }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="seccion">
+      <div class="seccion-header">
+        <h2>Procesos más recientes</h2>
+        <a routerLink="/procesos" class="ver-todos">Ver todos</a>
+      </div>
+      @if (ultimos.length > 0) {
+        <div class="tabla-wrapper">
+          <table class="tabla">
+            <thead><tr><th>Radicado</th><th>Rama</th><th>Asunto</th><th>Estado</th><th>Radicado el</th></tr></thead>
+            <tbody>
+              @for (p of ultimos; track p.idProceso) {
+                <tr>
+                  <td class="mono">{{ p.radicadoLegible }}</td>
+                  <td>{{ p.rama }}</td>
+                  <td>{{ p.asunto }}</td>
+                  <td>{{ etiqueta(p.estado) }} · {{ etiqueta(p.etapa) }}</td>
+                  <td class="fecha-celda">{{ p.fechaRadicacion | date:'dd/MM/yyyy' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="estado-msg">Aún no hay procesos registrados.</p>
+      }
+    </div>
+
+    <div class="accesos-rapidos">
+      <h2>Accesos rápidos</h2>
+      <div class="accesos-grid">
+        <a routerLink="/procesos/nuevo" class="acceso-card">
+          <span class="acceso-title">Nuevo proceso</span>
+          <span class="acceso-desc">Registrar un proceso por su radicado</span>
+        </a>
+        <a routerLink="/clientes" class="acceso-card">
+          <span class="acceso-title">Registrar cliente</span>
+          <span class="acceso-desc">Persona natural o jurídica</span>
+        </a>
+        <a routerLink="/abogados" class="acceso-card">
+          <span class="acceso-title">Registrar abogado</span>
+          <span class="acceso-desc">Con tarjeta profesional y área</span>
+        </a>
+      </div>
+    </div>
+
+  }
+
+</div>

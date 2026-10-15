@@ -1,0 +1,214 @@
+openapi: 3.0.3
+info:
+  title: Servicio procesos
+  version: 0.1.0
+  description: |
+    Procesos judiciales identificados por su radicado de 23 dígitos, y los catálogos de ramas,
+    tipos de proceso y despachos. A través del gateway las rutas llevan el prefijo /api
+    (p. ej. GET /api/procesos).
+
+    Errores: el cuerpo siempre es `{ "error": "mensaje" }`; si falla la validación de la petición
+    trae además `campos` con el mensaje de cada campo.
+    - 400: petición mal formada o campos inválidos
+    - 404: el proceso no existe
+    - 409: radicado repetido, o proceso con providencias que se intenta eliminar
+    - 422: regla de negocio (radicado sin 23 dígitos, despacho no registrado, tipo inexistente,
+      fecha futura, cliente o abogado inexistente o inactivo, TERMINADO sin etapa CERRADO...)
+    - 503: el servicio gabinete no responde y no se pudo validar el cliente o el abogado
+servers:
+  - url: http://localhost:8091/api
+    description: Gateway
+
+paths:
+  /procesos:
+    get:
+      summary: Lista procesos (del más reciente al más antiguo)
+      parameters:
+        - { name: estado, in: query, schema: { $ref: '#/components/schemas/EstadoProceso' } }
+        - { name: rama, in: query, schema: { type: string, example: LABORAL }, description: Código de la rama }
+        - { name: idCliente, in: query, schema: { type: integer } }
+        - { name: idAbogado, in: query, schema: { type: integer, format: int64 }, description: Responsable o de apoyo }
+        - { name: q, in: query, schema: { type: string }, description: Busca en radicado (con o sin guiones) y asunto }
+      responses:
+        '200':
+          description: Procesos
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Proceso' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+    post:
+      summary: Registra un proceso
+      description: |
+        Valida el radicado y su despacho, que el radicado no esté registrado y, consultando a gabinete,
+        que el cliente exista y el responsable sea un abogado activo. Guarda al responsable y al cliente
+        como parte del proceso y publica el evento proceso.creado.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ProcesoSolicitud' } } }
+      responses:
+        '201':
+          description: Creado
+          headers: { Location: { schema: { type: string, example: /procesos/31 } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/Proceso' } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  /procesos/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      summary: Consulta un proceso
+      responses:
+        '200': { description: Proceso, content: { application/json: { schema: { $ref: '#/components/schemas/Proceso' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      summary: Actualiza un proceso
+      description: Si cambia el responsable, el anterior queda como abogado de apoyo.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ProcesoSolicitud' } } }
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Proceso' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    delete:
+      summary: Elimina un proceso sin providencias
+      description: Un proceso con providencias tiene historia judicial; se archiva en lugar de borrarse (409).
+      responses:
+        '204': { description: Eliminado }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /procesos/radicado/{numero}:
+    get:
+      summary: Analiza un radicado sin guardarlo
+      description: Para validar en la interfaz mientras se escribe. Acepta guiones, puntos y espacios.
+      parameters:
+        - { name: numero, in: path, required: true, schema: { type: string, example: 11001-31-03-032-2023-00977-01 } }
+      responses:
+        '200': { description: Desglose, content: { application/json: { schema: { $ref: '#/components/schemas/DesgloseRadicado' } } } }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /catalogos/ramas:
+    get:
+      summary: Ramas del derecho
+      responses:
+        '200': { description: Ramas, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Rama' } } } } }
+  /catalogos/tipos:
+    get:
+      summary: Tipos de proceso
+      parameters: [ { name: rama, in: query, schema: { type: string } } ]
+      responses:
+        '200': { description: Tipos, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/TipoProceso' } } } } }
+  /catalogos/despachos:
+    get:
+      summary: Despachos judiciales (códigos de radicado de ejemplo, a validar con el CSJ)
+      parameters: [ { name: rama, in: query, schema: { type: string } } ]
+      responses:
+        '200': { description: Despachos, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Despacho' } } } } }
+
+components:
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string }
+              campos: { type: object, additionalProperties: { type: string } }
+  schemas:
+    EstadoProceso: { type: string, enum: [ACTIVO, SUSPENDIDO, TERMINADO, ARCHIVADO] }
+    EtapaProceso:
+      type: string
+      enum: [PODER, DEMANDA, ADMISION, NOTIFICACION, CONTESTACION, INVESTIGACION, PRUEBAS, AUDIENCIA, JUICIO, SENTENCIA, RECURSO, CERRADO]
+    RolCliente: { type: string, enum: [DEMANDANTE, DEMANDADO, VICTIMA, PROCESADO, ACCIONANTE, ACCIONADO] }
+    ClaseCuantia: { type: string, enum: [MINIMA, MENOR, MAYOR, SIN_CUANTIA] }
+    TipoServicio: { type: string, enum: [PRESENCIAL, VIRTUAL, REPRESENTACION] }
+
+    ProcesoSolicitud:
+      type: object
+      required: [radicado, idTipo, idCliente, rolCliente, asunto, claseCuantia, tipoServicio, etapa, fechaRadicacion, idResponsable]
+      properties:
+        radicado: { type: string, example: 11001-31-03-032-2026-00501-00, description: 23 dígitos, con o sin separadores }
+        idTipo: { type: integer }
+        idDespachoActual: { type: integer, nullable: true, description: Solo en segunda instancia o superior; null = el de origen }
+        idCliente: { type: integer, description: gabinete.clientes }
+        rolCliente: { $ref: '#/components/schemas/RolCliente' }
+        asunto: { type: string, maxLength: 200 }
+        cuantia: { type: number, minimum: 0, nullable: true, description: Debe ser null si claseCuantia es SIN_CUANTIA }
+        claseCuantia: { $ref: '#/components/schemas/ClaseCuantia' }
+        tipoServicio: { $ref: '#/components/schemas/TipoServicio' }
+        estado: { $ref: '#/components/schemas/EstadoProceso' }
+        etapa: { $ref: '#/components/schemas/EtapaProceso' }
+        fechaRadicacion: { type: string, format: date, description: En primera instancia, su año debe ser el del radicado }
+        vigilado: { type: boolean, default: true }
+        idResponsable: { type: integer, format: int64, description: Cédula del abogado (gabinete) }
+
+    Proceso:
+      type: object
+      properties:
+        idProceso: { type: integer }
+        radicado: { type: string, example: '11001310303220230097701' }
+        radicadoLegible: { type: string, example: 11001-31-03-032-2023-00977-01 }
+        idTipo: { type: integer }
+        tipoProceso: { type: string }
+        codigoRama: { type: string }
+        rama: { type: string }
+        despachoOrigen: { type: string }
+        idDespachoActual: { type: integer }
+        despachoActual: { type: string }
+        instancia: { type: integer, description: 0 = primera, 1 = segunda... }
+        idCliente: { type: integer }
+        rolCliente: { $ref: '#/components/schemas/RolCliente' }
+        asunto: { type: string }
+        cuantia: { type: number }
+        claseCuantia: { $ref: '#/components/schemas/ClaseCuantia' }
+        tipoServicio: { $ref: '#/components/schemas/TipoServicio' }
+        estado: { $ref: '#/components/schemas/EstadoProceso' }
+        etapa: { $ref: '#/components/schemas/EtapaProceso' }
+        fechaRadicacion: { type: string, format: date }
+        vigilado: { type: boolean }
+        idResponsable: { type: integer, format: int64 }
+
+    DesgloseRadicado:
+      type: object
+      properties:
+        radicado: { type: string }
+        radicadoLegible: { type: string }
+        codDane: { type: string }
+        codEntidad: { type: string }
+        codEspecialidad: { type: string }
+        codDespacho: { type: string }
+        anio: { type: integer }
+        consecutivo: { type: integer }
+        instancia: { type: integer }
+        despacho: { $ref: '#/components/schemas/Despacho' }
+        idProcesoExistente: { type: integer, description: Ausente si el radicado está libre }
+
+    Rama:
+      type: object
+      properties: { codigo: { type: string }, nombre: { type: string }, norma: { type: string } }
+    TipoProceso:
+      type: object
+      properties:
+        idTipo: { type: integer }
+        codigoRama: { type: string }
+        nombre: { type: string }
+        terminoContestacionDias: { type: integer, description: Días hábiles de referencia (a validar) }
+    Despacho:
+      type: object
+      properties:
+        idDespacho: { type: integer }
+        nombre: { type: string }
+        ciudad: { type: string }
+        codDane: { type: string }
+        codEntidad: { type: string }
+        codEspecialidad: { type: string }
+        codDespacho: { type: string }
+        codigoRama: { type: string }

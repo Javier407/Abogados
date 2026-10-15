@@ -1,0 +1,6 @@
+package co.abogados.procesos.dominio.modelo;
+
+public enum EtapaProceso {
+	PODER, DEMANDA, ADMISION, NOTIFICACION, CONTESTACION, INVESTIGACION,
+	PRUEBAS, AUDIENCIA, JUICIO, SENTENCIA, RECURSO, CERRADO
+}

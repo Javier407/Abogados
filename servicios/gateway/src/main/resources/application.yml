@@ -1,0 +1,36 @@
+# Rutas: /api/<recurso>/** -> servicio dueño del recurso, quitando el prefijo /api.
+# Los servicios se encuentran por el DNS de Docker Compose (sin Eureka).
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      routes:
+        - id: gabinete
+          uri: ${GABINETE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/clientes/**,/api/abogados/**,/api/gabinete/**
+          filters:
+            - StripPrefix=1
+        - id: procesos
+          uri: ${PROCESOS_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/procesos/**,/api/catalogos/**
+          filters:
+            - StripPrefix=1
+      # Solo para desarrollo con "ng serve" en el PC; en el servidor el frontend llega por el mismo origen (nginx).
+      globalcors:
+        cors-configurations:
+          '[/api/**]':
+            allowed-origins: ${CORS_ORIGINS:http://localhost:4200}
+            allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+            allowed-headers: "*"
+            max-age: 3600
+
+server:
+  port: 8080
+
+management:
+  endpoints.web.exposure.include: health,info,gateway
+  endpoint.health.probes.enabled: true
+  endpoint.gateway.enabled: true
