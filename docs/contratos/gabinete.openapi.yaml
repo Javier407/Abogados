@@ -3,8 +3,8 @@ info:
   title: Servicio gabinete
   version: 0.1.0
   description: |
-    La firma: clientes, abogados y catálogos (sedes, cargos, áreas de práctica). Honorarios, pagos,
-    peritos y tarifas llegan en F4. A través del gateway las rutas llevan el prefijo /api.
+    La firma: clientes, abogados, catálogos (sedes, cargos, áreas de práctica), peritos, tarifas de
+    referencia, acuerdos de honorarios y pagos (F4). A través del gateway las rutas llevan el prefijo /api.
 
     Errores: `{ "error": "mensaje" }` (y `campos` si falla la validación de la petición).
     - 400: petición mal formada o campos inválidos
@@ -115,6 +115,88 @@ paths:
       summary: Áreas de práctica (una por rama)
       responses:
         '200': { description: Áreas, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AreaPractica' } } } } }
+
+  /gabinete/tarifas:
+    get:
+      summary: Tarifas de referencia (Conalbos y de la firma) con su valor en pesos
+      parameters: [ { name: anio, in: query, schema: { type: integer }, description: Año del salario mínimo; por defecto el actual (o el último cargado) } ]
+      responses:
+        '200': { description: Tarifas con desdePesos y hastaPesos = valor en SMMLV x salario mínimo }
+
+  /peritos:
+    get:
+      summary: Peritos (busca en nombre y especialidad con q)
+      parameters: [ { name: q, in: query, schema: { type: string } } ]
+      responses:
+        '200': { description: Peritos }
+    post:
+      summary: Registra un perito (nombre, especialidad, profesión y ciudad obligatorios; calificación 1 a 5)
+      responses:
+        '201': { description: Creado }
+        '400': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /peritos/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer } } ]
+    get:
+      summary: Consulta un perito
+      responses:
+        '200': { description: Perito }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      summary: Actualiza un perito (no se borran; las pruebas periciales los referencian)
+      responses:
+        '200': { description: Actualizado }
+
+  /honorarios:
+    get:
+      summary: Acuerdos de honorarios con lo pagado y el saldo
+      parameters:
+        - { name: idCliente, in: query, schema: { type: integer } }
+        - { name: idProceso, in: query, schema: { type: integer } }
+        - { name: estado, in: query, schema: { type: string, enum: [VIGENTE, CUMPLIDO, CANCELADO] } }
+      responses:
+        '200': { description: "Acuerdos. saldo = valor fijo - pagado en FIJO y MIXTO; null en MENSUAL y en los de solo porcentaje" }
+    post:
+      summary: Registra el acuerdo de un proceso (uno por proceso)
+      description: |
+        FIJO y MENSUAL llevan valorFijo; CUOTA_LITIS y PORCENTAJE_CUANTIA llevan porcentaje (máximo 50);
+        MIXTO lleva ambos. El proceso debe existir y ser del cliente (se pregunta al servicio procesos).
+      responses:
+        '201': { description: Creado }
+        '409': { description: El proceso ya tiene acuerdo }
+        '422': { description: Regla de negocio }
+        '503': { description: El servicio procesos no responde }
+  /honorarios/{id}/estado:
+    put:
+      summary: Cambia el estado (p. ej. CANCELADO)
+      parameters: [ { name: id, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        '200': { description: Actualizado }
+  /honorarios/{id}/pagos:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer } } ]
+    get:
+      summary: Pagos del acuerdo (del más reciente al más antiguo)
+      responses:
+        '200': { description: Pagos }
+    post:
+      summary: Registra un pago
+      description: |
+        Solo en acuerdos VIGENTES; fecha entre el acuerdo y hoy. En FIJO no puede superar el saldo y al
+        completarlo el acuerdo pasa a CUMPLIDO. En MENSUAL y MIXTO el valor fijo no es tope.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fecha, valor, medio]
+              properties:
+                fecha: { type: string, format: date }
+                valor: { type: number, minimum: 1 }
+                medio: { type: string, enum: [TRANSFERENCIA, EFECTIVO, TARJETA, CONSIGNACION] }
+                referencia: { type: string, maxLength: 40 }
+      responses:
+        '201': { description: Acuerdo actualizado con el nuevo saldo }
+        '422': { description: Regla de negocio (supera el saldo, fecha, acuerdo no vigente) }
 
 components:
   responses:

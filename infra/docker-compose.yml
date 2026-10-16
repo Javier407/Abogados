@@ -1,4 +1,4 @@
-# Infraestructura del gabinete (fases F1 a F3): PostgreSQL, RabbitMQ, microservicios, gateway, frontend y Mailpit.
+# Infraestructura del gabinete (fases F1 a F4): PostgreSQL, RabbitMQ, microservicios, gateway, frontend, Mailpit y Ollama.
 # Uso:  cd infra && cp .env.example .env  (escribir las claves)  &&  docker compose up -d --build
 # La primera vez que se crea el volumen de PostgreSQL se ejecuta db/00-init.sh: crea los esquemas y carga los datos de prueba.
 # Para recargar la base desde cero: docker compose down -v && docker compose up -d   (borra los volúmenes)
@@ -170,6 +170,49 @@ services:
     mem_limit: 192m
     logging: *logs
 
+  asistente-ia:
+    build: ../servicios/asistente-ia
+    image: abogados/asistente-ia:0.1.0
+    container_name: abogados-asistente-ia
+    restart: unless-stopped
+    environment:
+      TZ: America/Bogota
+      OLLAMA_URL: http://ollama:11434
+      MODELO: ${MODELO_IA:-qwen2.5:3b}
+      MAX_TOKENS: 1500
+      PROCESOS_URL: http://procesos:8080
+      GABINETE_URL: http://gabinete:8080
+    depends_on:
+      - ollama
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/salud', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    mem_limit: 192m
+    logging: *logs
+
+  # Modelo de lenguaje local para el asistente (sin GPU). Los textos de los procesos no salen del servidor.
+  ollama:
+    image: ollama/ollama:0.5.4
+    container_name: abogados-ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: 30m        # descarga el modelo de la RAM tras 30 min sin uso
+      OLLAMA_NUM_PARALLEL: 1
+      OLLAMA_MAX_LOADED_MODELS: 1
+    volumes:
+      - ollama-modelos:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    mem_limit: 3g
+    cpus: 3                         # deja al menos un núcleo para los demás servicios
+    logging: *logs
+
   # Buzón de pruebas: recibe todos los correos y los muestra en http://<servidor>:8092 sin entregarlos.
   mailpit:
     image: axllent/mailpit:v1.20.0
@@ -194,6 +237,7 @@ services:
       PROCESOS_URL: http://procesos:8080
       NOTIFICACIONES_URL: http://notificaciones:8000
       VIGILANCIA_URL: http://vigilancia:8000
+      ASISTENTE_URL: http://asistente-ia:8000
       CORS_ORIGINS: http://localhost:4200
     ports:
       - "8091:8080"
@@ -202,6 +246,7 @@ services:
       - procesos
       - notificaciones
       - vigilancia
+      - asistente-ia
     healthcheck: *java-salud
     mem_limit: 384m
     logging: *logs
@@ -226,3 +271,4 @@ services:
 volumes:
   pgdata:
   rabbitdata:
+  ollama-modelos:

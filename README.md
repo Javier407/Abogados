@@ -104,7 +104,7 @@ docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/consu
 - Usuarios de prueba de la aplicación (tabla `identidad.usuarios`): contraseña `Prueba2026*`.
 - Para recargar desde cero: `docker compose down -v && docker compose up -d` (borra el volumen).
 
-## Microservicios (fases 1 a 3)
+## Microservicios (fases 1 a 4)
 
 ```
 navegador ──► frontend (nginx :8090) ──/api──► gateway (:8091) ─┬─► gabinete       (clientes, abogados, sedes)
@@ -113,13 +113,15 @@ navegador ──► frontend (nginx :8090) ──/api──► gateway (:8091) �
                                                                  └─► vigilancia     (radicados vigilados en la Rama Judicial)
  procesos ──termino.por_vencer / termino.vencido──► RabbitMQ ──► notificaciones ──► correo (Mailpit :8092) y Telegram
  vigilancia ──actuacion.detectada──► RabbitMQ ──► procesos (providencia) y notificaciones (aviso)
+ asistente-ia ──► Ollama (modelo local qwen2.5:3b): borradores sin que los datos salgan del servidor
  todos ──► PostgreSQL (un esquema cada uno)
 ```
 
 | Carpeta | Qué es | Tecnología |
 |---|---|---|
 | [`servicios/procesos`](servicios/procesos) | Procesos con validación del radicado (23 dígitos y despacho registrado), responsable y catálogos. Términos con vencimiento en días hábiles (festivos, Semana Santa y vacancia), calendario judicial y revisión diaria a las 7:00 que publica los avisos | Spring Boot 3.3 · Java 17 · JDBC |
-| [`servicios/gabinete`](servicios/gabinete) | Clientes y abogados (evolución de este laboratorio: `javax` → `jakarta`, MySQL → PostgreSQL) | Spring Boot 3.3 · Java 17 · JPA |
+| [`servicios/gabinete`](servicios/gabinete) | Clientes, abogados, peritos, tarifas de referencia en pesos, acuerdos de honorarios y pagos (evolución de este laboratorio: `javax` → `jakarta`, MySQL → PostgreSQL) | Spring Boot 3.3 · Java 17 · JPA |
+| [`servicios/asistente-ia`](servicios/asistente-ia) | Borradores de contestación y resúmenes para el cliente con un modelo local; encabezado puesto por el sistema, texto por partes (ADR 0006) | Python 3.12 · FastAPI · Ollama |
 | [`servicios/notificaciones`](servicios/notificaciones) | Avisos de términos y de actuaciones nuevas: en la app (en vivo con SSE), por correo y por Telegram (vinculación con código de un solo uso); no repite avisos | Python 3.12 · FastAPI · aio-pika |
 | [`servicios/vigilancia`](servicios/vigilancia) | Consulta cada radicado en su fuente (manual, simulada o portal de la Rama Judicial, ver ADR 0005), detecta actuaciones nuevas y publica `actuacion.detectada` | Python 3.12 · FastAPI · httpx |
 | [`servicios/gateway`](servicios/gateway) | Entrada única: `/api/<recurso>` → servicio dueño | Spring Cloud Gateway |
@@ -133,7 +135,8 @@ Cada servicio tiene arquitectura hexagonal: `dominio` (reglas, sin frameworks), 
 ```bash
 cd infra
 cp .env.example .env              # escribir las claves
-docker compose up -d --build      # compila, prueba y arranca los 9 contenedores
+docker compose up -d --build      # compila, prueba y arranca los 11 contenedores
+docker compose exec ollama ollama pull qwen2.5:3b   # una sola vez: descarga el modelo (~2 GB)
 ```
 
 Luego abrir http://localhost:8090 (en el servidor: http://100.65.152.112:8090). El gateway queda en el puerto 8091 y el buzón de pruebas Mailpit, donde llegan los correos de aviso, en el 8092.

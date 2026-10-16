@@ -22,7 +22,7 @@
 | Base de datos | **PostgreSQL 16**, una instancia con **un esquema por servicio** | Una base por contenedor: más aislamiento pero más RAM. MySQL: menos soporte de JSON y de funciones de fechas. |
 | Fuente de la Rama Judicial | Interfaz `FuenteRamaJudicial` con implementación intercambiable | Ver [ADR 0005](adr/0005-vigilancia-rama-judicial.md). |
 | Frontend | **Angular 21 + PrimeNG** (base: `gestion-juridica-frontend`) | `gabinete.html` actual: útil como prototipo, pero no escala a muchas vistas. |
-| IA | **Hermes** del servidor (API compatible con OpenAI, `:8642`) | API de Claude: mejor calidad pero con costo. El servicio usa un cliente compatible con OpenAI, así que cambiar de proveedor es configuración. |
+| IA | **Modelo local con Ollama** (`qwen2.5:3b`), ver [ADR 0006](adr/0006-asistente-con-modelo-local.md) | Hermes (previsto en F0): agente con terminal y datos fuera del servidor. API de Claude: mejor calidad pero con costo y datos a un tercero. El modelo está detrás de un puerto, así que cambiar de proveedor es escribir otro adaptador. |
 
 ## 2.2 Vista general
 
@@ -41,7 +41,7 @@ flowchart LR
     MQ --> PR
     MQ --> NO
     NO -->|correo / Telegram / in-app| U
-    IA -->|API compatible OpenAI| HE[Hermes :8642]
+    IA -->|modelo local| OL[Ollama qwen2.5:3b]
 
     ID --- DB[(PostgreSQL<br/>un esquema por servicio)]
     GA --- DB
@@ -60,7 +60,7 @@ flowchart LR
 | `procesos` | Spring Boot 3 · Java 17 | Procesos y radicado, partes, asignaciones, actuaciones, providencias, pruebas, términos y calendario judicial | `procesos` | Publica `proceso.creado`, `termino.por_vencer`, `termino.vencido`. Consume `actuacion.detectada`. |
 | `vigilancia` | Python · FastAPI · APScheduler | Consulta periódica de cada radicado activo y detección de actuaciones nuevas | `vigilancia` | Publica `actuacion.detectada`. Consume `proceso.creado`. |
 | `notificaciones` | Python · FastAPI | Envía avisos por correo (SMTP), Telegram y dentro de la app (SSE); guarda el historial | `notificaciones` | Consume `actuacion.detectada`, `termino.por_vencer`, `termino.vencido`. Publica `notificacion.enviada`. |
-| `asistente-ia` | Python · FastAPI | Borradores de demanda y contestación, resumen de autos | — | — |
+| `asistente-ia` | Python · FastAPI + Ollama local | Borradores de contestación y resúmenes para el cliente (ADR 0006) | — | — |
 | `frontend` | Angular 21 + PrimeNG servido por nginx | Interfaz web. Llama solo al gateway. | — | — |
 
 **Regla de datos:** cada servicio es dueño de su esquema. **No hay llaves foráneas entre esquemas**: un proceso guarda `id_cliente` y `id_abogado` como números, y quien necesita el nombre lo pide a `gabinete` por API. Así un servicio puede cambiar su modelo sin romper a los demás.

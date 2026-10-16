@@ -118,7 +118,7 @@ export interface DesgloseRadicado {
 const TILDES: Record<string, string> = {
   admision: 'admisión', notificacion: 'notificación', contestacion: 'contestación', investigacion: 'investigación',
   representacion: 'representación', cuantia: 'cuantía', victima: 'víctima', juridica: 'jurídica', minima: 'mínima',
-  dia: 'día'
+  dia: 'día', consignacion: 'consignación'
 };
 
 /** Texto legible para valores en MAYÚSCULAS_CON_GUION: 'SIN_CUANTIA' -> 'Sin cuantía'. */
@@ -222,3 +222,82 @@ export interface Providencia {
 
 export interface EstadoTelegram { configurado: boolean; vinculado: boolean; bot: string | null; }
 export interface VinculoTelegram { codigo: string; enlace: string | null; bot: string | null; }
+
+// ---------- peritos, tarifas, honorarios y pagos (F4) ----------
+export interface Perito {
+  idPerito?: number;
+  nombre: string;
+  especialidad: string;
+  profesion: string;
+  registro?: string;
+  telefono?: string;
+  email?: string;
+  ciudad: string;
+  tarifaDictamen?: number | null;
+  calificacion?: number | null;
+}
+
+export const FORMAS_COBRO = ['FIJO', 'MENSUAL', 'CUOTA_LITIS', 'MIXTO', 'PORCENTAJE_CUANTIA'] as const;
+export type FormaCobro = typeof FORMAS_COBRO[number];
+export const MEDIOS_PAGO = ['TRANSFERENCIA', 'EFECTIVO', 'TARJETA', 'CONSIGNACION'] as const;
+
+/** Qué campos pide cada forma de cobro (igual que la regla del servicio gabinete). */
+export function camposDeForma(f: FormaCobro): { fijo: boolean; porcentaje: boolean } {
+  return { fijo: ['FIJO', 'MENSUAL', 'MIXTO'].includes(f), porcentaje: ['CUOTA_LITIS', 'MIXTO', 'PORCENTAJE_CUANTIA'].includes(f) };
+}
+
+export interface Tarifa {
+  idTarifa: number;
+  fuente: 'CONALBOS' | 'FIRMA';
+  codigoRama?: string;
+  servicio: string;
+  formaCobro: FormaCobro;
+  valorSmmlv?: number;
+  valorSmmlvMax?: number;
+  porcentaje?: number;
+  nota?: string;
+  anioSmmlv: number;
+  desdePesos?: number;
+  hastaPesos?: number;
+}
+
+export interface Honorario {
+  idHonorario: number;
+  idProceso: number;
+  idCliente: number;
+  cliente: string;
+  idTarifa?: number;
+  formaCobro: FormaCobro;
+  valorFijo?: number;
+  porcentaje?: number;
+  valorEstimado?: number;
+  fechaPacto: string;
+  estado: 'VIGENTE' | 'CUMPLIDO' | 'CANCELADO';
+  pagado: number;
+  saldo?: number;
+  pagos: number;
+}
+
+export interface HonorarioSolicitud {
+  idProceso: number | null;
+  idCliente: number | null;
+  idTarifa?: number | null;
+  formaCobro: FormaCobro;
+  valorFijo?: number | null;
+  porcentaje?: number | null;
+  valorEstimado?: number | null;
+  fechaPacto: string;
+}
+
+export interface Pago {
+  idPago?: number;
+  fecha: string;
+  valor: number | null;
+  medio: string;
+  referencia?: string;
+}
+
+// ---------- asistente (F4) ----------
+export type TipoBorrador = 'CONTESTACION' | 'RESUMEN_CLIENTE';
+export interface EstadoAsistente { modelo: string; disponible: boolean; detalle: string; }
+export interface EventoBorrador { evento: 'inicio' | 'texto' | 'aviso' | 'fin'; texto?: string; mensaje?: string; modelo?: string | null; conModelo?: boolean; segundos?: number; }

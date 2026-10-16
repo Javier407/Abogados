@@ -1,0 +1,63 @@
+openapi: 3.0.3
+info:
+  title: Servicio asistente-ia
+  version: 0.1.0
+  description: |
+    Borradores con un modelo de lenguaje local (Ollama, ADR 0006). El encabezado lo arma el sistema;
+    el modelo redacta el cuerpo. A través del gateway las rutas llevan el prefijo /api.
+    Errores: `{ "error": "mensaje" }` (y `campos` si falla la validación de la petición).
+servers:
+  - url: http://localhost:8091/api
+    description: Gateway
+
+paths:
+  /asistente/estado:
+    get:
+      summary: Modelo configurado y si está listo
+      responses:
+        '200':
+          description: Estado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  modelo: { type: string, example: 'qwen2.5:3b' }
+                  disponible: { type: boolean }
+                  detalle: { type: string, example: listo }
+  /asistente/borradores:
+    post:
+      summary: Redacta un borrador por partes (Server-Sent Events)
+      description: |
+        Los errores del pedido (proceso inexistente, borrador que no aplica) se responden antes, como JSON.
+        Luego llegan eventos `inicio`, `texto` (varios: encabezado, lo que escribe el modelo, firma),
+        `aviso` (si el modelo no está o falla; se entrega la plantilla) y `fin`.
+        Cada evento es `event: <nombre>` + `data: <JSON>`. En CPU puede tardar varios minutos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idProceso, tipo]
+              properties:
+                idProceso: { type: integer }
+                tipo: { type: string, enum: [CONTESTACION, RESUMEN_CLIENTE], description: CONTESTACION solo si el cliente es demandado o accionado }
+                instrucciones: { type: string, maxLength: 800 }
+      responses:
+        '200':
+          description: Flujo de eventos
+          content:
+            text/event-stream:
+              example: |
+                event: inicio
+                data: {"evento": "inicio", "modelo": "qwen2.5:3b", "tipo": "CONTESTACION"}
+
+                event: texto
+                data: {"evento": "texto", "texto": "Señor(a)\nJUEZ — ..."}
+
+                event: fin
+                data: {"evento": "fin", "conModelo": true, "segundos": 94}
+        '400': { description: Petición inválida }
+        '404': { description: El proceso no existe }
+        '422': { description: El borrador no aplica a este proceso }

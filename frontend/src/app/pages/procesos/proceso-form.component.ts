@@ -7,6 +7,7 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, forkJoin, map,
 import { ApiService, mensajeDeError } from '../../core/api.service';
 import { TerminosProcesoComponent } from './terminos-proceso.component';
 import { ProvidenciasProcesoComponent } from './providencias-proceso.component';
+import { AsistenteProcesoComponent } from './asistente-proceso.component';
 import {
   Abogado, CLASES_CUANTIA, Cliente, DesgloseRadicado, Despacho, ESTADOS, ETAPAS, ProcesoSolicitud, ROLES_CLIENTE,
   Rama, TIPOS_SERVICIO, TipoProceso, etiqueta
@@ -16,7 +17,8 @@ import {
 @Component({
   selector: 'app-proceso-form',
   standalone: true,
-  imports: [FormsModule, RouterLink, TerminosProcesoComponent, ProvidenciasProcesoComponent],
+  imports: [FormsModule, RouterLink, TerminosProcesoComponent, ProvidenciasProcesoComponent,
+    AsistenteProcesoComponent],
   templateUrl: './proceso-form.component.html'
 })
 export class ProcesoFormComponent implements OnInit {

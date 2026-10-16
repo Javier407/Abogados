@@ -19,7 +19,8 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F1 | Terminada: criterio comprobado (cliente, abogado y proceso creados desde Angular y verificados en PostgreSQL; evento `proceso.creado` publicado) | 2026-10-15 |
 | F2 | Terminada: un término que vence en 3 días hábiles generó el correo (Mailpit) y el aviso en la app, en vivo | 2026-10-15 |
 | F3 | Terminada: un auto nuevo (fuente simulada) en el proceso 34 quedó registrado como providencia y llegó por Telegram (@javier_asistente_ia_bot), correo y app | 2026-10-16 |
-| F4 – F5 | Pendientes | |
+| F4 | En curso: código escrito; falta compilar, probar y desplegar en el servidor (se desconectó durante el trabajo) | 2026-10-16 |
+| F5 | Pendiente | |
 
 ## F1: qué quedó y qué falta
 

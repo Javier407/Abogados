@@ -3,7 +3,8 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Observable } from 'rxjs';
 
 import {
-  Abogado, AreaPractica, Aviso, Cargo, Cliente, ConsultaVigilancia, DesgloseRadicado, Despacho, DiaInhabil, EstadoTelegram,
+  Abogado, AreaPractica, Aviso, Cargo, Cliente, ConsultaVigilancia, EstadoAsistente, Honorario, HonorarioSolicitud,
+  Pago, Perito, Tarifa, DesgloseRadicado, Despacho, DiaInhabil, EstadoTelegram,
   FuenteVigilancia, Proceso, ProcesoSolicitud, Providencia, RadicadoVigilado, Rama, ResultadoConsulta, Revision, Sede,
   Termino, TerminoSolicitud, TipoProceso, Vencimiento, VinculoTelegram
 } from './modelos';
@@ -157,6 +158,33 @@ export class ApiService {
   desvincularTelegram(idPersona: number): Observable<unknown> {
     return this.http.delete(`${API}/notificaciones/telegram`, { params: filtros({ idPersona }) });
   }
+
+  // ---------- peritos, tarifas, honorarios ----------
+  peritos(q?: string): Observable<Perito[]> {
+    return this.http.get<Perito[]>(`${API}/peritos`, { params: filtros({ q }) });
+  }
+  crearPerito(p: Perito): Observable<Perito> { return this.http.post<Perito>(`${API}/peritos`, p); }
+  actualizarPerito(id: number, p: Perito): Observable<Perito> { return this.http.put<Perito>(`${API}/peritos/${id}`, p); }
+
+  tarifas(anio?: number): Observable<Tarifa[]> {
+    return this.http.get<Tarifa[]>(`${API}/gabinete/tarifas`, { params: filtros({ anio }) });
+  }
+  honorarios(f: { idCliente?: number; idProceso?: number; estado?: string } = {}): Observable<Honorario[]> {
+    return this.http.get<Honorario[]>(`${API}/honorarios`, { params: filtros(f) });
+  }
+  crearHonorario(h: HonorarioSolicitud): Observable<Honorario> { return this.http.post<Honorario>(`${API}/honorarios`, h); }
+  cambiarEstadoHonorario(id: number, estado: string): Observable<Honorario> {
+    return this.http.put<Honorario>(`${API}/honorarios/${id}/estado`, { estado });
+  }
+  pagos(idHonorario: number): Observable<Pago[]> { return this.http.get<Pago[]>(`${API}/honorarios/${idHonorario}/pagos`); }
+  registrarPago(idHonorario: number, p: Pago): Observable<Honorario> {
+    return this.http.post<Honorario>(`${API}/honorarios/${idHonorario}/pagos`, p);
+  }
+
+  // ---------- asistente ----------
+  estadoAsistente(): Observable<EstadoAsistente> { return this.http.get<EstadoAsistente>(`${API}/asistente/estado`); }
+  /** URL para pedir un borrador por partes (se lee con fetch: ver AsistenteService). */
+  urlBorradores(): string { return `${API}/asistente/borradores`; }
 }
 
 /** Quita los filtros vacíos para no mandar ?estado=&rama= */

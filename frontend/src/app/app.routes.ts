@@ -5,7 +5,8 @@ import { ProcesosComponent } from './pages/procesos/procesos.component';
 import { ProcesoFormComponent } from './pages/procesos/proceso-form.component';
 import { ClientesComponent } from './pages/clientes/clientes.component';
 import { AbogadosComponent } from './pages/abogados/abogados.component';
-import { PagosComponent } from './pagos/pagos.component';
+import { HonorariosComponent } from './pages/honorarios/honorarios.component';
+import { PeritosComponent } from './pages/peritos/peritos.component';
 import { TerminosComponent } from './pages/terminos/terminos.component';
 import { CalendarioComponent } from './pages/calendario/calendario.component';
 import { AvisosComponent } from './pages/avisos/avisos.component';
@@ -26,7 +27,9 @@ export const routes: Routes = [
       { path: 'calendario', component: CalendarioComponent, title: 'Calendario judicial' },
       { path: 'vigilancia', component: VigilanciaComponent, title: 'Vigilancia' },
       { path: 'avisos', component: AvisosComponent, title: 'Avisos' },
-      { path: 'pagos', component: PagosComponent, title: 'Honorarios y pagos' },
+      { path: 'honorarios', component: HonorariosComponent, title: 'Honorarios y pagos' },
+      { path: 'pagos', redirectTo: 'honorarios' },
+      { path: 'peritos', component: PeritosComponent, title: 'Peritos' },
       { path: '**', redirectTo: '' }
     ]
   }

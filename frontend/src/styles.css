@@ -231,3 +231,17 @@ a.btn { display: inline-block; text-decoration: none; }
 .aviso.no-leido.urgente { border-left-color: var(--danger-text); background: #fff7f6; }
 .aviso-texto { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 240px; }
 .aviso-texto small { color: var(--text-muted); }
+
+/* Honorarios: lista y detalle lateral */
+.honorarios-grid { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
+.honorarios-grid.con-detalle { grid-template-columns: minmax(0, 1fr) 360px; }
+.fila-clic { cursor: pointer; }
+.fila-elegida { background: var(--secondary-light); }
+.detalle-honorario { position: sticky; top: 16px; margin-bottom: 0; }
+.subtitulo-detalle { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--primary); margin: 18px 0 8px; }
+.lista-pagos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; }
+.lista-pagos li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+@media (max-width: 1000px) {
+  .honorarios-grid.con-detalle { grid-template-columns: 1fr; }
+  .detalle-honorario { position: static; }
+}

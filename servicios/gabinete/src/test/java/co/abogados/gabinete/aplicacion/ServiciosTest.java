@@ -47,9 +47,15 @@ class ServiciosTest {
 		abogados = new AbogadosEnMemoria();
 		procesosPorCliente = new HashMap<>();
 		Clock reloj = Clock.fixed(Instant.parse("2026-10-15T15:00:00Z"), ZoneId.of("America/Bogota"));
-		clienteServicio = new ClienteServicio(clientes, new CatalogoFijo(), id -> {
-			if (procesosCaido) throw new ServicioNoDisponibleException("procesos no responde");
-			return procesosPorCliente.getOrDefault(id, 0);
+		clienteServicio = new ClienteServicio(clientes, new CatalogoFijo(), new co.abogados.gabinete.dominio.puertos.ConsultaProcesos() {
+			public int procesosDelCliente(int id) {
+				if (procesosCaido) throw new ServicioNoDisponibleException("procesos no responde");
+				return procesosPorCliente.getOrDefault(id, 0);
+			}
+
+			public Optional<Integer> clienteDelProceso(int idProceso) {
+				return Optional.empty();
+			}
 		}, reloj);
 		abogadoServicio = new AbogadoServicio(abogados, new CatalogoFijo());
 	}

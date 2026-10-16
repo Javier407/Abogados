@@ -1,0 +1,193 @@
+<div class="modulo-container">
+
+  <div class="page-header">
+    <h1>Honorarios y pagos</h1>
+    <p>Acuerdo de honorarios de cada proceso y los pagos del cliente</p>
+  </div>
+
+  @if (mensaje) { <div class="alerta alerta-exito">{{ mensaje }}</div> }
+  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+
+  <div class="filtros">
+    <select class="form-input" [(ngModel)]="filtroEstado" (ngModelChange)="cargar()" aria-label="Estado del acuerdo">
+      <option value="">Todos los acuerdos</option>
+      <option value="VIGENTE">Vigentes</option>
+      <option value="CUMPLIDO">Pagados por completo</option>
+      <option value="CANCELADO">Cancelados</option>
+    </select>
+    <button class="btn btn-primary" type="button" (click)="creando = !creando">{{ creando ? 'Cerrar' : 'Nuevo acuerdo' }}</button>
+    <button class="btn btn-secondary" type="button" (click)="verTarifas = !verTarifas">
+      {{ verTarifas ? 'Ocultar tarifas' : 'Tarifas de referencia' }}
+    </button>
+    <span class="resumen-chip">Saldo por cobrar (valores fijos): <strong>{{ totalSaldo | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></span>
+  </div>
+
+  @if (creando) {
+    <div class="card">
+      <div class="card-header"><h2>Nuevo acuerdo de honorarios</h2></div>
+      <div class="card-body">
+        <form #formAcuerdo="ngForm" (ngSubmit)="crear(formAcuerdo)" novalidate>
+          <div class="form-grid">
+            <div class="form-group form-group-full">
+              <label class="form-label" for="hProceso">Proceso <span class="requerido">*</span></label>
+              <select id="hProceso" class="form-input" name="idProceso" [(ngModel)]="nuevo.idProceso" (ngModelChange)="procesoCambio()" required>
+                <option [ngValue]="null">-- Seleccione --</option>
+                @for (p of procesosSinAcuerdo; track p.idProceso) {
+                  <option [ngValue]="p.idProceso">{{ p.radicadoLegible }} · {{ p.asunto }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="hForma">Forma de cobro <span class="requerido">*</span></label>
+              <select id="hForma" class="form-input" name="formaCobro" [(ngModel)]="nuevo.formaCobro" (ngModelChange)="formaCambio()" required>
+                @for (f of formas; track f) { <option [value]="f">{{ etiqueta(f) }}</option> }
+              </select>
+            </div>
+            @if (camposDeForma(nuevo.formaCobro).fijo) {
+              <div class="form-group">
+                <label class="form-label" for="hFijo">{{ nuevo.formaCobro === 'MENSUAL' ? 'Valor mensual' : 'Valor fijo' }} (COP) <span class="requerido">*</span></label>
+                <input id="hFijo" class="form-input" type="number" name="valorFijo" [(ngModel)]="nuevo.valorFijo" required min="1" />
+              </div>
+            }
+            @if (camposDeForma(nuevo.formaCobro).porcentaje) {
+              <div class="form-group">
+                <label class="form-label" for="hPct">Porcentaje (%) <span class="requerido">*</span></label>
+                <input id="hPct" class="form-input" type="number" name="porcentaje" [(ngModel)]="nuevo.porcentaje" required min="0.1" max="50" step="0.5" />
+                <span class="form-ayuda">Máximo 50 %.</span>
+              </div>
+            }
+            <div class="form-group">
+              <label class="form-label" for="hEstimado">Valor estimado del caso (COP)</label>
+              <input id="hEstimado" class="form-input" type="number" name="valorEstimado" [(ngModel)]="nuevo.valorEstimado" min="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="hFecha">Fecha del acuerdo <span class="requerido">*</span></label>
+              <input id="hFecha" class="form-input" type="date" name="fechaPacto" [(ngModel)]="nuevo.fechaPacto" required />
+            </div>
+          </div>
+          @if (nuevo.idTarifa) { <p class="form-ayuda">Basado en la tarifa de referencia {{ nuevo.idTarifa }}.</p> }
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Registrar acuerdo</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (verTarifas) {
+    <div class="card">
+      <div class="card-header"><h2>Tarifas de referencia ({{ tarifas[0]?.anioSmmlv }}, en pesos)</h2></div>
+      <div class="card-body" style="padding: 0">
+        <div class="tabla-wrapper" style="border: none">
+          <table class="tabla">
+            <thead><tr><th>Fuente</th><th>Rama</th><th>Servicio</th><th>Cobro</th><th>Valor</th><th>%</th><th></th></tr></thead>
+            <tbody>
+              @for (t of tarifas; track t.idTarifa) {
+                <tr>
+                  <td><span class="badge" [class.badge-primary]="t.fuente === 'CONALBOS'" [class.badge-muted]="t.fuente === 'FIRMA'">{{ t.fuente }}</span></td>
+                  <td>{{ t.codigoRama ? etiqueta(t.codigoRama) : 'General' }}</td>
+                  <td class="titulo-celda">{{ t.servicio }}</td>
+                  <td>{{ etiqueta(t.formaCobro) }}</td>
+                  <td class="valor-celda">
+                    {{ t.desdePesos != null ? (t.desdePesos | currency:'COP':'symbol-narrow':'1.0-0') : '—' }}
+                    @if (t.hastaPesos) { a {{ t.hastaPesos | currency:'COP':'symbol-narrow':'1.0-0' }} }
+                  </td>
+                  <td>{{ t.porcentaje ?? '' }}</td>
+                  <td class="acciones-celda"><button class="btn btn-secondary btn-sm" type="button" (click)="usarTarifa(t)">Usar</button></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="honorarios-grid" [class.con-detalle]="seleccionado">
+    @if (honorarios.length === 0) {
+      <div class="empty-state">No hay acuerdos con ese filtro.</div>
+    } @else {
+      <div class="tabla-wrapper">
+        <table class="tabla">
+          <thead><tr><th>Cliente / proceso</th><th>Forma</th><th>Pactado</th><th>Pagado</th><th>Saldo</th><th>Estado</th></tr></thead>
+          <tbody>
+            @for (h of honorarios; track h.idHonorario) {
+              <tr (click)="elegir(h)" class="fila-clic" [class.fila-elegida]="seleccionado?.idHonorario === h.idHonorario">
+                <td><strong>{{ h.cliente }}</strong><br><span class="mono form-ayuda">{{ radicado(h.idProceso) }}</span></td>
+                <td>{{ etiqueta(h.formaCobro) }}</td>
+                <td class="valor-celda">
+                  @if (h.valorFijo != null) { {{ h.valorFijo | currency:'COP':'symbol-narrow':'1.0-0' }}{{ h.formaCobro === 'MENSUAL' ? '/mes' : '' }} }
+                  @if (h.porcentaje != null) { <br>{{ h.porcentaje }} % }
+                </td>
+                <td>{{ h.pagado | currency:'COP':'symbol-narrow':'1.0-0' }}<br><small>{{ h.pagos }} pago(s)</small></td>
+                <td>
+                  @if (h.saldo == null) { — }
+                  @else if (h.saldo > 0) { <span class="badge badge-danger">{{ h.saldo | currency:'COP':'symbol-narrow':'1.0-0' }}</span> }
+                  @else { <span class="badge badge-success">Al día</span> }
+                </td>
+                <td>
+                  <span class="badge" [class.badge-success]="h.estado === 'VIGENTE'" [class.badge-primary]="h.estado === 'CUMPLIDO'"
+                    [class.badge-muted]="h.estado === 'CANCELADO'">{{ etiqueta(h.estado) }}</span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (seleccionado; as h) {
+      <aside class="card detalle-honorario">
+        <div class="card-header"><h2>{{ h.cliente }}</h2></div>
+        <div class="card-body">
+          <p class="form-ayuda">
+            <a [routerLink]="['/procesos', h.idProceso, 'editar']" class="mono">{{ radicado(h.idProceso) }}</a>
+            · acordado el {{ h.fechaPacto | date:'dd/MM/yyyy' }}
+          </p>
+
+          @if (h.estado === 'VIGENTE') {
+            <form #formPago="ngForm" (ngSubmit)="registrarPago(formPago)" novalidate>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label" for="pFecha">Fecha</label>
+                  <input id="pFecha" class="form-input" type="date" name="fecha" [(ngModel)]="pago.fecha" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="pValor">Valor (COP)</label>
+                  <input id="pValor" class="form-input" type="number" name="valor" [(ngModel)]="pago.valor" required min="1" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="pMedio">Medio</label>
+                  <select id="pMedio" class="form-input" name="medio" [(ngModel)]="pago.medio" required>
+                    @for (m of medios; track m) { <option [value]="m">{{ etiqueta(m) }}</option> }
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="pRef">Referencia</label>
+                  <input id="pRef" class="form-input" name="referencia" [(ngModel)]="pago.referencia" maxlength="40" />
+                </div>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-primary btn-sm" type="submit">Registrar pago</button>
+                <button class="btn btn-secondary btn-sm" type="button" (click)="cancelarAcuerdo(h)">Cancelar acuerdo</button>
+              </div>
+            </form>
+          }
+
+          <h3 class="subtitulo-detalle">Pagos</h3>
+          @if (pagos.length === 0) {
+            <p class="form-ayuda">Sin pagos todavía.</p>
+          } @else {
+            <ul class="lista-pagos">
+              @for (p of pagos; track p.idPago) {
+                <li><span>{{ p.fecha | date:'dd/MM/yyyy' }} · {{ etiqueta(p.medio) }}{{ p.referencia ? ' · ' + p.referencia : '' }}</span>
+                  <strong>{{ p.valor | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></li>
+              }
+            </ul>
+          }
+        </div>
+      </aside>
+    }
+  </div>
+
+</div>

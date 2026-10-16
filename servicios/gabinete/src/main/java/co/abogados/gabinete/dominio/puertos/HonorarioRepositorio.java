@@ -1,0 +1,31 @@
+package co.abogados.gabinete.dominio.puertos;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+
+import co.abogados.gabinete.dominio.modelo.Honorario;
+import co.abogados.gabinete.dominio.modelo.HonorarioVista;
+import co.abogados.gabinete.dominio.modelo.Pago;
+
+public interface HonorarioRepositorio {
+
+	List<HonorarioVista> listar(Integer idCliente, Integer idProceso, String estado);
+
+	Optional<HonorarioVista> buscar(int idHonorario);
+
+	Optional<Honorario> acuerdo(int idHonorario);
+
+	boolean existeParaProceso(int idProceso);
+
+	int crear(Honorario honorario);
+
+	void cambiarEstado(int idHonorario, String estado);
+
+	List<Pago> pagos(int idHonorario);
+
+	BigDecimal totalPagado(int idHonorario);
+
+	int registrarPago(Pago pago);
+
+}
