@@ -18,7 +18,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F0 | Terminada | 2026-10-15 |
 | F1 | Terminada: criterio comprobado (cliente, abogado y proceso creados desde Angular y verificados en PostgreSQL; evento `proceso.creado` publicado) | 2026-10-15 |
 | F2 | Terminada: un término que vence en 3 días hábiles generó el correo (Mailpit) y el aviso en la app, en vivo | 2026-10-15 |
-| F3 | Terminada en código y probada con fuente simulada (auto nuevo → providencia en el proceso + aviso en app y correo). Falta la prueba final por Telegram: requiere el token del bot | 2026-10-16 |
+| F3 | Terminada: un auto nuevo (fuente simulada) en el proceso 34 quedó registrado como providencia y llegó por Telegram (@javier_asistente_ia_bot), correo y app | 2026-10-16 |
 | F4 – F5 | Pendientes | |
 
 ## F1: qué quedó y qué falta
@@ -84,7 +84,10 @@ Hecho:
 
 Pendiente o decidido para después:
 
-- **Prueba final por Telegram:** Javier crea el bot y escribe `TELEGRAM_TOKEN` en `infra/.env` del servidor.
+- **Bot de Telegram:** el token está en `infra/.env` del servidor (lo escribió Javier). Cada abogado se vincula desde **Avisos**.
+- **Corregido en la prueba final:**
+  - Los servicios Python ahora comprueban cada conexión del pool, porque tras reiniciar PostgreSQL usaban conexiones cerradas.
+  - Los servicios Java recuerdan la IP de otro contenedor solo 5 segundos (antes 30), porque tras recrear contenedores el gateway llegó a enviar peticiones al servicio equivocado.
 - **Términos de uso del portal:** revisarlos antes de vigilar radicados reales. Los radicados de prueba no deben usar la fuente del portal (ADR 0005).
 - **Procesos creados antes de vigilancia:** se agregan solos al arrancar el servicio, como `MANUAL`.
 - **Responsable para los avisos:** se toma de `procesos` en el momento del aviso. Si `procesos` no responde, el evento se reintenta.

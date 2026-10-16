@@ -81,8 +81,9 @@ def crear_app(servicio: ServicioVigilancia | None = None) -> FastAPI:
                                       RepositorioPostgres)
 
         e = os.environ.get
+        # check: se comprueba cada conexión antes de usarla; si PostgreSQL se reinició, se abre otra.
         pool = AsyncConnectionPool(e("DB_URL", "postgresql://svc_vigilancia@localhost:5432/gabinete"),
-                                   min_size=1, max_size=4, open=False)
+                                   min_size=1, max_size=4, open=False, check=AsyncConnectionPool.check_connection)
         await pool.open()
         repo = RepositorioPostgres(pool)
         fuentes = {Fuente.SIMULADA: FuenteSimulada(repo)}

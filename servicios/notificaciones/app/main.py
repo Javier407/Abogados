@@ -40,7 +40,9 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
                                       TelegramBot)
 
         cfg = Config.desde_entorno()
-        pool = AsyncConnectionPool(cfg.db_url, min_size=1, max_size=5, open=False)
+        # check: se comprueba cada conexión antes de usarla; si PostgreSQL se reinició, se abre otra.
+        pool = AsyncConnectionPool(cfg.db_url, min_size=1, max_size=5, open=False,
+                                   check=AsyncConnectionPool.check_connection)
         await pool.open()
         vivo = AvisosEnVivoMemoria()
         mensajeria = Mensajeria(cfg)

@@ -12,5 +12,6 @@ WORKDIR /app
 COPY --from=build /src/target/app.jar app.jar
 USER app
 EXPOSE 8080
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC"
+# DNS de Docker: si un contenedor se recrea con otra IP, Java no debe recordar la vieja más de 5 s.
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC -Dsun.net.inetaddr.ttl=5 -Dsun.net.inetaddr.negative.ttl=1"
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]
