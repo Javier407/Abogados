@@ -41,6 +41,8 @@
 		<dependency>
 			<groupId>com.nimbusds</groupId>
 			<artifactId>nimbus-jose-jwt</artifactId>
+			<!-- Spring Boot no administra su versión: la misma que usa Spring Security 6.3 -->
+			<version>9.37.3</version>
 		</dependency>
 		<dependency>
 			<groupId>org.postgresql</groupId>

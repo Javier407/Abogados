@@ -26,15 +26,22 @@ jobs:
       run:
         working-directory: servicios/${{ matrix.servicio }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
           cache: maven
           cache-dependency-path: servicios/${{ matrix.servicio }}/pom.xml
       - name: Compilar y probar
-        run: mvn -B -ntp verify
+        run: |
+          set -o pipefail
+          mvn -B -ntp verify 2>&1 | tee build.log
+      # Los registros de Actions solo se ven con sesión en GitHub: los errores se publican como anotaciones,
+      # que cualquiera puede leer (también por la API pública).
+      - name: Publicar errores como anotaciones
+        if: failure()
+        run: grep -E '^\[ERROR\]|FAILURE|expected|but was' build.log | head -30 | while IFS= read -r l; do echo "::error title=${{ matrix.servicio }}::$l"; done
 
   python:
     name: Python · ${{ matrix.servicio }}
@@ -47,8 +54,8 @@ jobs:
       run:
         working-directory: servicios/${{ matrix.servicio }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -56,7 +63,12 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements.txt -r requirements-dev.txt
       - name: Probar
-        run: python -m pytest -q
+        run: |
+          set -o pipefail
+          python -m pytest -q 2>&1 | tee pruebas.log
+      - name: Publicar errores como anotaciones
+        if: failure()
+        run: grep -E "Error|FAILED|assert|error" pruebas.log | head -30 | while IFS= read -r l; do echo "::error title=${{ matrix.servicio }}::$l"; done
 
   frontend:
     name: Frontend Angular
@@ -65,8 +77,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "22.12.0"
           cache: npm
@@ -81,7 +93,7 @@ jobs:
     name: Compose válido
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Validar docker-compose.yml con las variables de ejemplo
         run: |
           cp infra/.env.example infra/.env

@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { ApiService } from './api.service';
+import { AuthService } from './auth.service';
 import { EventoBorrador, TipoBorrador } from './modelos';
 
 /**
@@ -10,15 +11,21 @@ import { EventoBorrador, TipoBorrador } from './modelos';
 @Injectable({ providedIn: 'root' })
 export class AsistenteService {
   private api = inject(ApiService);
+  private auth = inject(AuthService);
 
   async redactar(idProceso: number, tipo: TipoBorrador, instrucciones: string,
                  alRecibir: (e: EventoBorrador) => void, cancelar?: AbortSignal): Promise<void> {
     const r = await fetch(this.api.urlBorradores(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream',
+        Authorization: `Bearer ${this.auth.token() ?? ''}` },
       body: JSON.stringify({ idProceso, tipo, instrucciones }),
       signal: cancelar
     });
+    if (r.status === 401) {
+      this.auth.cerrar(true);
+      throw new Error('Su sesión terminó');
+    }
     if (!r.ok || !r.body) {
       let mensaje = `El asistente respondió ${r.status}`;
       try { mensaje = (await r.json()).error ?? mensaje; } catch { /* sin cuerpo JSON */ }

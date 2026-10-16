@@ -11,25 +11,34 @@ import { TerminosComponent } from './pages/terminos/terminos.component';
 import { CalendarioComponent } from './pages/calendario/calendario.component';
 import { AvisosComponent } from './pages/avisos/avisos.component';
 import { VigilanciaComponent } from './pages/vigilancia/vigilancia.component';
+import { LoginComponent } from './pages/login/login.component';
+import { CuentaComponent } from './pages/cuenta/cuenta.component';
+import { conRol, conSesion } from './core/auth.guard';
+import { INTERNOS, JURIDICO_Y_DEPENDIENTES, VEN_HONORARIOS } from './core/auth.service';
+
+const personal = conRol(...INTERNOS);
 
 export const routes: Routes = [
+  { path: 'login', component: LoginComponent, title: 'Iniciar sesión' },
   {
     path: '',
     component: LayoutComponent,
+    canActivate: [conSesion],
     children: [
-      { path: '', component: DashboardComponent, title: 'Panel' },
-      { path: 'procesos', component: ProcesosComponent, title: 'Procesos' },
-      { path: 'procesos/nuevo', component: ProcesoFormComponent, title: 'Nuevo proceso' },
-      { path: 'procesos/:id/editar', component: ProcesoFormComponent, title: 'Editar proceso' },
-      { path: 'clientes', component: ClientesComponent, title: 'Clientes' },
-      { path: 'abogados', component: AbogadosComponent, title: 'Abogados' },
-      { path: 'terminos', component: TerminosComponent, title: 'Términos' },
-      { path: 'calendario', component: CalendarioComponent, title: 'Calendario judicial' },
-      { path: 'vigilancia', component: VigilanciaComponent, title: 'Vigilancia' },
-      { path: 'avisos', component: AvisosComponent, title: 'Avisos' },
-      { path: 'honorarios', component: HonorariosComponent, title: 'Honorarios y pagos' },
+      { path: 'cuenta', component: CuentaComponent, title: 'Mi cuenta' },
+      { path: '', component: DashboardComponent, title: 'Panel', canActivate: [personal] },
+      { path: 'procesos', component: ProcesosComponent, title: 'Procesos', canActivate: [personal] },
+      { path: 'procesos/nuevo', component: ProcesoFormComponent, title: 'Nuevo proceso', canActivate: [personal] },
+      { path: 'procesos/:id/editar', component: ProcesoFormComponent, title: 'Editar proceso', canActivate: [personal] },
+      { path: 'clientes', component: ClientesComponent, title: 'Clientes', canActivate: [personal] },
+      { path: 'abogados', component: AbogadosComponent, title: 'Abogados', canActivate: [personal] },
+      { path: 'terminos', component: TerminosComponent, title: 'Términos', canActivate: [personal] },
+      { path: 'calendario', component: CalendarioComponent, title: 'Calendario judicial', canActivate: [personal] },
+      { path: 'vigilancia', component: VigilanciaComponent, title: 'Vigilancia', canActivate: [conRol(...JURIDICO_Y_DEPENDIENTES)] },
+      { path: 'avisos', component: AvisosComponent, title: 'Avisos', canActivate: [personal] },
+      { path: 'honorarios', component: HonorariosComponent, title: 'Honorarios y pagos', canActivate: [conRol(...VEN_HONORARIOS)] },
       { path: 'pagos', redirectTo: 'honorarios' },
-      { path: 'peritos', component: PeritosComponent, title: 'Peritos' },
+      { path: 'peritos', component: PeritosComponent, title: 'Peritos', canActivate: [personal] },
       { path: '**', redirectTo: '' }
     ]
   }

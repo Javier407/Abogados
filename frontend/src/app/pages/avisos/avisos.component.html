@@ -8,7 +8,7 @@
   @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
 
   @if (!sesion.idPersona()) {
-    <div class="empty-state">Elija en el menú lateral ("Ver como") el abogado cuyos avisos quiere ver.</div>
+    <div class="empty-state">Los avisos son para el personal de la firma.</div>
   } @else {
     @if (telegram) {
       <div class="card">

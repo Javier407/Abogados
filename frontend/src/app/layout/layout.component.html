@@ -7,30 +7,32 @@
     </div>
 
     <nav class="sidebar-nav" aria-label="Menú principal">
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item">Panel</a>
-      <a routerLink="/terminos" routerLinkActive="active" class="nav-item">Términos</a>
-      <a routerLink="/calendario" routerLinkActive="active" class="nav-item">Calendario</a>
-      <a routerLink="/procesos" routerLinkActive="active" class="nav-item">Procesos</a>
-      <a routerLink="/vigilancia" routerLinkActive="active" class="nav-item">Vigilancia</a>
-      <a routerLink="/clientes" routerLinkActive="active" class="nav-item">Clientes</a>
-      <a routerLink="/abogados" routerLinkActive="active" class="nav-item">Abogados</a>
-      <a routerLink="/honorarios" routerLinkActive="active" class="nav-item">Honorarios</a>
-      <a routerLink="/peritos" routerLinkActive="active" class="nav-item">Peritos</a>
-      <a routerLink="/avisos" routerLinkActive="active" class="nav-item">
-        Avisos
-        @if (sesion.noLeidos() > 0) { <span class="contador" aria-label="avisos sin leer">{{ sesion.noLeidos() }}</span> }
-      </a>
+      @if (auth.esPersonal()) {
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item">Panel</a>
+        <a routerLink="/terminos" routerLinkActive="active" class="nav-item">Términos</a>
+        <a routerLink="/calendario" routerLinkActive="active" class="nav-item">Calendario</a>
+        <a routerLink="/procesos" routerLinkActive="active" class="nav-item">Procesos</a>
+        @if (auth.tiene('ADMIN', 'SOCIO', 'ABOGADO', 'DEPENDIENTE')) {
+          <a routerLink="/vigilancia" routerLinkActive="active" class="nav-item">Vigilancia</a>
+        }
+        <a routerLink="/clientes" routerLinkActive="active" class="nav-item">Clientes</a>
+        <a routerLink="/abogados" routerLinkActive="active" class="nav-item">Abogados</a>
+        @if (auth.tiene('ADMIN', 'SOCIO', 'ABOGADO', 'ADMINISTRATIVO')) {
+          <a routerLink="/honorarios" routerLinkActive="active" class="nav-item">Honorarios</a>
+        }
+        <a routerLink="/peritos" routerLinkActive="active" class="nav-item">Peritos</a>
+        <a routerLink="/avisos" routerLinkActive="active" class="nav-item">
+          Avisos
+          @if (sesion.noLeidos() > 0) { <span class="contador" aria-label="avisos sin leer">{{ sesion.noLeidos() }}</span> }
+        </a>
+      }
+      <a routerLink="/cuenta" routerLinkActive="active" class="nav-item">Mi cuenta</a>
     </nav>
 
     <div class="sidebar-usuario">
-      <label for="verComo">Ver como</label>
-      <select id="verComo" [ngModel]="sesion.idPersona()" (ngModelChange)="sesion.elegir($event)">
-        <option [ngValue]="null">— Elegir abogado —</option>
-        @for (a of sesion.abogados(); track a.idPersona) {
-          <option [ngValue]="a.idPersona">{{ a.nombres }} {{ a.apellidos }}</option>
-        }
-      </select>
-      <small>Provisional hasta el inicio de sesión (F5)</small>
+      <span class="usuario-nombre">{{ auth.sesion()?.nombre }}</span>
+      <small>{{ auth.sesion()?.roles?.join(' · ') }}</small>
+      <button type="button" class="btn-salir" (click)="auth.cerrar()">Cerrar sesión</button>
     </div>
   </aside>
 
