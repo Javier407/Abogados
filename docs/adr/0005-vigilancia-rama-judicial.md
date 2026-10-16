@@ -1,6 +1,6 @@
 # ADR 0005: Vigilancia de la Rama Judicial detrás de una interfaz
 
-- **Estado:** propuesta (requiere validación legal y técnica en F3)
+- **Estado:** aceptada en F3 (2026-10-15), con la consulta real limitada a los radicados que la firma marque
 - **Fecha:** 2026-10-15
 
 ## Contexto
@@ -9,25 +9,48 @@ El problema central del producto es que los avances solo se ven en el portal **C
 
 ## Decisión
 
-El servicio `vigilancia` define una interfaz **`FuenteRamaJudicial`** con una operación `consultar(radicado) → lista de actuaciones`. Se pueden enchufar varias implementaciones sin cambiar el resto del sistema:
+El servicio `vigilancia` (Python) define una interfaz **`FuenteRamaJudicial`** con una operación `consultar(radicado) → actuaciones`. Se pueden enchufar varias implementaciones sin cambiar el resto del sistema. Cada radicado elige su fuente:
 
-| Implementación | Cómo funciona | Pros | Contras |
-|---|---|---|---|
-| `ManualFuente` | El dependiente judicial registra la actuación a mano | Funciona desde el día 1; sin riesgo legal | No automatiza la vigilancia |
-| `PortalHttpFuente` | Llama a los mismos endpoints internos que usa el portal (httpx) | Rápida y liviana | No documentada: puede cambiar sin aviso; revisar los términos de uso |
-| `PortalNavegadorFuente` | Abre el portal con Playwright como lo haría una persona | Resiste cambios internos del API | Más lenta y pesada (≈ 300 MB); frágil ante cambios de la página |
-| `TerceroFuente` | Servicio externo de scraping (p. ej. Apify) | Mantenimiento a cargo del proveedor | Costo; dependencia externa; datos de clientes salen del sistema |
+| Fuente | Cómo funciona | Estado |
+|---|---|---|
+| `MANUAL` | No se consulta: el dependiente registra las actuaciones a mano | Por defecto para todo proceso nuevo |
+| `SIMULADA` | Actuaciones escritas en la pantalla de vigilancia | Implementada; para demostraciones y pruebas |
+| `PORTAL_HTTP` | Llama a los endpoints internos del portal con httpx | Implementada; solo si alguien la elige para un radicado real |
+| `PORTAL_NAVEGADOR` | Abrir el portal con Playwright como una persona | Respaldo futuro si `PORTAL_HTTP` deja de funcionar |
+| `TERCERO` | Servicio externo de scraping | Descartada por ahora (costo y datos de clientes fuera del sistema) |
 
-**Orden de adopción:**
-1. `ManualFuente` (F2).
-2. `PortalHttpFuente` con consultas espaciadas, por ejemplo una vez al día por radicado y con pausas entre consultas (F3).
-3. `PortalNavegadorFuente` como respaldo si la anterior deja de funcionar.
+**Cómo funciona `PORTAL_HTTP`**, comprobado el 2026-10-15 con una sola consulta manual:
+
+1. `GET https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Procesos/Consulta/NumeroRadicacion?numero=<23 dígitos>&SoloActivos=false&pagina=1` devuelve los procesos con ese radicado (`idProceso`, `despacho`, `esPrivado`, `fechaUltimaActuacion`).
+2. `GET .../api/v2/Proceso/Actuaciones/<idProceso>?pagina=1` devuelve las 40 actuaciones más recientes (`idRegActuacion`, `fechaActuacion`, `actuacion`, `anotacion`, `fechaRegistro`).
+
+`idRegActuacion` identifica cada actuación; con él se detectan las nuevas sin duplicar. Cada consulta tarda unos 15 segundos.
+
+**Reglas de uso moderado:**
+
+- Máximo una consulta cada 12 horas por radicado (por defecto, cada 24).
+- Una consulta a la vez, con 10 segundos de pausa entre radicados.
+- Se identifica con un User-Agent propio.
+
+**Línea base:** la primera consulta exitosa con una fuente guarda el historial sin avisar. Solo se avisan las actuaciones que aparecen después.
+
+## Hallazgo importante: radicados de prueba que existen de verdad
+
+Los códigos de despacho de la base de pruebas son reales. Por eso un radicado "ficticio" puede coincidir con un proceso verdadero de otras personas. El de prueba `11001-31-03-032-2024-00458-00` existe en el portal, con partes reales.
+
+En consecuencia:
+
+- Ningún radicado se consulta en el portal por defecto.
+- La pantalla pide confirmación antes de activar `PORTAL_HTTP`.
+- Los radicados de la base de pruebas deben usar `MANUAL` o `SIMULADA`.
 
 ## Consecuencias
 
 - **Positivas:**
   - El producto no depende de una sola forma de obtener los datos.
-  - Se puede empezar sin automatización.
+  - Se puede demostrar el flujo completo sin tocar el portal.
 - **Negativas:**
-  - Hay que detectar cuándo una fuente deja de funcionar (alerta si una consulta falla N veces seguidas).
-- **Pendiente antes de F3:** revisar los términos de uso del portal y consultar si la Rama Judicial ofrece un servicio de consulta para entidades. Cualquier consulta automática debe ser moderada para no sobrecargar el portal.
+  - El portal puede cambiar sus endpoints sin aviso. Si pasa, la consulta falla, el radicado acumula fallos y la pantalla lo muestra en alerta desde 3 fallos seguidos.
+- **Pendiente:**
+  - Revisar formalmente los términos de uso del portal.
+  - Preguntar si la Rama Judicial ofrece un servicio de consulta para entidades antes de vigilar muchos radicados reales.

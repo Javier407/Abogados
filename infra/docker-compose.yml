@@ -1,4 +1,4 @@
-# Infraestructura del gabinete (fases F1 y F2): PostgreSQL, RabbitMQ, microservicios, gateway, frontend y Mailpit.
+# Infraestructura del gabinete (fases F1 a F3): PostgreSQL, RabbitMQ, microservicios, gateway, frontend y Mailpit.
 # Uso:  cd infra && cp .env.example .env  (escribir las claves)  &&  docker compose up -d --build
 # La primera vez que se crea el volumen de PostgreSQL se ejecuta db/00-init.sh: crea los esquemas y carga los datos de prueba.
 # Para recargar la base desde cero: docker compose down -v && docker compose up -d   (borra los volúmenes)
@@ -124,6 +124,38 @@ services:
       SMTP_CLAVE: ${SMTP_CLAVE:-}
       SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
       CORREO_REMITENTE: ${CORREO_REMITENTE:-Gestion Juridica <avisos@gestion-juridica.local>}
+      PROCESOS_URL: http://procesos:8080
+      # Bot de Telegram (lo crea Javier en @BotFather y lo escribe en .env). Vacío = canal apagado.
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/salud', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    mem_limit: 192m
+    logging: *logs
+
+  vigilancia:
+    build: ../servicios/vigilancia
+    image: abogados/vigilancia:0.1.0
+    container_name: abogados-vigilancia
+    restart: unless-stopped
+    environment:
+      TZ: America/Bogota
+      DB_URL: postgresql://svc_vigilancia:${SVC_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
+      PROCESOS_URL: http://procesos:8080
+      # Consulta real al portal de la Rama Judicial: solo para los radicados con fuente PORTAL_HTTP
+      # (los de la base de pruebas usan MANUAL o SIMULADA). Espaciada: mínimo 12 h por radicado y 10 s entre consultas.
+      PORTAL_HABILITADO: ${PORTAL_HABILITADO:-true}
+      PAUSA_PORTAL_SEG: 10
+      CICLO_MINUTOS: 10
     depends_on:
       postgres:
         condition: service_healthy
@@ -161,6 +193,7 @@ services:
       GABINETE_URL: http://gabinete:8080
       PROCESOS_URL: http://procesos:8080
       NOTIFICACIONES_URL: http://notificaciones:8000
+      VIGILANCIA_URL: http://vigilancia:8000
       CORS_ORIGINS: http://localhost:4200
     ports:
       - "8091:8080"
@@ -168,6 +201,7 @@ services:
       - gabinete
       - procesos
       - notificaciones
+      - vigilancia
     healthcheck: *java-salud
     mem_limit: 384m
     logging: *logs

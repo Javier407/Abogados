@@ -1,12 +1,15 @@
-"""Casos de uso: procesar un evento y consultar o marcar los avisos de la app."""
+"""Casos de uso: procesar un evento, consultar o marcar los avisos de la app y vincular Telegram."""
 from __future__ import annotations
 
 import logging
+import secrets
 from datetime import date, datetime
 from typing import Callable, Protocol
 from zoneinfo import ZoneInfo
 
-from .dominio import AvisoTermino, Canal, NotificacionNueva, Preferencia, avisos_para, correo_de
+from .dominio import (EVENTO_ACTUACION, EVENTOS_TERMINO, AvisoActuacion, AvisoTermino, Canal, Contenido,
+                      EventoInvalido, NotificacionNueva, Preferencia, canales, contenido_actuacion,
+                      contenido_termino, correo_de, texto_telegram)
 
 log = logging.getLogger(__name__)
 BOGOTA = ZoneInfo("America/Bogota")
@@ -22,14 +25,28 @@ class Repositorio(Protocol):
     async def contar_no_leidas(self, id_persona: int) -> int: ...
     async def marcar_leida(self, id_notificacion: int, id_persona: int) -> bool: ...
     async def marcar_todas_leidas(self, id_persona: int) -> int: ...
+    async def crear_vinculo(self, codigo: str, id_persona: int) -> None: ...
+    async def usar_vinculo(self, codigo: str) -> int | None: ...              # id_persona si el código es válido
+    async def guardar_telegram(self, id_persona: int, chat_id: str) -> None: ...
+    async def quitar_telegram(self, id_persona: int) -> bool: ...
 
 
 class EnviadorCorreo(Protocol):
     async def enviar(self, destino: str, asunto: str, texto: str, html: str) -> None: ...
 
 
+class EnviadorTelegram(Protocol):
+    @property
+    def activo(self) -> bool: ...
+    async def enviar(self, chat_id: str, texto: str) -> None: ...
+
+
 class Directorio(Protocol):
     async def correo_abogado(self, id_persona: int) -> str | None: ...
+
+
+class Procesos(Protocol):
+    async def responsable(self, id_proceso: int) -> int | None: ...
 
 
 class AvisosEnVivo(Protocol):
@@ -40,12 +57,21 @@ class Publicador(Protocol):
     async def notificacion_enviada(self, id_notificacion: int, n: NotificacionNueva) -> None: ...
 
 
+class TelegramApagado:
+    """Canal de Telegram sin token: no envía nada."""
+    activo = False
+
+    async def enviar(self, chat_id: str, texto: str) -> None:
+        raise RuntimeError("Telegram no está configurado")
+
+
 # ------------------------------------------------------------------ servicio
 
 class ServicioNotificaciones:
     def __init__(self, repo: Repositorio, correo: EnviadorCorreo, directorio: Directorio,
                  en_vivo: AvisosEnVivo, publicador: Publicador, url_app: str = "",
-                 hoy: Callable[[], date] = lambda: datetime.now(BOGOTA).date()):
+                 hoy: Callable[[], date] = lambda: datetime.now(BOGOTA).date(),
+                 telegram: EnviadorTelegram | None = None, procesos: Procesos | None = None):
         self.repo = repo
         self.correo = correo
         self.directorio = directorio
@@ -53,17 +79,39 @@ class ServicioNotificaciones:
         self.publicador = publicador
         self.url_app = url_app
         self.hoy = hoy
+        self.telegram = telegram or TelegramApagado()
+        self.procesos = procesos
 
     async def procesar(self, evento: str, cuerpo: dict) -> int:
         """Guarda y envía los avisos de un evento. Devuelve cuántos avisos nuevos se crearon."""
-        aviso = AvisoTermino.desde_mensaje(evento, cuerpo)
-        preferencias = await self.repo.preferencias(aviso.id_abogado)
+        if evento in EVENTOS_TERMINO:
+            aviso = AvisoTermino.desde_mensaje(evento, cuerpo)
+            contenido = contenido_termino(aviso, self.hoy())
+        elif evento == EVENTO_ACTUACION:
+            actuacion = AvisoActuacion.desde_mensaje(cuerpo)
+            responsable = await self._responsable(actuacion.id_proceso)
+            if responsable is None:
+                log.warning("El proceso %s no tiene responsable; la actuación %s no se avisa",
+                            actuacion.id_proceso, actuacion.referencia)
+                return 0
+            contenido = contenido_actuacion(actuacion, responsable)
+        else:
+            raise EventoInvalido(f"Evento no soportado: {evento}")
+        return await self._avisar(contenido)
+
+    async def _responsable(self, id_proceso: int) -> int | None:
+        if self.procesos is None:
+            raise RuntimeError("Falta el cliente del servicio procesos")
+        return await self.procesos.responsable(id_proceso)   # si procesos no responde, el evento se reintenta
+
+    async def _avisar(self, c: Contenido) -> int:
+        preferencias = await self.repo.preferencias(c.id_persona)
         respaldo = None
         if not any(p.canal == Canal.EMAIL for p in preferencias):
-            respaldo = await self._correo_de_ficha(aviso.id_abogado)
+            respaldo = await self._correo_de_ficha(c.id_persona)
 
         creadas = 0
-        for n in avisos_para(aviso, preferencias, respaldo, self.hoy()):
+        for n in canales(c, preferencias, respaldo, self.telegram.activo):
             id_notificacion = await self.repo.guardar(n)
             if id_notificacion is None:
                 log.info("Aviso repetido, se omite: %s", n.clave)
@@ -76,15 +124,18 @@ class ServicioNotificaciones:
                 })
                 await self.publicador.notificacion_enviada(id_notificacion, n)
             elif n.canal == Canal.EMAIL:
-                await self._enviar_correo(id_notificacion, n)
+                asunto, texto, cuerpo_html = correo_de(n, self.url_app)
+                await self._entregar(id_notificacion, n, self.correo.enviar(n.destino, asunto, texto, cuerpo_html))
+            elif n.canal == Canal.TELEGRAM:
+                await self._entregar(id_notificacion, n, self.telegram.enviar(n.destino, texto_telegram(n, self.url_app)))
         return creadas
 
-    async def _enviar_correo(self, id_notificacion: int, n: NotificacionNueva) -> None:
-        asunto, texto, cuerpo_html = correo_de(n, self.url_app)
+    async def _entregar(self, id_notificacion: int, n: NotificacionNueva, envio) -> None:
+        """Correo o Telegram: si falla queda FALLIDA (el aviso de la app ya está guardado)."""
         try:
-            await self.correo.enviar(n.destino, asunto, texto, cuerpo_html)
-        except Exception:   # noqa: BLE001 - cualquier fallo del SMTP queda registrado como FALLIDA
-            log.exception("No se pudo enviar el correo %s a %s", id_notificacion, n.destino)
+            await envio
+        except Exception:   # noqa: BLE001
+            log.exception("No se pudo enviar el aviso %s por %s", id_notificacion, n.canal.value)
             await self.repo.marcar(id_notificacion, "FALLIDA")
             return
         await self.repo.marcar(id_notificacion, "ENVIADA")
@@ -110,3 +161,31 @@ class ServicioNotificaciones:
 
     async def marcar_todas_leidas(self, id_persona: int) -> int:
         return await self.repo.marcar_todas_leidas(id_persona)
+
+    # -------------------------------------------------------------- Telegram
+
+    async def estado_telegram(self, id_persona: int) -> dict:
+        vinculado = any(p.canal == Canal.TELEGRAM and p.activo and p.destino
+                        for p in await self.repo.preferencias(id_persona))
+        return {"configurado": self.telegram.activo, "vinculado": vinculado,
+                "bot": getattr(self.telegram, "usuario", None)}
+
+    async def generar_vinculo(self, id_persona: int) -> dict:
+        """Código de un solo uso: la persona lo envía al bot con /start y queda vinculada."""
+        if not self.telegram.activo:
+            raise ValueError("El bot de Telegram no está configurado (falta TELEGRAM_TOKEN en el servidor)")
+        codigo = secrets.token_urlsafe(9)
+        await self.repo.crear_vinculo(codigo, id_persona)
+        bot = getattr(self.telegram, "usuario", None)
+        return {"codigo": codigo, "enlace": f"https://t.me/{bot}?start={codigo}" if bot else None, "bot": bot}
+
+    async def vincular_telegram(self, codigo: str, chat_id: str) -> int | None:
+        """Lo llama el bot al recibir /start <código>. Devuelve la persona vinculada o None si el código no sirve."""
+        id_persona = await self.repo.usar_vinculo(codigo)
+        if id_persona is not None:
+            await self.repo.guardar_telegram(id_persona, chat_id)
+            log.info("Telegram vinculado para la persona %s", id_persona)
+        return id_persona
+
+    async def desvincular_telegram(self, id_persona: int) -> bool:
+        return await self.repo.quitar_telegram(id_persona)

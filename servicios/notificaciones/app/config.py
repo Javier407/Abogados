@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 def _bool(valor: str) -> bool:
@@ -11,17 +11,19 @@ def _bool(valor: str) -> bool:
 
 @dataclass(frozen=True)
 class Config:
-    db_url: str
-    rabbitmq_url: str
+    db_url: str = field(repr=False)            # lleva la contraseña
+    rabbitmq_url: str = field(repr=False)
     exchange: str
     gabinete_url: str
     url_app: str
     smtp_host: str
     smtp_puerto: int
     smtp_usuario: str
-    smtp_clave: str
+    smtp_clave: str = field(repr=False)
     smtp_starttls: bool
     correo_remitente: str
+    telegram_token: str = field(repr=False)   # secretos: nunca en logs ni repr
+    procesos_url: str
 
     @staticmethod
     def desde_entorno() -> "Config":
@@ -38,4 +40,6 @@ class Config:
             smtp_clave=e("SMTP_CLAVE", ""),
             smtp_starttls=_bool(e("SMTP_STARTTLS", "false")),
             correo_remitente=e("CORREO_REMITENTE", "Gestion Juridica <avisos@gestion-juridica.local>"),
+            telegram_token=e("TELEGRAM_TOKEN", "").strip(),
+            procesos_url=e("PROCESOS_URL", "http://localhost:8082"),
         )

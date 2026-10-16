@@ -10,6 +10,28 @@
   @if (!sesion.idPersona()) {
     <div class="empty-state">Elija en el menú lateral ("Ver como") el abogado cuyos avisos quiere ver.</div>
   } @else {
+    @if (telegram) {
+      <div class="card">
+        <div class="card-header"><h2>Avisos por Telegram</h2></div>
+        <div class="card-body">
+          @if (!telegram.configurado) {
+            <p class="form-ayuda">El bot de Telegram todavía no está configurado en el servidor (falta TELEGRAM_TOKEN).</p>
+          } @else if (telegram.vinculado) {
+            <p>Este abogado recibe los avisos también en Telegram (@{{ telegram.bot }}).</p>
+            <button class="btn btn-secondary btn-sm" type="button" (click)="desvincularTelegram()">Desvincular</button>
+          } @else if (vinculo) {
+            <p>Abra este enlace en el teléfono y pulse <strong>Iniciar</strong> en el chat del bot:</p>
+            @if (vinculo.enlace) { <p><a class="btn btn-primary" [href]="vinculo.enlace" target="_blank" rel="noopener">Abrir @{{ vinculo.bot }}</a></p> }
+            <p class="form-ayuda">O envíe al bot el mensaje <code>/start {{ vinculo.codigo }}</code>. El código sirve una vez y por 24 horas.</p>
+            <button class="btn btn-secondary btn-sm" type="button" (click)="cargarTelegram(sesion.idPersona())">Ya lo hice</button>
+          } @else {
+            <p>Reciba los avisos de términos y de actuaciones nuevas en su Telegram.</p>
+            <button class="btn btn-primary btn-sm" type="button" (click)="vincularTelegram()">Vincular Telegram</button>
+          }
+        </div>
+      </div>
+    }
+
     <div class="filtros">
       <span class="resumen-chip">Sin leer: <strong>{{ sesion.noLeidos() }}</strong></span>
       <button class="btn btn-secondary btn-sm" type="button" (click)="leerTodos()" [disabled]="sesion.noLeidos() === 0">

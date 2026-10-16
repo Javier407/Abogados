@@ -53,6 +53,28 @@ class RepoMemoria:
     def por_canal(self, canal):
         return [f for f in self.filas.values() if f["canal"] == canal]
 
+    # vínculos de Telegram
+    vinculos: dict
+
+    async def crear_vinculo(self, codigo, id_persona):
+        self.__dict__.setdefault("vinculos", {})[codigo] = [id_persona, False]
+
+    async def usar_vinculo(self, codigo):
+        v = self.__dict__.setdefault("vinculos", {}).get(codigo)
+        if not v or v[1]:
+            return None
+        v[1] = True
+        return v[0]
+
+    async def guardar_telegram(self, id_persona, chat_id):
+        prefs = [p for p in self.prefs.get(id_persona, []) if p.canal != Canal.TELEGRAM]
+        self.prefs[id_persona] = prefs + [Preferencia(Canal.TELEGRAM, chat_id)]
+
+    async def quitar_telegram(self, id_persona):
+        antes = len(self.prefs.get(id_persona, []))
+        self.prefs[id_persona] = [p for p in self.prefs.get(id_persona, []) if p.canal != Canal.TELEGRAM]
+        return len(self.prefs[id_persona]) < antes
+
 
 class CorreoFalso:
     def __init__(self, falla=False):

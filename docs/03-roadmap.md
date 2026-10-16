@@ -18,7 +18,8 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F0 | Terminada | 2026-10-15 |
 | F1 | Terminada: criterio comprobado (cliente, abogado y proceso creados desde Angular y verificados en PostgreSQL; evento `proceso.creado` publicado) | 2026-10-15 |
 | F2 | Terminada: un término que vence en 3 días hábiles generó el correo (Mailpit) y el aviso en la app, en vivo | 2026-10-15 |
-| F3 – F5 | Pendientes | |
+| F3 | Terminada en código y probada con fuente simulada (auto nuevo → providencia en el proceso + aviso en app y correo). Falta la prueba final por Telegram: requiere el token del bot | 2026-10-16 |
+| F4 – F5 | Pendientes | |
 
 ## F1: qué quedó y qué falta
 
@@ -63,3 +64,27 @@ Pendiente o decidido para después:
 - **Persona que usa la app:** se elige en "Ver como" (provisional). El aviso de un término es para su responsable; los de apoyo no reciben aviso aún.
 - **Cálculo de términos:** los términos de referencia por tipo de proceso (`termino_contestacion_dias`) todavía no se proponen solos al crear el término; se escriben los días. Sigue pendiente validar los términos con un abogado.
 - **Festivos de 2028:** antes de diciembre de 2027 hay que cargarlos con una nueva migración. El sistema avisa con un error si faltan.
+
+## F3: qué quedó y qué falta
+
+Hecho:
+
+1. **Servicio `vigilancia`** (Python):
+   - Interfaz `FuenteRamaJudicial` con fuente manual, simulada y portal real (ADR 0005).
+   - Consulta programada cada 10 minutos para los radicados a los que les toca (por defecto, cada 24 horas).
+   - Línea base sin avisos, detección sin repetir y alerta desde 3 fallos seguidos.
+   - Primero publica y después marca como conocida, para no perder actuaciones si RabbitMQ falla.
+2. **`procesos`:** registra `actuacion.detectada` como providencia (fuente `VIGILANCIA`, sin duplicar) y expone `GET /procesos/{id}/providencias`.
+3. **`notificaciones`:**
+   - Avisa las actuaciones al responsable del proceso.
+   - Canal de Telegram con vinculación por código de un solo uso (24 h).
+   - El bot usa *long polling*, sin exponer puertos.
+   - El token nunca sale en los logs.
+4. **Frontend:** pantalla de vigilancia (fuente por radicado, consultar ahora, historial y simulador), vinculación de Telegram en Avisos y actuaciones del juzgado en cada proceso.
+
+Pendiente o decidido para después:
+
+- **Prueba final por Telegram:** Javier crea el bot y escribe `TELEGRAM_TOKEN` en `infra/.env` del servidor.
+- **Términos de uso del portal:** revisarlos antes de vigilar radicados reales. Los radicados de prueba no deben usar la fuente del portal (ADR 0005).
+- **Procesos creados antes de vigilancia:** se agregan solos al arrancar el servicio, como `MANUAL`.
+- **Responsable para los avisos:** se toma de `procesos` en el momento del aviso. Si `procesos` no responde, el evento se reintenta.

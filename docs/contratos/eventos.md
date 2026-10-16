@@ -12,7 +12,7 @@
 ### `proceso.creado` (F1, implementado)
 
 **Lo publica:** `procesos`, al registrar un proceso.
-**Lo consume:** `vigilancia` (F3), que empieza a consultar el radicado.
+**Lo consume:** `vigilancia`, desde la cola `vigilancia.procesos`. Agrega el radicado con fuente `MANUAL`; la consulta automática se activa en la pantalla de vigilancia.
 
 ```json
 {
@@ -23,15 +23,23 @@
 }
 ```
 
-### `actuacion.detectada` (F3)
+### `actuacion.detectada` (F3, implementado)
 
-**Lo publica:** `vigilancia`, cuando aparece una actuación nueva en el portal.
-**Lo consumen:** `procesos`, que la registra, y `notificaciones`, que avisa.
+**Lo publica:** `vigilancia`, por cada actuación nueva de un radicado con fuente `SIMULADA` o `PORTAL_HTTP`. La primera consulta (línea base) no publica nada.
+
+**Lo consumen:**
+
+- `procesos`, desde la cola `procesos.actuaciones`. La registra como providencia con fuente `VIGILANCIA` y no la duplica, porque usa `referencia`.
+- `notificaciones`, desde la cola `notificaciones.avisos`. Le pide a `procesos` el responsable y le avisa en la app, por correo y por Telegram, una sola vez por persona y canal.
 
 ```json
-{ "radicado": "11001310303220240045800", "fecha": "2026-10-14", "tipo": "AUTO",
-  "descripcion": "Fija fecha para audiencia de instrucción y juzgamiento", "fuente": "PORTAL", "ocurrido": "..." }
+{ "radicado": "11001400301520260077700", "id_proceso": 34, "referencia": "SIM:1", "fecha": "2026-10-15",
+  "tipo": "AUTO", "actuacion": "Auto requiere al demandante", "anotacion": "Allegue el poder en 5 días",
+  "fuente": "SIMULADA", "ocurrido": "2026-10-16T04:56:06Z" }
 ```
+
+- `tipo`: `SENTENCIA` si el texto lo menciona; si no, `AUTO`.
+- `referencia`: `PORTAL:<idRegActuacion>` o `SIM:<id>`.
 
 ### `termino.por_vencer` y `termino.vencido` (F2, implementado)
 

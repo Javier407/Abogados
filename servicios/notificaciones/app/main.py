@@ -14,6 +14,8 @@ from .aplicacion import ServicioNotificaciones
 from .infraestructura import AvisosEnVivoMemoria
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# httpx registra cada URL llamada; en la API de Telegram la URL lleva el token: nunca debe quedar en los logs.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 log = logging.getLogger("notificaciones")
 
 LATIDO_SEGUNDOS = 25
@@ -34,7 +36,8 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
         from psycopg_pool import AsyncConnectionPool
 
         from .config import Config
-        from .infraestructura import CorreoSmtp, DirectorioGabinete, Mensajeria, RepositorioPostgres
+        from .infraestructura import (ClienteProcesos, CorreoSmtp, DirectorioGabinete, Mensajeria, RepositorioPostgres,
+                                      TelegramBot)
 
         cfg = Config.desde_entorno()
         pool = AsyncConnectionPool(cfg.db_url, min_size=1, max_size=5, open=False)
@@ -42,14 +45,23 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
         vivo = AvisosEnVivoMemoria()
         mensajeria = Mensajeria(cfg)
         app.state.en_vivo = vivo
+        telegram = None
+        if cfg.telegram_token:
+            telegram = TelegramBot(cfg.telegram_token)
+            await telegram.iniciar()
+        else:
+            log.info("Sin TELEGRAM_TOKEN: el canal de Telegram queda apagado")
         app.state.servicio = ServicioNotificaciones(
             RepositorioPostgres(pool), CorreoSmtp(cfg), DirectorioGabinete(cfg.gabinete_url), vivo, mensajeria,
-            url_app=cfg.url_app)
-        consumidor = asyncio.create_task(mensajeria.iniciar(app.state.servicio.procesar))
+            url_app=cfg.url_app, telegram=telegram, procesos=ClienteProcesos(cfg.procesos_url))
+        tareas = [asyncio.create_task(mensajeria.iniciar(app.state.servicio.procesar))]
+        if telegram is not None:
+            tareas.append(asyncio.create_task(telegram.escuchar(app.state.servicio.vincular_telegram)))
         try:
             yield
         finally:
-            consumidor.cancel()
+            for t in tareas:
+                t.cancel()
             await mensajeria.cerrar()
             await pool.close()
 
@@ -80,6 +92,21 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
     @app.post("/notificaciones/leidas")
     async def marcar_todas(request: Request, idPersona: int = Query(..., gt=0)):
         return {"marcadas": await srv(request).marcar_todas_leidas(idPersona)}
+
+    @app.get("/notificaciones/telegram")
+    async def estado_telegram(request: Request, idPersona: int = Query(..., gt=0)):
+        return await srv(request).estado_telegram(idPersona)
+
+    @app.post("/notificaciones/telegram/vinculo")
+    async def vinculo_telegram(request: Request, idPersona: int = Query(..., gt=0)):
+        try:
+            return await srv(request).generar_vinculo(idPersona)
+        except ValueError as e:
+            raise HTTPException(422, detail=str(e)) from e
+
+    @app.delete("/notificaciones/telegram")
+    async def desvincular_telegram(request: Request, idPersona: int = Query(..., gt=0)):
+        return {"desvinculado": await srv(request).desvincular_telegram(idPersona)}
 
     @app.get("/notificaciones/stream")
     async def stream(request: Request, idPersona: int = Query(..., gt=0)):

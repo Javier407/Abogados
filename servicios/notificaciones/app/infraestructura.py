@@ -19,6 +19,9 @@ from .config import Config
 from .dominio import Canal, EventoInvalido, NotificacionNueva, Preferencia
 
 log = logging.getLogger(__name__)
+# httpx registra cada URL a nivel INFO y la URL de la API de Telegram lleva el token: se silencia aquí,
+# donde vive el bot, para que el token nunca llegue a los logs.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 # ------------------------------------------------------------------ PostgreSQL
@@ -91,6 +94,37 @@ class RepositorioPostgres:
                    WHERE id_persona = %s AND canal = 'APP' AND estado = 'PENDIENTE'""", (id_persona,))
             return cur.rowcount
 
+    # ------------------------------------------------ vínculos de Telegram
+
+    async def crear_vinculo(self, codigo: str, id_persona: int) -> None:
+        async with self.pool.connection() as con:
+            await con.execute("INSERT INTO notificaciones.vinculos_telegram (codigo, id_persona) VALUES (%s, %s)",
+                              (codigo, id_persona))
+
+    async def usar_vinculo(self, codigo: str) -> int | None:
+        """Un código sirve una vez y durante 24 horas."""
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                """UPDATE notificaciones.vinculos_telegram SET usado = now()
+                   WHERE codigo = %s AND usado IS NULL AND creado > now() - interval '24 hours'
+                   RETURNING id_persona""", (codigo,))
+            fila = await cur.fetchone()
+            return fila[0] if fila else None
+
+    async def guardar_telegram(self, id_persona: int, chat_id: str) -> None:
+        async with self.pool.connection() as con:
+            await con.execute(
+                """INSERT INTO notificaciones.preferencias (id_persona, canal, destino, activo)
+                   VALUES (%s, 'TELEGRAM', %s, true)
+                   ON CONFLICT (id_persona, canal) DO UPDATE SET destino = EXCLUDED.destino, activo = true""",
+                (id_persona, chat_id))
+
+    async def quitar_telegram(self, id_persona: int) -> bool:
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                "DELETE FROM notificaciones.preferencias WHERE id_persona = %s AND canal = 'TELEGRAM'", (id_persona,))
+            return cur.rowcount > 0
+
 
 # ------------------------------------------------------------------ correo (SMTP)
 
@@ -128,6 +162,103 @@ class DirectorioGabinete:
             return r.json().get("email")
 
 
+# ------------------------------------------------------------------ servicio procesos
+
+class ClienteProcesos:
+    def __init__(self, url: str):
+        self.url = url.rstrip("/")
+
+    async def responsable(self, id_proceso: int) -> int | None:
+        async with httpx.AsyncClient(timeout=5) as http:
+            r = await http.get(f"{self.url}/procesos/{id_proceso}")
+            if r.status_code == 404:
+                return None
+            r.raise_for_status()
+            return r.json().get("idResponsable")
+
+
+# ------------------------------------------------------------------ Telegram
+
+class TelegramBot:
+    """
+    Envía mensajes con la API de bots de Telegram y escucha /start <código> por long polling
+    (getUpdates): el servidor solo hace llamadas salientes, no se expone ningún puerto a internet.
+    """
+
+    API = "https://api.telegram.org"
+
+    def __init__(self, token: str, cliente: httpx.AsyncClient | None = None):
+        self._token = token
+        self.cliente = cliente or httpx.AsyncClient(timeout=40)
+        self.usuario: str | None = None
+
+    @property
+    def activo(self) -> bool:
+        return bool(self._token) and self.usuario is not None
+
+    def _url(self, metodo: str) -> str:
+        return f"{self.API}/bot{self._token}/{metodo}"
+
+    async def _llamar(self, metodo: str, **datos) -> dict:
+        r = await self.cliente.post(self._url(metodo), json=datos)
+        cuerpo = r.json()
+        if not cuerpo.get("ok"):
+            # El token nunca se escribe en el log: solo el método y la descripción del error.
+            raise RuntimeError(f"Telegram {metodo}: {cuerpo.get('description', r.status_code)}")
+        return cuerpo["result"]
+
+    async def iniciar(self) -> None:
+        """Verifica el token (getMe). Si falla, el canal queda apagado y se reintenta más tarde."""
+        try:
+            yo = await self._llamar("getMe")
+            self.usuario = yo.get("username")
+            log.info("Bot de Telegram listo: @%s", self.usuario)
+        except Exception as e:   # noqa: BLE001
+            self.usuario = None
+            log.error("No se pudo iniciar el bot de Telegram: %s", type(e).__name__)
+
+    async def enviar(self, chat_id: str, texto: str) -> None:
+        await self._llamar("sendMessage", chat_id=chat_id, text=texto[:4000], disable_web_page_preview=True)
+
+    async def escuchar(self, vincular) -> None:
+        """Bucle de getUpdates. vincular(codigo, chat_id) -> id_persona | None."""
+        desplazamiento = 0
+        while True:
+            if not self.activo:
+                await self.iniciar()
+                if not self.activo:
+                    await asyncio.sleep(60)
+                    continue
+            try:
+                novedades = await self._llamar("getUpdates", offset=desplazamiento, timeout=25,
+                                               allowed_updates=["message"])
+            except Exception as e:   # noqa: BLE001
+                log.warning("getUpdates falló (%s); reintento en 10 s", type(e).__name__)
+                await asyncio.sleep(10)
+                continue
+            for u in novedades:
+                desplazamiento = u["update_id"] + 1
+                await self._atender(u.get("message") or {}, vincular)
+
+    async def _atender(self, mensaje: dict, vincular) -> None:
+        texto = (mensaje.get("text") or "").strip()
+        chat = mensaje.get("chat") or {}
+        if not texto.startswith("/start") or "id" not in chat:
+            return
+        partes = texto.split(maxsplit=1)
+        chat_id = str(chat["id"])
+        try:
+            if len(partes) == 2 and await vincular(partes[1].strip(), chat_id) is not None:
+                respuesta = ("Listo: este chat quedó vinculado a Gestión Jurídica. Aquí recibirá los avisos de "
+                             "términos y de actuaciones nuevas en sus procesos.")
+            else:
+                respuesta = ("Para vincular este chat, abra Gestión Jurídica → Avisos → Vincular Telegram y use el "
+                             "enlace que aparece (sirve una vez y por 24 horas).")
+            await self.enviar(chat_id, respuesta)
+        except Exception:   # noqa: BLE001
+            log.exception("No se pudo atender el /start de un chat")
+
+
 # ------------------------------------------------------------------ avisos en vivo (SSE)
 
 class AvisosEnVivoMemoria:
@@ -156,12 +287,13 @@ class AvisosEnVivoMemoria:
 
 class Mensajeria:
     """
-    Consume termino.* de la cola durable notificaciones.avisos y publica notificacion.enviada.
+    Consume termino.* y actuacion.detectada de la cola durable notificaciones.avisos y publica
+    notificacion.enviada.
     Si RabbitMQ no está listo al arrancar, reintenta en segundo plano sin tumbar la API.
     """
 
     COLA = "notificaciones.avisos"
-    CLAVES = ("termino.por_vencer", "termino.vencido")
+    CLAVES = ("termino.por_vencer", "termino.vencido", "actuacion.detectada")
 
     def __init__(self, cfg: Config):
         self.cfg = cfg

@@ -3,8 +3,9 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Observable } from 'rxjs';
 
 import {
-  Abogado, AreaPractica, Aviso, Cargo, Cliente, DesgloseRadicado, Despacho, DiaInhabil, Proceso, ProcesoSolicitud, Rama,
-  Revision, Sede, Termino, TerminoSolicitud, TipoProceso, Vencimiento
+  Abogado, AreaPractica, Aviso, Cargo, Cliente, ConsultaVigilancia, DesgloseRadicado, Despacho, DiaInhabil, EstadoTelegram,
+  FuenteVigilancia, Proceso, ProcesoSolicitud, Providencia, RadicadoVigilado, Rama, ResultadoConsulta, Revision, Sede,
+  Termino, TerminoSolicitud, TipoProceso, Vencimiento, VinculoTelegram
 } from './modelos';
 
 /**
@@ -118,6 +119,43 @@ export class ApiService {
   /** URL del stream de avisos en vivo (Server-Sent Events). */
   urlAvisosEnVivo(idPersona: number): string {
     return `${API}/notificaciones/stream?idPersona=${idPersona}`;
+  }
+
+  // ---------- providencias ----------
+  providencias(idProceso: number): Observable<Providencia[]> {
+    return this.http.get<Providencia[]>(`${API}/procesos/${idProceso}/providencias`);
+  }
+
+  // ---------- vigilancia ----------
+  radicadosVigilados(): Observable<RadicadoVigilado[]> {
+    return this.http.get<RadicadoVigilado[]>(`${API}/vigilancia/radicados`);
+  }
+  fuentesVigilancia(): Observable<{ disponibles: FuenteVigilancia[] }> {
+    return this.http.get<{ disponibles: FuenteVigilancia[] }>(`${API}/vigilancia/fuentes`);
+  }
+  configurarVigilancia(radicado: string, fuente: FuenteVigilancia, frecuenciaHoras: number, activo: boolean):
+    Observable<RadicadoVigilado> {
+    return this.http.put<RadicadoVigilado>(`${API}/vigilancia/radicados/${radicado}`, { fuente, frecuenciaHoras, activo });
+  }
+  consultarRadicado(radicado: string): Observable<ResultadoConsulta> {
+    return this.http.post<ResultadoConsulta>(`${API}/vigilancia/radicados/${radicado}/consultar`, {});
+  }
+  historialVigilancia(radicado: string): Observable<ConsultaVigilancia[]> {
+    return this.http.get<ConsultaVigilancia[]>(`${API}/vigilancia/radicados/${radicado}/consultas`);
+  }
+  agregarActuacionSimulada(radicado: string, a: { fecha: string; actuacion: string; anotacion: string }): Observable<unknown> {
+    return this.http.post(`${API}/vigilancia/radicados/${radicado}/simuladas`, a);
+  }
+
+  // ---------- Telegram ----------
+  estadoTelegram(idPersona: number): Observable<EstadoTelegram> {
+    return this.http.get<EstadoTelegram>(`${API}/notificaciones/telegram`, { params: filtros({ idPersona }) });
+  }
+  vincularTelegram(idPersona: number): Observable<VinculoTelegram> {
+    return this.http.post<VinculoTelegram>(`${API}/notificaciones/telegram/vinculo`, {}, { params: filtros({ idPersona }) });
+  }
+  desvincularTelegram(idPersona: number): Observable<unknown> {
+    return this.http.delete(`${API}/notificaciones/telegram`, { params: filtros({ idPersona }) });
   }
 }
 

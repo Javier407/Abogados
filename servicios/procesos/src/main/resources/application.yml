@@ -32,3 +32,12 @@ terminos:
   dias-aviso: 5                 # avisar desde 5 días hábiles antes del vencimiento
   dias-recordar-vencidos: 3     # y recordar los vencidos durante 3 días hábiles más
   cron: "0 0 7 * * MON-FRI"     # revisión diaria, hora de Colombia
+
+# Al consumir eventos: hasta 4 intentos espaciados (p. ej. base de datos reiniciando) y luego se descarta.
+spring.rabbitmq.listener.simple:
+  default-requeue-rejected: false
+  retry:
+    enabled: true
+    max-attempts: 4
+    initial-interval: 2s
+    multiplier: 3

@@ -10,13 +10,14 @@ from datetime import date, datetime
 from enum import Enum
 
 EVENTOS_TERMINO = ("termino.por_vencer", "termino.vencido")
-LARGO_MENSAJE = 500
+EVENTO_ACTUACION = "actuacion.detectada"
+LARGO_MENSAJE = 1000
 
 
 class Canal(str, Enum):
     APP = "APP"
     EMAIL = "EMAIL"
-    TELEGRAM = "TELEGRAM"   # F3
+    TELEGRAM = "TELEGRAM"
 
 
 class EventoInvalido(ValueError):
@@ -107,22 +108,77 @@ def redactar(aviso: AvisoTermino) -> tuple[str, str]:
     return titulo, mensaje[:LARGO_MENSAJE]
 
 
-def avisos_para(aviso: AvisoTermino, preferencias: list[Preferencia], correo_respaldo: str | None,
-                hoy: date) -> list[NotificacionNueva]:
+@dataclass(frozen=True)
+class AvisoActuacion:
+    """Evento actuacion.detectada que publica el servicio vigilancia."""
+    radicado: str
+    id_proceso: int
+    referencia: str
+    fecha: date
+    tipo: str
+    actuacion: str
+    anotacion: str
+    fuente: str
+
+    @staticmethod
+    def desde_mensaje(cuerpo: dict) -> "AvisoActuacion":
+        try:
+            return AvisoActuacion(
+                radicado=str(cuerpo["radicado"]),
+                id_proceso=int(cuerpo["id_proceso"]),
+                referencia=str(cuerpo["referencia"]),
+                fecha=date.fromisoformat(cuerpo["fecha"]),
+                tipo=str(cuerpo.get("tipo") or "AUTO"),
+                actuacion=str(cuerpo["actuacion"]),
+                anotacion=str(cuerpo.get("anotacion") or ""),
+                fuente=str(cuerpo.get("fuente") or ""),
+            )
+        except (KeyError, TypeError, ValueError) as e:
+            raise EventoInvalido(f"Mensaje actuacion.detectada incompleto o mal formado: {e}") from e
+
+
+@dataclass(frozen=True)
+class Contenido:
+    """Lo que se le avisa a una persona, sin importar el canal. La clave lleva {canal} para completar."""
+    evento: str
+    id_persona: int
+    titulo: str
+    mensaje: str
+    referencia: dict
+    plantilla_clave: str
+
+
+def contenido_termino(aviso: AvisoTermino, hoy: date) -> Contenido:
+    """La clave incluye el día: el mismo término avisa una vez por día y canal aunque el evento llegue repetido."""
+    titulo, mensaje = redactar(aviso)
+    return Contenido(aviso.evento, aviso.id_abogado, titulo, mensaje,
+                     {"id_proceso": aviso.id_proceso, "id_termino": aviso.id_termino},
+                     f"{aviso.evento}:{aviso.id_termino}:{aviso.id_abogado}:{{canal}}:{hoy.isoformat()}")
+
+
+def contenido_actuacion(a: AvisoActuacion, id_persona: int) -> Contenido:
+    """Una actuación se avisa una sola vez por persona y canal (la clave no lleva día)."""
+    titulo = "Nueva sentencia en un proceso" if a.tipo == "SENTENCIA" else "Nueva actuación en un proceso"
+    mensaje = f"{a.actuacion} — proceso {radicado_legible(a.radicado)} — {a.fecha.strftime('%d/%m/%Y')}"
+    if a.anotacion:
+        mensaje += f": {a.anotacion}"
+    return Contenido("actuacion.detectada", id_persona, titulo, mensaje[:LARGO_MENSAJE],
+                     {"id_proceso": a.id_proceso, "referencia": a.referencia},
+                     f"actuacion.detectada:{a.referencia}:{id_persona}:{{canal}}")
+
+
+def canales(c: Contenido, preferencias: list[Preferencia], correo_respaldo: str | None,
+            telegram_activo: bool = False) -> list[NotificacionNueva]:
     """
-    Por qué canales avisar al abogado:
+    Por qué canales avisar:
     - Dentro de la app siempre: es el registro de lo que se le avisó.
     - Por correo si tiene esa preferencia activa; si nunca configuró el correo, al de su ficha en gabinete
       (correo_respaldo). Si lo desactivó, no se le escribe.
-    - Telegram llega en F3.
-    La clave incluye el día: el mismo término avisa una vez por día y canal aunque el evento llegue repetido.
+    - Por Telegram si vinculó su cuenta (preferencia TELEGRAM activa) y el bot está configurado.
     """
-    titulo, mensaje = redactar(aviso)
-    referencia = {"id_proceso": aviso.id_proceso, "id_termino": aviso.id_termino}
-
     def nueva(canal: Canal, destino: str | None = None) -> NotificacionNueva:
-        clave = f"{aviso.evento}:{aviso.id_termino}:{aviso.id_abogado}:{canal.value}:{hoy.isoformat()}"
-        return NotificacionNueva(aviso.id_abogado, canal, aviso.evento, titulo, mensaje, clave, destino, referencia)
+        return NotificacionNueva(c.id_persona, canal, c.evento, c.titulo, c.mensaje,
+                                 c.plantilla_clave.format(canal=canal.value), destino, c.referencia)
 
     resultado = [nueva(Canal.APP)]
     pref_correo = next((p for p in preferencias if p.canal == Canal.EMAIL), None)
@@ -131,20 +187,45 @@ def avisos_para(aviso: AvisoTermino, preferencias: list[Preferencia], correo_res
             resultado.append(nueva(Canal.EMAIL, pref_correo.destino))
     elif correo_respaldo:
         resultado.append(nueva(Canal.EMAIL, correo_respaldo))
+    pref_telegram = next((p for p in preferencias if p.canal == Canal.TELEGRAM), None)
+    if telegram_activo and pref_telegram and pref_telegram.activo and pref_telegram.destino:
+        resultado.append(nueva(Canal.TELEGRAM, pref_telegram.destino))
     return resultado
+
+
+def avisos_para(aviso: AvisoTermino, preferencias: list[Preferencia], correo_respaldo: str | None,
+                hoy: date, telegram_activo: bool = False) -> list[NotificacionNueva]:
+    """Avisos de un término (atajo de contenido_termino + canales)."""
+    return canales(contenido_termino(aviso, hoy), preferencias, correo_respaldo, telegram_activo)
+
+
+def enlace_de(n: NotificacionNueva, url_app: str) -> tuple[str, str]:
+    """Adónde lleva el aviso: la agenda para los términos, el proceso para las actuaciones."""
+    if not url_app:
+        return "", ""
+    base = url_app.rstrip("/")
+    if n.evento == "actuacion.detectada" and n.referencia.get("id_proceso"):
+        return f"{base}/procesos/{n.referencia['id_proceso']}/editar", "Ver el proceso"
+    return f"{base}/terminos", "Ver la agenda de términos"
+
+
+def texto_telegram(n: NotificacionNueva, url_app: str) -> str:
+    enlace, _ = enlace_de(n, url_app)
+    texto = f"⚖️ {n.titulo}\n\n{n.mensaje}"
+    return f"{texto}\n\n{enlace}" if enlace else texto
 
 
 def correo_de(n: NotificacionNueva, url_app: str) -> tuple[str, str, str]:
     """Asunto, texto plano y HTML del correo."""
     asunto = f"[Gestión Jurídica] {n.titulo}"
-    enlace = f"{url_app.rstrip('/')}/terminos" if url_app else ""
+    enlace, texto_enlace = enlace_de(n, url_app)
     texto = f"{n.titulo}\n\n{n.mensaje}\n"
     if enlace:
-        texto += f"\nVer la agenda de términos: {enlace}\n"
+        texto += f"\n{texto_enlace}: {enlace}\n"
     texto += "\nAviso automático de Gestión Jurídica. Los términos se cuentan en días hábiles judiciales."
     color = "#c0392b" if "vencid" in n.titulo.lower() or "hoy" in n.titulo.lower() else "#1e3a5f"
     boton = (f'<p><a href="{html.escape(enlace)}" style="background:#1e3a5f;color:#fff;padding:10px 16px;'
-             f'border-radius:4px;text-decoration:none">Ver la agenda de términos</a></p>') if enlace else ""
+             f'border-radius:4px;text-decoration:none">{texto_enlace}</a></p>') if enlace else ""
     cuerpo_html = f"""<div style="font-family:Segoe UI,Arial,sans-serif;max-width:560px;color:#333">
   <h2 style="color:{color};margin:0 0 12px">{html.escape(n.titulo)}</h2>
   <p style="font-size:15px;line-height:1.5">{html.escape(n.mensaje)}</p>

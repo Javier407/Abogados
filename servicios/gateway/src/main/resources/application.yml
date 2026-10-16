@@ -24,6 +24,12 @@ spring:
             - Path=/api/notificaciones/**
           filters:
             - StripPrefix=1
+        - id: vigilancia
+          uri: ${VIGILANCIA_URL:http://localhost:8003}
+          predicates:
+            - Path=/api/vigilancia/**
+          filters:
+            - StripPrefix=1
       # Solo para desarrollo con "ng serve" en el PC; en el servidor el frontend llega por el mismo origen (nginx).
       globalcors:
         cors-configurations:

@@ -180,3 +180,45 @@ export function textoRestantes(dias: number): string {
   const n = -dias;
   return `venció hace ${n} día${n === 1 ? '' : 's'} hábil${n === 1 ? '' : 'es'}`;
 }
+
+// ---------- vigilancia (F3) ----------
+export type FuenteVigilancia = 'MANUAL' | 'SIMULADA' | 'PORTAL_HTTP';
+export const FUENTES: { valor: FuenteVigilancia; etiqueta: string; ayuda: string }[] = [
+  { valor: 'MANUAL', etiqueta: 'Manual', ayuda: 'No se consulta; las actuaciones se registran a mano.' },
+  { valor: 'SIMULADA', etiqueta: 'Simulada (pruebas)', ayuda: 'Actuaciones escritas aquí, para demostraciones.' },
+  { valor: 'PORTAL_HTTP', etiqueta: 'Portal Rama Judicial', ayuda: 'Consulta real, máximo cada 12 h. Solo radicados reales de la firma.' }
+];
+
+export interface RadicadoVigilado {
+  radicado: string;
+  radicadoLegible: string;
+  idProceso: number;
+  fuente: FuenteVigilancia;
+  frecuenciaHoras: number;
+  activo: boolean;
+  ultimaConsulta: string | null;
+  fallosConsecutivos: number;
+  enAlerta: boolean;
+  despacho: string | null;
+  ultimaActuacion: string | null;
+  ultimoError: string | null;
+  lineaBaseHecha: boolean;
+}
+
+export interface ResultadoConsulta { radicado: string; exitosa: boolean; actuaciones?: number; nuevas?: number; lineaBase?: boolean; error?: string; }
+export interface ConsultaVigilancia { fecha: string; exitosa: boolean; nuevas: number; detalle: Record<string, unknown>; }
+
+export interface Providencia {
+  idProvidencia: number;
+  idProceso: number;
+  tipo: 'AUTO' | 'SENTENCIA';
+  clase: string;
+  fechaProvidencia: string;
+  fechaEstado: string;
+  decision?: string;
+  sentido?: string;
+  fuente: 'MANUAL' | 'VIGILANCIA';
+}
+
+export interface EstadoTelegram { configurado: boolean; vinculado: boolean; bot: string | null; }
+export interface VinculoTelegram { codigo: string; enlace: string | null; bot: string | null; }

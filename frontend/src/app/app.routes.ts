@@ -9,6 +9,7 @@ import { PagosComponent } from './pagos/pagos.component';
 import { TerminosComponent } from './pages/terminos/terminos.component';
 import { CalendarioComponent } from './pages/calendario/calendario.component';
 import { AvisosComponent } from './pages/avisos/avisos.component';
+import { VigilanciaComponent } from './pages/vigilancia/vigilancia.component';
 
 export const routes: Routes = [
   {
@@ -23,6 +24,7 @@ export const routes: Routes = [
       { path: 'abogados', component: AbogadosComponent, title: 'Abogados' },
       { path: 'terminos', component: TerminosComponent, title: 'Términos' },
       { path: 'calendario', component: CalendarioComponent, title: 'Calendario judicial' },
+      { path: 'vigilancia', component: VigilanciaComponent, title: 'Vigilancia' },
       { path: 'avisos', component: AvisosComponent, title: 'Avisos' },
       { path: 'pagos', component: PagosComponent, title: 'Honorarios y pagos' },
       { path: '**', redirectTo: '' }

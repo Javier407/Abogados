@@ -1,0 +1,120 @@
+<div class="modulo-container">
+
+  <div class="page-header">
+    <h1>Vigilancia de la Rama Judicial</h1>
+    <p>Radicados que se consultan para enterarse de autos y sentencias sin entrar al portal</p>
+  </div>
+
+  @if (mensaje) { <div class="alerta alerta-exito">{{ mensaje }}</div> }
+  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+
+  <div class="resumen-bar">
+    <span class="resumen-chip">Manual: <strong>{{ contar('MANUAL') }}</strong></span>
+    <span class="resumen-chip">Simulada: <strong>{{ contar('SIMULADA') }}</strong></span>
+    <span class="resumen-chip">Portal real: <strong>{{ contar('PORTAL_HTTP') }}</strong></span>
+    @if (enAlerta > 0) { <span class="resumen-chip"><span class="punto punto-vencido"></span> Con fallos seguidos: <strong>{{ enAlerta }}</strong></span> }
+  </div>
+
+  <div class="filtros">
+    <input class="form-input" type="search" [(ngModel)]="filtro" placeholder="Buscar radicado" aria-label="Buscar radicado" />
+    <button class="btn btn-secondary" type="button" (click)="cargar()">Actualizar</button>
+  </div>
+
+  <div class="vigilancia-grid" [class.con-detalle]="seleccionado">
+    <div class="tabla-wrapper">
+      <table class="tabla">
+        <thead>
+          <tr><th>Radicado</th><th>Fuente</th><th>Última consulta</th><th>Última actuación</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (r of visibles; track r.radicado) {
+            <tr [class.fila-elegida]="seleccionado?.radicado === r.radicado">
+              <td>
+                <button type="button" class="enlace mono" (click)="elegir(r)">{{ r.radicadoLegible }}</button>
+                <br><a class="form-ayuda" [routerLink]="['/procesos', r.idProceso, 'editar']">Proceso {{ r.idProceso }}</a>
+              </td>
+              <td>
+                <select class="form-input select-fuente" [ngModel]="r.fuente" (ngModelChange)="cambiarFuente(r, $event)"
+                  [attr.aria-label]="'Fuente de ' + r.radicadoLegible">
+                  @for (f of fuentes; track f.valor) {
+                    <option [value]="f.valor" [disabled]="!disponibles.includes(f.valor)">{{ f.etiqueta }}</option>
+                  }
+                </select>
+              </td>
+              <td class="fecha-celda">{{ r.ultimaConsulta ? (r.ultimaConsulta | date:'dd/MM/yyyy h:mm a') : '—' }}</td>
+              <td class="fecha-celda">{{ r.ultimaActuacion ? (r.ultimaActuacion | date:'dd/MM/yyyy') : '—' }}</td>
+              <td>
+                @if (r.enAlerta) {
+                  <span class="badge badge-danger" [title]="r.ultimoError ?? ''">{{ r.fallosConsecutivos }} fallos seguidos</span>
+                } @else if (r.fuente === 'MANUAL') {
+                  <span class="badge badge-muted">Sin consulta</span>
+                } @else if (!r.lineaBaseHecha) {
+                  <span class="badge badge-warning">Sin línea base</span>
+                } @else {
+                  <span class="badge badge-success">Vigilando</span>
+                }
+              </td>
+              <td class="acciones-celda">
+                @if (r.fuente !== 'MANUAL') {
+                  <button class="btn btn-secondary btn-sm" type="button" (click)="consultar(r)" [disabled]="consultando === r.radicado">
+                    {{ consultando === r.radicado ? 'Consultando...' : 'Consultar ahora' }}
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (seleccionado; as r) {
+      <aside class="card detalle">
+        <div class="card-header"><h2>{{ r.radicadoLegible }}</h2></div>
+        <div class="card-body">
+          <p class="form-ayuda">{{ r.despacho ?? 'Despacho aún no consultado' }} · cada {{ r.frecuenciaHoras }} h</p>
+          @for (f of fuentes; track f.valor) { @if (f.valor === r.fuente) { <p class="form-ayuda">{{ f.ayuda }}</p> } }
+          @if (r.ultimoError) { <div class="alerta alerta-error">{{ r.ultimoError }}</div> }
+
+          @if (r.fuente === 'SIMULADA') {
+            <h3 class="subtitulo">Simular una actuación nueva</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label" for="simFecha">Fecha</label>
+                <input id="simFecha" class="form-input" type="date" [(ngModel)]="simulada.fecha" />
+              </div>
+              <div class="form-group form-group-full">
+                <label class="form-label" for="simActuacion">Actuación</label>
+                <input id="simActuacion" class="form-input" [(ngModel)]="simulada.actuacion" maxlength="200"
+                  placeholder="Ej: Auto admite demanda" />
+              </div>
+              <div class="form-group form-group-full">
+                <label class="form-label" for="simAnotacion">Anotación</label>
+                <input id="simAnotacion" class="form-input" [(ngModel)]="simulada.anotacion" maxlength="1000"
+                  placeholder="Ej: Se ordena notificar al demandado" />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary btn-sm" type="button" (click)="agregarSimulada()">Agregar</button>
+            </div>
+          }
+
+          <h3 class="subtitulo">Últimas consultas</h3>
+          @if (historial.length === 0) {
+            <p class="form-ayuda">Todavía no se ha consultado.</p>
+          } @else {
+            <ul class="historial">
+              @for (c of historial; track c.fecha) {
+                <li [class.fallida]="!c.exitosa">
+                  <small>{{ c.fecha | date:'dd/MM h:mm a' }}</small>
+                  <span>{{ resumen(c) }}</span>
+                </li>
+              }
+            </ul>
+          }
+          <button class="btn btn-secondary btn-sm" type="button" (click)="seleccionado = null">Cerrar</button>
+        </div>
+      </aside>
+    }
+  </div>
+
+</div>
