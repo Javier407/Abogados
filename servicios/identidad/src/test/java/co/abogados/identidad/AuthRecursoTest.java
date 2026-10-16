@@ -26,6 +26,7 @@ import co.abogados.identidad.dominio.CuentaBloqueadaException;
 import co.abogados.identidad.dominio.Sesion;
 import co.abogados.identidad.infraestructura.AuthRecurso;
 import co.abogados.identidad.infraestructura.EmisorJwtRsa;
+import co.abogados.identidad.infraestructura.LimiteIntentosPorIp;
 
 @WebMvcTest(AuthRecurso.class)
 class AuthRecursoTest {
@@ -38,6 +39,14 @@ class AuthRecursoTest {
 
 	@MockBean
 	EmisorJwtRsa emisor;
+
+	@MockBean
+	LimiteIntentosPorIp limite;
+
+	@org.junit.jupiter.api.BeforeEach
+	void sinLimite() {
+		given(limite.permitir(any())).willReturn(true);
+	}
 
 	@Test
 	void loginDevuelveElTokenYUsaLaIpReenviadaPorElGateway() throws Exception {
@@ -82,6 +91,16 @@ class AuthRecursoTest {
 		mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content("{\"usuario\":\"\"}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.campos.clave").exists());
+	}
+
+	@Test
+	void superarElLimiteDeIntentosPorIpEsUn429() throws Exception {
+		given(limite.permitir("100.64.0.9")).willReturn(false);
+
+		mvc.perform(post("/auth/login").header("X-Forwarded-For", "100.64.0.9")
+				.contentType(MediaType.APPLICATION_JSON).content("{\"usuario\":\"x\",\"clave\":\"y\"}"))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().string("Retry-After", "600"));
 	}
 
 	@Test

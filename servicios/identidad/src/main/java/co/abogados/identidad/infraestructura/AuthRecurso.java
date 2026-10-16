@@ -51,15 +51,23 @@ public class AuthRecurso {
 
 	private final AutenticacionServicio servicio;
 	private final EmisorJwtRsa emisor;
+	private final LimiteIntentosPorIp limite;
 
-	public AuthRecurso(AutenticacionServicio servicio, EmisorJwtRsa emisor) {
+	public AuthRecurso(AutenticacionServicio servicio, EmisorJwtRsa emisor, LimiteIntentosPorIp limite) {
 		this.servicio = servicio;
 		this.emisor = emisor;
+		this.limite = limite;
 	}
 
 	@PostMapping("/auth/login")
-	public Sesion login(@Valid @RequestBody Ingreso ingreso, HttpServletRequest peticion) {
-		return servicio.iniciarSesion(ingreso.usuario(), ingreso.clave(), ip(peticion));
+	public ResponseEntity<?> login(@Valid @RequestBody Ingreso ingreso, HttpServletRequest peticion) {
+		String ip = ip(peticion);
+		if (!limite.permitir(ip)) {
+			return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+					.header("Retry-After", String.valueOf(LimiteIntentosPorIp.VENTANA.toSeconds()))
+					.body(Map.of("error", "Demasiados intentos desde esta dirección. Espere unos minutos."));
+		}
+		return ResponseEntity.ok(servicio.iniciarSesion(ingreso.usuario(), ingreso.clave(), ip));
 	}
 
 	@GetMapping("/auth/yo")

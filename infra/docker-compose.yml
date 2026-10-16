@@ -1,4 +1,5 @@
-# Infraestructura del gabinete (fases F1 a F4): PostgreSQL, RabbitMQ, microservicios, gateway, frontend, Mailpit y Ollama.
+# Infraestructura del gabinete (fases F1 a F5): PostgreSQL, RabbitMQ, microservicios, gateway, frontend, Mailpit y Ollama.
+# Secretos fuera de git: infra/.env y infra/secretos/ (llave privada de los tokens). Ver README.
 # Uso:  cd infra && cp .env.example .env  (escribir las claves)  &&  docker compose up -d --build
 # La primera vez que se crea el volumen de PostgreSQL se ejecuta db/00-init.sh: crea los esquemas y carga los datos de prueba.
 # Para recargar la base desde cero: docker compose down -v && docker compose up -d   (borra los volúmenes)
@@ -63,6 +64,27 @@ services:
       timeout: 10s
       retries: 10
     mem_limit: 256m
+    logging: *logs
+
+  identidad:
+    build: ../servicios/identidad
+    image: abogados/identidad:0.1.0
+    container_name: abogados-identidad
+    restart: unless-stopped
+    environment:
+      TZ: America/Bogota
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USER: svc_identidad
+      DB_PASSWORD: ${SVC_PASSWORD}
+      JWT_LLAVE_PRIVADA: /run/secrets/jwt-privada.pem
+    volumes:
+      # Llave privada RSA que firma los tokens: solo este servicio la ve, y en solo lectura.
+      - ./secretos/jwt-privada.pem:/run/secrets/jwt-privada.pem:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck: *java-salud
+    mem_limit: 384m
     logging: *logs
 
   gabinete:
@@ -221,6 +243,8 @@ services:
     environment:
       TZ: America/Bogota
       MP_MAX_MESSAGES: 500
+      # Usuario y contraseña para ver el buzón ("usuario:clave", en .env). Vacío = sin contraseña.
+      MP_UI_AUTH: ${MAILPIT_UI_AUTH:-}
     ports:
       - "8092:8025"
     mem_limit: 64m
@@ -238,6 +262,7 @@ services:
       NOTIFICACIONES_URL: http://notificaciones:8000
       VIGILANCIA_URL: http://vigilancia:8000
       ASISTENTE_URL: http://asistente-ia:8000
+      IDENTIDAD_URL: http://identidad:8080
       CORS_ORIGINS: http://localhost:4200
     ports:
       - "8091:8080"
@@ -247,6 +272,7 @@ services:
       - notificaciones
       - vigilancia
       - asistente-ia
+      - identidad
     healthcheck: *java-salud
     mem_limit: 384m
     logging: *logs
