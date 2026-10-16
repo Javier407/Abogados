@@ -186,3 +186,10 @@ def test_api_stream_y_errores():
         assert c.post("/asistente/borradores", json={"idProceso": 99, "tipo": "CONTESTACION"}).status_code == 404
         r = c.post("/asistente/borradores", json={"idProceso": 2, "tipo": "POEMA"})
         assert r.status_code == 400 and "tipo" in r.json()["campos"]
+
+
+async def test_la_contestacion_pide_los_titulos_exactos_sin_instrucciones_pegadas():
+    caso = await servicio().caso(2)
+    pedido = mensajes(TipoBorrador.CONTESTACION, caso)[1]["content"]
+    assert "\nIII. EXCEPCIONES DE MÉRITO\n" in pedido          # el título va solo en su línea
+    assert "sin preámbulo" in pedido and "No escribas despedida ni firma" in pedido

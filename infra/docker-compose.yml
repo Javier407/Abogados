@@ -179,7 +179,7 @@ services:
       TZ: America/Bogota
       OLLAMA_URL: http://ollama:11434
       MODELO: ${MODELO_IA:-qwen2.5:3b}
-      MAX_TOKENS: 1500
+      MAX_TOKENS: 1000                  # acota el tiempo en CPU (unos 3 a 5 minutos por borrador)
       PROCESOS_URL: http://procesos:8080
       GABINETE_URL: http://gabinete:8080
     depends_on:

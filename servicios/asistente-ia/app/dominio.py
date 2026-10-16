@@ -18,6 +18,9 @@ class TipoBorrador(str, Enum):
 
 ROLES_DEMANDADO = {"DEMANDADO", "ACCIONADO", "PROCESADO"}
 
+SECCIONES_CONTESTACION = ("I. PRONUNCIAMIENTO SOBRE LOS HECHOS", "II. OPOSICIÓN A LAS PRETENSIONES",
+                          "III. EXCEPCIONES DE MÉRITO", "IV. PRUEBAS", "V. ANEXOS", "VI. NOTIFICACIONES")
+
 
 class SolicitudInvalida(ValueError):
     """El borrador pedido no aplica a este proceso (p. ej. contestar siendo demandante)."""
@@ -113,11 +116,15 @@ def mensajes(tipo: TipoBorrador, caso: Caso, instrucciones: str = "") -> list[di
              f"Nuestro cliente es: {caso.rol_cliente.lower()}\nCuantía: {caso.cuantia or 'sin cuantía'}\n"
              f"Actuaciones (de la más reciente a la más antigua):\n{actuaciones}\n")
     if tipo == TipoBorrador.CONTESTACION:
-        pedido = ("Redacta el cuerpo de la CONTESTACIÓN DE LA DEMANDA con estas secciones: "
-                  "I. PRONUNCIAMIENTO SOBRE LOS HECHOS, II. OPOSICIÓN A LAS PRETENSIONES, "
-                  "III. EXCEPCIONES DE MÉRITO (propón las que razonablemente apliquen al asunto, explicando "
-                  "cada una), IV. PRUEBAS, V. ANEXOS, VI. NOTIFICACIONES. Como no tienes el texto de la "
-                  "demanda, en los hechos deja la estructura para pronunciarse uno por uno con [COMPLETAR].")
+        # Los títulos van solos en su propia lista y las indicaciones aparte: un modelo pequeño copia
+        # literalmente lo que esté pegado al título.
+        pedido = ("Redacta solo el cuerpo de la CONTESTACIÓN DE LA DEMANDA. Empieza exactamente con la línea "
+                  "\"I. PRONUNCIAMIENTO SOBRE LOS HECHOS\", sin preámbulo, y usa estos títulos tal cual, en este "
+                  "orden:\n" + "\n".join(SECCIONES_CONTESTACION) + "\n\n"
+                  "Indicaciones: en la sección I, como no tienes el texto de la demanda, deja la estructura para "
+                  "pronunciarse hecho por hecho con [COMPLETAR]. En la sección III propón las excepciones que "
+                  "razonablemente apliquen al asunto y explica cada una en dos o tres frases. Usa el asunto tal "
+                  "como está escrito. No escribas despedida ni firma.")
     else:
         pedido = ("Redacta un RESUMEN PARA EL CLIENTE, en lenguaje sencillo y sin tecnicismos: en qué va el "
                   "proceso, qué significan las últimas actuaciones, qué sigue y qué necesitamos del cliente. "

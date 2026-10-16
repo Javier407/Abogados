@@ -80,10 +80,11 @@ export class HonorariosComponent implements OnInit {
     return this.honorarios.reduce((s, h) => s + (h.saldo ?? 0), 0);
   }
 
-  elegir(h: Honorario): void {
+  /** limpiar = false conserva el mensaje (p. ej. "Pago registrado") al refrescar el acuerdo. */
+  elegir(h: Honorario, limpiar = true): void {
     this.seleccionado = h;
     this.pago = this.pagoVacio();
-    this.mensaje = this.error = '';
+    if (limpiar) this.mensaje = this.error = '';
     this.api.pagos(h.idHonorario).subscribe({ next: p => this.pagos = p, error: e => this.error = mensajeDeError(e) });
   }
 
@@ -96,7 +97,7 @@ export class HonorariosComponent implements OnInit {
         this.mensaje = `Pago registrado. ${act.saldo != null ? 'Saldo: $' + act.saldo.toLocaleString('es-CO') + '.' : ''}`
           + (act.estado === 'CUMPLIDO' ? ' El acuerdo quedó pagado por completo.' : '');
         this.cargar();
-        this.elegir(act);
+        this.elegir(act, false);
       },
       error: e => this.error = mensajeDeError(e)
     });
@@ -133,7 +134,7 @@ export class HonorariosComponent implements OnInit {
         this.nuevo = this.acuerdoVacio();
         this.filtroEstado = 'VIGENTE';
         this.cargar();
-        this.elegir(h);
+        this.elegir(h, false);
       },
       error: e => this.error = mensajeDeError(e)
     });

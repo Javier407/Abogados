@@ -19,7 +19,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F1 | Terminada: criterio comprobado (cliente, abogado y proceso creados desde Angular y verificados en PostgreSQL; evento `proceso.creado` publicado) | 2026-10-15 |
 | F2 | Terminada: un término que vence en 3 días hábiles generó el correo (Mailpit) y el aviso en la app, en vivo | 2026-10-15 |
 | F3 | Terminada: un auto nuevo (fuente simulada) en el proceso 34 quedó registrado como providencia y llegó por Telegram (@javier_asistente_ia_bot), correo y app | 2026-10-16 |
-| F4 | En curso: código escrito; falta compilar, probar y desplegar en el servidor (se desconectó durante el trabajo) | 2026-10-16 |
+| F4 | Terminada: borrador de contestación del proceso 13 generado desde la app con el modelo local (229 s) y pago de honorarios registrado desde la app | 2026-10-16 |
 | F5 | Pendiente | |
 
 ## F1: qué quedó y qué falta
@@ -92,3 +92,26 @@ Pendiente o decidido para después:
 - **Términos de uso del portal:** revisarlos antes de vigilar radicados reales. Los radicados de prueba no deben usar la fuente del portal (ADR 0005).
 - **Procesos creados antes de vigilancia:** se agregan solos al arrancar el servicio, como `MANUAL`.
 - **Responsable para los avisos:** se toma de `procesos` en el momento del aviso. Si `procesos` no responde, el evento se reintenta.
+
+## F4: qué quedó y qué falta
+
+Hecho:
+
+1. **`asistente-ia`** con Ollama local (`qwen2.5:3b`, ADR 0006):
+   - Contestación de la demanda (solo si el cliente es demandado o accionado) y resumen del proceso para el cliente.
+   - El encabezado y la firma los pone el sistema; el texto llega a la pantalla por partes.
+   - Si no hay modelo, se entrega la plantilla.
+2. **`gabinete`:**
+   - Peritos.
+   - Tarifas de referencia en pesos con el salario mínimo del año.
+   - Acuerdos de honorarios: reglas por forma de cobro, máximo 50 %, uno por proceso y el proceso debe ser del mismo cliente.
+   - Pagos: en FIJO no se puede pagar más que el saldo, y al completarlo el acuerdo pasa a CUMPLIDO.
+3. **Frontend:** asistente en cada proceso, página de honorarios y pagos con tarifas, y página de peritos.
+
+Pendiente o decidido para después:
+
+- **Calidad del modelo:** con un modelo de 3B en CPU el borrador es un **esqueleto para editar**. Repite frases entre secciones, a veces supone hechos y cambia palabras del asunto ("contrato real" por "contrato realidad").
+  - Tarda unos 4 minutos.
+  - Para mejorar: un modelo más grande (más lento y más RAM), una GPU, o un proveedor externo con datos anonimizados (decisión de Javier, ADR 0006).
+- **Pruebas periciales:** se registran en `procesos.pruebas` con `id_perito`, pero todavía no hay pantalla para asignar un perito a una prueba.
+- **Pagos:** no se anulan desde la app. Un pago mal registrado se corrige en la base (pendiente: anulación con motivo).
