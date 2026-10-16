@@ -20,7 +20,7 @@
       @for (e of estados; track e) { <option [value]="e">{{ etiqueta(e) }}</option> }
     </select>
     <button class="btn btn-secondary" type="button" (click)="limpiar()">Limpiar</button>
-    <a class="btn btn-primary" routerLink="/procesos/nuevo">Nuevo proceso</a>
+    @if (creaProcesos) { <a class="btn btn-primary" routerLink="/procesos/nuevo">Nuevo proceso</a> }
   </div>
 
   <div class="resumen-bar">

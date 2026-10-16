@@ -29,6 +29,7 @@ export class SesionService implements OnDestroy {
   private stream: EventSource | null = null;
 
   constructor() {
+    try { localStorage.removeItem('gj.idPersona'); } catch { /* resto del selector "Ver como" (antes de F5) */ }
     effect(() => {
       const id = this.idPersona();
       if (id) {

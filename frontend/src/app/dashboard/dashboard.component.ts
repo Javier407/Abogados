@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { ApiService, mensajeDeError } from '../core/api.service';
+import { AuthService, DIRECCION, EDITAN_CLIENTES, JURIDICO } from '../core/auth.service';
 import { Proceso, etiqueta } from '../core/modelos';
 
 interface ConteoRama { rama: string; activos: number; total: number; }
@@ -17,6 +18,11 @@ interface ConteoRama { rama: string; activos: number; total: number; }
 })
 export class DashboardComponent implements OnInit {
   private api = inject(ApiService);
+  private auth = inject(AuthService);
+  // Accesos rápidos solo para lo que el rol puede registrar (el gateway igual lo exige)
+  protected readonly creaProcesos = this.auth.tiene(...JURIDICO);
+  protected readonly creaClientes = this.auth.tiene(...EDITAN_CLIENTES);
+  protected readonly creaAbogados = this.auth.tiene(...DIRECCION);
   readonly etiqueta = etiqueta;
 
   cargando = true;

@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
+import { AuthService, JURIDICO } from '../../core/auth.service';
 import { ESTADOS, Proceso, Rama, etiqueta } from '../../core/modelos';
 
 @Component({
@@ -15,6 +16,7 @@ import { ESTADOS, Proceso, Rama, etiqueta } from '../../core/modelos';
 })
 export class ProcesosComponent implements OnInit {
   private api = inject(ApiService);
+  protected readonly creaProcesos = inject(AuthService).tiene(...JURIDICO);
   readonly estados = ESTADOS;
   readonly etiqueta = etiqueta;
 

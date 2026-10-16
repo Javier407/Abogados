@@ -14,9 +14,9 @@ class LimiteIntentosTest {
 	@Test
 	void permiteHastaElMaximoPorIpYSeRecuperaAlPasarLaVentana() {
 		AutenticacionTest.MutableReloj reloj = new AutenticacionTest.MutableReloj(Instant.parse("2026-10-16T15:00:00Z"));
-		LimiteIntentosPorIp limite = new LimiteIntentosPorIp(reloj);
+		LimiteIntentosPorIp limite = new LimiteIntentosPorIp(reloj, 20);
 
-		for (int i = 0; i < LimiteIntentosPorIp.MAXIMO; i++) {
+		for (int i = 0; i < limite.maximo(); i++) {
 			assertThat(limite.permitir("100.64.0.9")).isTrue();
 		}
 		assertThat(limite.permitir("100.64.0.9")).isFalse();

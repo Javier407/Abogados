@@ -82,23 +82,31 @@
       }
     </div>
 
+    @if (creaProcesos || creaClientes || creaAbogados) {
     <div class="accesos-rapidos">
       <h2>Accesos rápidos</h2>
       <div class="accesos-grid">
-        <a routerLink="/procesos/nuevo" class="acceso-card">
-          <span class="acceso-title">Nuevo proceso</span>
-          <span class="acceso-desc">Registrar un proceso por su radicado</span>
-        </a>
-        <a routerLink="/clientes" class="acceso-card">
-          <span class="acceso-title">Registrar cliente</span>
-          <span class="acceso-desc">Persona natural o jurídica</span>
-        </a>
-        <a routerLink="/abogados" class="acceso-card">
-          <span class="acceso-title">Registrar abogado</span>
-          <span class="acceso-desc">Con tarjeta profesional y área</span>
-        </a>
+        @if (creaProcesos) {
+          <a routerLink="/procesos/nuevo" class="acceso-card">
+            <span class="acceso-title">Nuevo proceso</span>
+            <span class="acceso-desc">Registrar un proceso por su radicado</span>
+          </a>
+        }
+        @if (creaClientes) {
+          <a routerLink="/clientes" class="acceso-card">
+            <span class="acceso-title">Registrar cliente</span>
+            <span class="acceso-desc">Persona natural o jurídica</span>
+          </a>
+        }
+        @if (creaAbogados) {
+          <a routerLink="/abogados" class="acceso-card">
+            <span class="acceso-title">Registrar abogado</span>
+            <span class="acceso-desc">Con tarjeta profesional y área</span>
+          </a>
+        }
       </div>
     </div>
+    }
 
   }
 

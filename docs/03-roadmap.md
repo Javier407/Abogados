@@ -123,7 +123,7 @@ Hecho:
 1. **`identidad`** (Spring Boot, ADR 0004):
    - Inicio de sesión con usuario o correo; contraseñas con BCrypt.
    - JWT RS256 de 8 h firmado con una llave que vive solo en el servidor (`infra/secretos/`, fuera de git); JWKS pública para el gateway.
-   - 5 fallos seguidos bloquean la cuenta 15 min (423); más de 20 intentos por IP en 10 min dan 429. Mensaje de error genérico y tiempo de respuesta igual para usuarios que no existen.
+   - 5 fallos seguidos bloquean la cuenta 15 min (423, desde el 5.º fallo); más de 100 intentos por IP en 10 min dan 429 (freno global: ver la brecha 7 de la evaluación). Mensaje de error genérico y tiempo de respuesta igual para usuarios que no existen.
    - Bitácora de ingresos (`identidad.ingresos`, migración 003) y cambio de contraseña con política (10+ caracteres, letras y números, sin el usuario ni el documento).
 2. **`gateway`:**
    - Toda `/api/**` exige token salvo el login; tabla de permisos por rol (`PoliticaAcceso`); lo que no está en la tabla se niega.

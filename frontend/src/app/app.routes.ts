@@ -14,9 +14,10 @@ import { VigilanciaComponent } from './pages/vigilancia/vigilancia.component';
 import { LoginComponent } from './pages/login/login.component';
 import { CuentaComponent } from './pages/cuenta/cuenta.component';
 import { conRol, conSesion } from './core/auth.guard';
-import { INTERNOS, JURIDICO_Y_DEPENDIENTES, VEN_HONORARIOS } from './core/auth.service';
+import { INTERNOS, JURIDICO, JURIDICO_Y_DEPENDIENTES, VEN_HONORARIOS } from './core/auth.service';
 
 const personal = conRol(...INTERNOS);
+const juridico = conRol(...JURIDICO);
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent, title: 'Iniciar sesión' },
@@ -28,8 +29,8 @@ export const routes: Routes = [
       { path: 'cuenta', component: CuentaComponent, title: 'Mi cuenta' },
       { path: '', component: DashboardComponent, title: 'Panel', canActivate: [personal] },
       { path: 'procesos', component: ProcesosComponent, title: 'Procesos', canActivate: [personal] },
-      { path: 'procesos/nuevo', component: ProcesoFormComponent, title: 'Nuevo proceso', canActivate: [personal] },
-      { path: 'procesos/:id/editar', component: ProcesoFormComponent, title: 'Editar proceso', canActivate: [personal] },
+      { path: 'procesos/nuevo', component: ProcesoFormComponent, title: 'Nuevo proceso', canActivate: [juridico] },
+      { path: 'procesos/:id/editar', component: ProcesoFormComponent, title: 'Editar proceso', canActivate: [juridico] },
       { path: 'clientes', component: ClientesComponent, title: 'Clientes', canActivate: [personal] },
       { path: 'abogados', component: AbogadosComponent, title: 'Abogados', canActivate: [personal] },
       { path: 'terminos', component: TerminosComponent, title: 'Términos', canActivate: [personal] },

@@ -106,8 +106,16 @@ class SeguridadTest {
 
 	@Test
 	void lasCabecerasDeIdentidadSeReescribenConLasDelToken() {
-		ServerWebExchange falsificado = MockServerWebExchange.from(MockServerHttpRequest.get("/api/procesos")
-				.header("X-Usuario-Id", "1").header("X-Usuario-Roles", "ADMIN"));
+		// Como en producción (Netty), las cabeceras de la petición original son de solo lectura.
+		MockServerHttpRequest original = MockServerHttpRequest.get("/api/procesos")
+				.header("X-Usuario-Id", "1").header("X-Usuario-Roles", "ADMIN").header("Accept", "application/json").build();
+		ServerWebExchange falsificado = MockServerWebExchange.from(original).mutate()
+				.request(new org.springframework.http.server.reactive.ServerHttpRequestDecorator(original) {
+					@Override
+					public org.springframework.http.HttpHeaders getHeaders() {
+						return org.springframework.http.HttpHeaders.readOnlyHttpHeaders(original.getHeaders());
+					}
+				}).build();
 		Jwt jwt = Jwt.withTokenValue("t").header("alg", "RS256").subject("1023987456").claim("roles", "ABOGADO").build();
 		JwtAuthenticationToken token = new JwtAuthenticationToken(jwt, java.util.List.of(new SimpleGrantedAuthority("ROL_ABOGADO")));
 
@@ -118,6 +126,7 @@ class SeguridadTest {
 		var sinToken = IdentidadEnCabeceras.sinIdentidad(falsificado).getRequest().getHeaders();
 		assertThat(sinToken.containsKey("X-Usuario-Id")).isFalse();
 		assertThat(sinToken.containsKey("X-Usuario-Roles")).isFalse();
+		assertThat(sinToken.getFirst("Accept")).isEqualTo("application/json");     // las demás se conservan
 	}
 
 }

@@ -36,4 +36,4 @@ Servicio `identidad` con **Spring Security**:
 - **Firma:** RS256 en lugar de HMAC. Solo `identidad` tiene la llave privada (archivo montado de solo lectura). El gateway descarga la pública de `/.well-known/jwks.json`, así que no comparte ningún secreto.
 - **Roles:** se agregó `ADMINISTRATIVO` (contador, secretaria). Los permisos por ruta están en una sola tabla del gateway (`PoliticaAcceso`); lo que no aparece se niega.
 - **Vida del token:** 8 h (una jornada), **sin** *refresh token* ni revocación todavía. Es aceptable dentro de la VPN; queda como prioridad 2 del plan de mejora (`docs/04-evaluacion-iso25010.md`) antes de publicar fuera de ella.
-- **Fuerza bruta:** bloqueo por cuenta (5 fallos → 15 min) y límite por IP (20 intentos / 10 min, en memoria: válido con una sola instancia).
+- **Fuerza bruta:** bloqueo por cuenta (5 fallos → 15 min) y límite por IP (100 intentos / 10 min, configurable con `login.maximo-por-ip`, en memoria: válido con una sola instancia). En el servidor Tailscale enmascara la IP de origen, así que el límite actúa como freno global; por eso no es más bajo.

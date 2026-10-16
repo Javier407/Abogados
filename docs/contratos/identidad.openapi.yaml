@@ -43,7 +43,7 @@ paths:
           headers:
             Retry-After: { schema: { type: integer }, description: Segundos hasta el desbloqueo }
         "429":
-          description: Más de 20 intentos desde la misma IP en 10 minutos
+          description: Más de 100 intentos (configurable) desde la misma IP en 10 minutos
           headers:
             Retry-After: { schema: { type: integer } }
   /auth/yo:

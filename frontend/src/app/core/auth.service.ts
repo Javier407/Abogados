@@ -20,6 +20,8 @@ export const INTERNOS = ['ADMIN', 'SOCIO', 'ABOGADO', 'DEPENDIENTE', 'ADMINISTRA
 export const JURIDICO = ['ADMIN', 'SOCIO', 'ABOGADO'];
 export const JURIDICO_Y_DEPENDIENTES = ['ADMIN', 'SOCIO', 'ABOGADO', 'DEPENDIENTE'];
 export const VEN_HONORARIOS = ['ADMIN', 'SOCIO', 'ABOGADO', 'ADMINISTRATIVO'];
+export const EDITAN_CLIENTES = ['ADMIN', 'SOCIO', 'ABOGADO', 'ADMINISTRATIVO'];
+export const DIRECCION = ['ADMIN', 'SOCIO'];
 
 /**
  * Sesión del usuario. El token se guarda en sessionStorage: dura lo que la pestaña y no se comparte

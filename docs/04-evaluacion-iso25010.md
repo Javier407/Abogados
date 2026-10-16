@@ -27,7 +27,7 @@ La característica más débil del laboratorio (4/10) motivó la fase F5. Se mid
 |---|---|---|---|---|---|
 | Autenticidad | Rutas de la API que exigen token válido | Todas las `/api/**` menos `POST /api/auth/login` | 100 % | ✔ | `ConfiguracionSeguridad` (gateway): la regla por defecto es `denyAll`. `SeguridadTest`: sin token → 401; token falso o de otro emisor → 401. |
 | Autenticidad | Firma del token y verificación | RS256, clave de 2048 bits, verificación por JWKS y emisor | Algoritmo asimétrico | ✔ | `EmisorJwtRsa`. `AutenticacionTest` verifica la firma con la JWKS publicada y que la JWKS no contiene partes privadas. |
-| Autenticidad | Resistencia a fuerza bruta | 5 fallos → cuenta bloqueada 15 min (423). Más de 20 intentos por IP en 10 min → 429 | Bloqueo + límite | ✔ | `Usuario.registrarFallo`, `LimiteIntentosPorIp`, `LimiteIntentosTest`, `AuthRecursoTest`. |
+| Autenticidad | Resistencia a fuerza bruta | 5 fallos → cuenta bloqueada 15 min (423; comprobado en el servidor). Más de 100 intentos por IP en 10 min → 429 (hoy actúa como freno global, ver brecha 7) | Bloqueo + límite | ✔ | `Usuario.registrarFallo`, `LimiteIntentosPorIp`, `LimiteIntentosTest`, `AuthRecursoTest`. |
 | Confidencialidad | Contraseñas almacenadas sin texto plano | BCrypt (costo 10); ningún endpoint devuelve el hash | 100 % | ✔ | `CifradorBCrypt`, `AuthRecurso.Perfil` (sin hash). |
 | Confidencialidad | Control de acceso por rol | 6 roles; tabla de reglas en el gateway. Por defecto se niega | Mínimo privilegio | ✔ | `PoliticaAcceso`, matriz en `SeguridadTest`: CLIENTE → 403 en la API interna; DEPENDIENTE → 403 en honorarios. |
 | Confidencialidad | Acceso a datos de otra persona | Los avisos solo se ven si `idPersona` = usuario del token (salvo ADMIN) | 0 fugas | ✔ | `persona_autorizada` en `notificaciones`, pruebas 403 en `test_api.py`. |
@@ -47,8 +47,9 @@ La característica más débil del laboratorio (4/10) motivó la fase F5. Se mid
 4. **Sin segundo factor (MFA)** ni pantalla de administración de usuarios. Las cuentas se crean por SQL.
 5. **Token en la URL** solo para el canal de avisos en vivo (EventSource no admite cabeceras). Se mitiga: el gateway lo quita antes de reenviar y nginx no registra esa ruta.
 6. **Sin análisis de dependencias** (Dependabot / OWASP Dependency-Check) en el pipeline.
+7. **IP real del cliente no disponible.** Tailscale enmascara (SNAT) el tráfico que reenvía a las redes de Docker, así que todos los clientes llegan como `172.20.0.1`. La bitácora de ingresos guarda la IP del proxy y el límite por IP actúa como freno global de ráfagas (por eso es de 100 y no de 20). Se puede corregir publicando la app con `tailscale serve` en la VM o desactivando el SNAT de Tailscale, con cuidado de no perder el acceso.
 
-**Nota de Seguridad: 8 / 10.** Se cumplen 12 de 13 métricas. La única que no se cumple (no repudio) y las brechas 1 a 6 son de severidad media o baja dentro de una VPN privada. No queda ninguna brecha alta del laboratorio: autenticación, contraseñas en texto plano y credenciales en el código están resueltas. No se da 9 porque faltan revocación, MFA y defensa en profundidad entre servicios.
+**Nota de Seguridad: 8 / 10.** Se cumplen 12 de 13 métricas. La única que no se cumple (no repudio) y las brechas 1 a 7 son de severidad media o baja dentro de una VPN privada. No queda ninguna brecha alta del laboratorio: autenticación, contraseñas en texto plano y credenciales en el código están resueltas. No se da 9 porque faltan revocación, MFA y defensa en profundidad entre servicios.
 
 ## 2. Métricas de las demás características
 
