@@ -20,7 +20,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F2 | Terminada: un término que vence en 3 días hábiles generó el correo (Mailpit) y el aviso en la app, en vivo | 2026-10-15 |
 | F3 | Terminada: un auto nuevo (fuente simulada) en el proceso 34 quedó registrado como providencia y llegó por Telegram (@javier_asistente_ia_bot), correo y app | 2026-10-16 |
 | F4 | Terminada: borrador de contestación del proceso 13 generado desde la app con el modelo local (229 s) y pago de honorarios registrado desde la app | 2026-10-16 |
-| F5 | Código terminado y pipeline en verde; Seguridad 8/10 en la [evaluación](04-evaluacion-iso25010.md). Falta desplegar y verificar en el servidor | 2026-10-16 |
+| F5 | Terminada: en el servidor las 13 rutas de la API responden 401 sin token (también con cabeceras falsas o token `alg none`); 403 por rol; bloqueo al 5.º fallo; pipeline en verde; Seguridad 8/10 en la [evaluación](04-evaluacion-iso25010.md) | 2026-10-16 |
 
 ## F1: qué quedó y qué falta
 
@@ -134,6 +134,8 @@ Hecho:
 5. **nginx:** CSP y cabeceras de seguridad, sin versión, IP real del cliente; la ruta de avisos en vivo (token en la URL) no se registra.
 6. **CI** en GitHub Actions: cada servicio Java y Python, el frontend y la validación de `docker-compose.yml`. Los errores se publican como anotaciones.
 7. **Evaluación ISO/IEC 25010** en [`04-evaluacion-iso25010.md`](04-evaluacion-iso25010.md): Seguridad 4 → 8; total 7,65 → 8,15.
+
+**Corregido al desplegar:** el gateway respondía 500 en toda la API porque intentaba borrar cabeceras en la petición real de Netty, que son de solo lectura (las pruebas usaban peticiones simuladas, que sí se pueden modificar). Ahora arma una copia, y una prueba reproduce las cabeceras de solo lectura.
 
 Pendiente o decidido para después (detalle en el plan de mejora de la evaluación):
 

@@ -107,11 +107,11 @@ La característica más débil del laboratorio (4/10) motivó la fase F5. Se mid
 
 ## 5. Verificación en el servidor
 
-Pruebas manuales del criterio de F5 contra el despliegue real (`http://100.65.152.112:8090`). Los resultados se registran en `docs/03-roadmap.md` al desplegar.
+Pruebas del criterio de F5 contra el despliegue real (`http://100.65.152.112:8090` y el gateway en `:8091`), hechas el 2026-10-16 con un script y en el navegador.
 
-- [ ] Todas las rutas `/api/*` responden 401 sin token, también con cabeceras `X-Usuario-Id` falsas.
-- [ ] El inicio de sesión funciona con un usuario de prueba; DEPENDIENTE recibe 403 en honorarios.
-- [ ] 5 fallos seguidos devuelven 423; muchos intentos desde una IP devuelven 429.
-- [ ] El canal de avisos en vivo funciona con token y el token no aparece en los logs.
-- [ ] `curl -I` muestra las cabeceras de seguridad.
-- [ ] Solo están publicados 8090, 8091 y 8092; Mailpit pide usuario y clave.
+- [x] Todas las rutas `/api/*` responden 401 sin token, también con cabeceras `X-Usuario-Id` falsas o con un token `alg: none` (13 de 13, por nginx y directo al gateway).
+- [x] El inicio de sesión funciona con un usuario de prueba; DEPENDIENTE recibe 403 en honorarios y en avisos ajenos; CLIENTE recibe 403 en procesos. En la app, el menú y los accesos cambian según el rol.
+- [x] El 5.º fallo seguido bloquea la cuenta (423, `Retry-After: 900`), aun con la contraseña correcta después. El 429 por IP se probó solo en pruebas automáticas (ver brecha 7).
+- [x] El canal de avisos en vivo funciona con token (200, `text/event-stream`); sin token, 401. El token en la URL no se acepta en otras rutas y no aparece en ningún log (0 coincidencias).
+- [x] Las cabeceras de seguridad están presentes y nginx no muestra su versión.
+- [x] Del proyecto solo se publican 8090, 8091 y 8092; Mailpit responde 401 sin credenciales. Cada petición deja una línea `AUDITORIA` y cada ingreso queda en `identidad.ingresos`.
