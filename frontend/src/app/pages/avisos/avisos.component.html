@@ -1,0 +1,47 @@
+<div class="modulo-container">
+
+  <div class="page-header">
+    <h1>Avisos</h1>
+    <p>Términos por vencer y vencidos. Llegan también por correo; aquí aparecen en vivo.</p>
+  </div>
+
+  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+
+  @if (!sesion.idPersona()) {
+    <div class="empty-state">Elija en el menú lateral ("Ver como") el abogado cuyos avisos quiere ver.</div>
+  } @else {
+    <div class="filtros">
+      <span class="resumen-chip">Sin leer: <strong>{{ sesion.noLeidos() }}</strong></span>
+      <button class="btn btn-secondary btn-sm" type="button" (click)="leerTodos()" [disabled]="sesion.noLeidos() === 0">
+        Marcar todos como leídos
+      </button>
+    </div>
+
+    @if (cargando && avisos.length === 0) {
+      <div class="empty-state">Cargando avisos...</div>
+    } @else if (avisos.length === 0) {
+      <div class="empty-state">No hay avisos para {{ sesion.persona()?.nombres }}.</div>
+    } @else {
+      <ul class="lista-avisos">
+        @for (a of avisos; track a.idNotificacion) {
+          <li class="aviso" [class.no-leido]="!a.leida" [class.urgente]="a.evento === 'termino.vencido'">
+            <div class="aviso-texto">
+              <strong>{{ a.titulo }}</strong>
+              <span>{{ a.mensaje }}</span>
+              <small>{{ a.creada | date:'EEEE d MMM, h:mm a' }}</small>
+            </div>
+            <div class="acciones-celda">
+              @if (a.referencia.id_proceso) {
+                <a class="btn btn-secondary btn-sm" [routerLink]="['/procesos', a.referencia.id_proceso, 'editar']" (click)="leer(a)">Ver proceso</a>
+              }
+              @if (!a.leida) {
+                <button class="btn btn-primary btn-sm" type="button" (click)="leer(a)">Leído</button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  }
+
+</div>

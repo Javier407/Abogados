@@ -104,33 +104,46 @@ docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/consu
 - Usuarios de prueba de la aplicación (tabla `identidad.usuarios`): contraseña `Prueba2026*`.
 - Para recargar desde cero: `docker compose down -v && docker compose up -d` (borra el volumen).
 
-## Fase 1: microservicios funcionando
+## Microservicios (fases 1 y 2)
 
 ```
-navegador ──► frontend (nginx :8090) ──/api──► gateway (:8091) ─┬─► gabinete  (clientes, abogados, sedes)
-                                                                 └─► procesos  (procesos, radicado, catálogos) ──► RabbitMQ
-                                                gabinete y procesos ──► PostgreSQL (un esquema cada uno)
+navegador ──► frontend (nginx :8090) ──/api──► gateway (:8091) ─┬─► gabinete       (clientes, abogados, sedes)
+                                                                 ├─► procesos       (procesos, radicado, términos, calendario)
+                                                                 └─► notificaciones (avisos en la app, en vivo por SSE)
+ procesos ──termino.por_vencer / termino.vencido──► RabbitMQ ──► notificaciones ──► correo (Mailpit :8092 en pruebas)
+ todos ──► PostgreSQL (un esquema cada uno)
 ```
 
 | Carpeta | Qué es | Tecnología |
 |---|---|---|
-| [`servicios/procesos`](servicios/procesos) | Procesos con validación del radicado (23 dígitos y despacho registrado), responsable, catálogos; publica `proceso.creado` | Spring Boot 3.3 · Java 17 · JDBC |
+| [`servicios/procesos`](servicios/procesos) | Procesos con validación del radicado (23 dígitos y despacho registrado), responsable y catálogos. Términos con vencimiento en días hábiles (festivos, Semana Santa y vacancia), calendario judicial y revisión diaria a las 7:00 que publica los avisos | Spring Boot 3.3 · Java 17 · JDBC |
 | [`servicios/gabinete`](servicios/gabinete) | Clientes y abogados (evolución de este laboratorio: `javax` → `jakarta`, MySQL → PostgreSQL) | Spring Boot 3.3 · Java 17 · JPA |
+| [`servicios/notificaciones`](servicios/notificaciones) | Recibe los avisos de términos, los guarda en la app (en vivo con SSE) y envía el correo; no repite un aviso el mismo día | Python 3.12 · FastAPI · aio-pika |
 | [`servicios/gateway`](servicios/gateway) | Entrada única: `/api/<recurso>` → servicio dueño | Spring Cloud Gateway |
-| [`frontend`](frontend) | Panel, procesos, clientes y abogados (basado en `gestion-juridica-frontend`) | Angular 21 · nginx |
+| [`frontend`](frontend) | Panel, términos, calendario, avisos, procesos, clientes y abogados (basado en `gestion-juridica-frontend`) | Angular 21 · nginx |
 | [`docs/contratos`](docs/contratos) | OpenAPI de cada servicio y formato de los eventos | |
 
-Cada servicio Java tiene arquitectura hexagonal: `dominio` (reglas, sin frameworks), `aplicacion` (casos de uso) e `infraestructura` (REST, base de datos, HTTP y RabbitMQ).
+Cada servicio tiene arquitectura hexagonal: `dominio` (reglas, sin frameworks), `aplicacion` (casos de uso) e `infraestructura` (REST, base de datos, HTTP y RabbitMQ).
 
 **Levantar todo** (solo necesita Docker; Maven y Node corren dentro de los contenedores):
 
 ```bash
 cd infra
 cp .env.example .env              # escribir las claves
-docker compose up -d --build      # compila, prueba y arranca los 6 contenedores
+docker compose up -d --build      # compila, prueba y arranca los 8 contenedores
 ```
 
-Luego abrir http://localhost:8090 (en el servidor: http://100.65.152.112:8090). El gateway queda en el puerto 8091.
+Luego abrir http://localhost:8090 (en el servidor: http://100.65.152.112:8090). El gateway queda en el puerto 8091 y el buzón de pruebas Mailpit, donde llegan los correos de aviso, en el 8092.
+
+En la app, elegir en "Ver como" (abajo en el menú) el abogado cuyos avisos se quieren ver; es provisional hasta el inicio de sesión de F5. Los avisos salen solos cada día hábil a las 7:00, o al pulsar **Enviar avisos ahora** en Términos.
+
+Los correos van a Mailpit y no salen a internet. Para enviarlos de verdad, definir `SMTP_*` en `infra/.env` (ver `.env.example`), nunca con la base de pruebas: sus correos son ficticios.
+
+**Base de datos ya creada:** las migraciones de `db/migraciones/` se aplican solas en una base nueva. En una existente:
+
+```bash
+docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/migraciones/001-f2-terminos-y-avisos.sql
+```
 
 **Desarrollo del frontend** con recarga en vivo, contra el gateway del servidor:
 
@@ -144,12 +157,13 @@ npx ng serve                      # http://localhost:4200, /api va al gateway (p
 
 | Dónde | Cuántas | Qué cubren |
 |---|---|---|
-| `servicios/procesos` | 35 | Radicado, reglas del proceso, casos de uso con dobles en memoria, API (códigos 400/404/409/422/503) |
+| `servicios/procesos` | 50 | Radicado, reglas del proceso, calendario judicial (festivos, Semana Santa, vacancia), términos y revisión de avisos, API (400/404/409/422/503) |
+| `servicios/notificaciones` | 24 | Lectura de eventos, redacción, canales, no repetir avisos, fallos de correo y de gabinete, API y avisos en vivo |
 | `servicios/gabinete` | 25 | Reglas de clientes y abogados, casos de uso, API y persistencia JPA sobre H2 |
 | `servicios/gateway` | 1 | Rutas hacia cada servicio |
 | `frontend` | 5 | Arranque de la app, etiquetas y mensajes de error |
 
-Las pruebas Java se ejecutan solas al construir la imagen (`docker compose build`). Las del frontend, con `npx ng test --watch=false`.
+Las pruebas Java y Python se ejecutan solas al construir cada imagen (`docker compose build`); si fallan, no hay imagen. Las del frontend, con `npx ng test --watch=false`.
 
 ## Documento del laboratorio
 

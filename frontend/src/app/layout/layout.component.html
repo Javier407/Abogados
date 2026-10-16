@@ -8,15 +8,39 @@
 
     <nav class="sidebar-nav" aria-label="Menú principal">
       <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item">Panel</a>
+      <a routerLink="/terminos" routerLinkActive="active" class="nav-item">Términos</a>
+      <a routerLink="/calendario" routerLinkActive="active" class="nav-item">Calendario</a>
       <a routerLink="/procesos" routerLinkActive="active" class="nav-item">Procesos</a>
       <a routerLink="/clientes" routerLinkActive="active" class="nav-item">Clientes</a>
       <a routerLink="/abogados" routerLinkActive="active" class="nav-item">Abogados</a>
       <a routerLink="/pagos" routerLinkActive="active" class="nav-item">Pagos</a>
+      <a routerLink="/avisos" routerLinkActive="active" class="nav-item">
+        Avisos
+        @if (sesion.noLeidos() > 0) { <span class="contador" aria-label="avisos sin leer">{{ sesion.noLeidos() }}</span> }
+      </a>
     </nav>
+
+    <div class="sidebar-usuario">
+      <label for="verComo">Ver como</label>
+      <select id="verComo" [ngModel]="sesion.idPersona()" (ngModelChange)="sesion.elegir($event)">
+        <option [ngValue]="null">— Elegir abogado —</option>
+        @for (a of sesion.abogados(); track a.idPersona) {
+          <option [ngValue]="a.idPersona">{{ a.nombres }} {{ a.apellidos }}</option>
+        }
+      </select>
+      <small>Provisional hasta el inicio de sesión (F5)</small>
+    </div>
   </aside>
 
   <main class="content">
     <router-outlet></router-outlet>
   </main>
+
+  @if (sesion.ultimoAviso(); as aviso) {
+    <a class="aviso-flotante" routerLink="/avisos" role="status">
+      <strong>{{ aviso.titulo }}</strong>
+      <span>{{ aviso.mensaje }}</span>
+    </a>
+  }
 
 </div>

@@ -17,7 +17,8 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 |---|---|---|
 | F0 | Terminada | 2026-10-15 |
 | F1 | Terminada: criterio comprobado (cliente, abogado y proceso creados desde Angular y verificados en PostgreSQL; evento `proceso.creado` publicado) | 2026-10-15 |
-| F2 – F5 | Pendientes | |
+| F2 | Terminada: un término que vence en 3 días hábiles generó el correo (Mailpit) y el aviso en la app, en vivo | 2026-10-15 |
+| F3 – F5 | Pendientes | |
 
 ## F1: qué quedó y qué falta
 
@@ -36,3 +37,29 @@ Pendiente o decidido para después:
 - Sin paginación en los listados: con ~30 procesos no hace falta. Se agrega cuando la firma pase de unos cientos.
 - Si RabbitMQ está caído al crear un proceso, el evento se pierde (queda en el log). Para garantizar la entrega se puede usar una tabla *outbox* en F3, cuando `vigilancia` lo consuma.
 - Sin autenticación: el gateway está abierto dentro de la VPN. Se agrega en F5.
+
+## F2: qué quedó y qué falta
+
+Hecho:
+
+1. **Calendario judicial** en `procesos`:
+   - Cuenta en días hábiles, sin fines de semana, festivos, Semana Santa ni vacancia del 20 de diciembre al 10 de enero.
+   - Hace las mismas cuentas que las funciones SQL y se niega a calcular más allá de los festivos cargados (hoy, hasta enero de 2028).
+   - Festivos 2027 en `db/migraciones/001-f2-terminos-y-avisos.sql`.
+2. **Términos:**
+   - Se registran por proceso con el vencimiento calculado: por defecto el responsable es el del proceso, la notificación no puede ser futura y no corren en procesos cerrados.
+   - Se pueden marcar cumplidos.
+   - Hay una agenda con su situación (vencido, por vencer, al día, cumplido).
+3. **Revisión diaria** (7:00, lunes a viernes) que publica `termino.por_vencer` (5 días hábiles o menos) y `termino.vencido` (vencidos hace 3 días hábiles o menos). También se puede lanzar a mano.
+4. **Servicio `notificaciones`** (Python):
+   - Aviso en la app y correo, con el correo de la ficha del abogado si no tiene preferencia.
+   - No repite el aviso en el mismo día y canal, y deja constancia de los correos fallidos.
+   - Avisos en vivo por SSE y evento `notificacion.enviada`.
+5. **Frontend:** agenda de términos, calendario mensual, avisos con contador en vivo, términos dentro de cada proceso y alerta en el panel.
+
+Pendiente o decidido para después:
+
+- **Correo:** en pruebas va a Mailpit (puerto 8092). El correo real se configura con `SMTP_*` en `.env` y no debe usarse con la base de pruebas.
+- **Persona que usa la app:** se elige en "Ver como" (provisional). El aviso de un término es para su responsable; los de apoyo no reciben aviso aún.
+- **Cálculo de términos:** los términos de referencia por tipo de proceso (`termino_contestacion_dias`) todavía no se proponen solos al crear el término; se escriben los días. Sigue pendiente validar los términos con un abogado.
+- **Festivos de 2028:** antes de diciembre de 2027 hay que cargarlos con una nueva migración. El sistema avisa con un error si faltan.

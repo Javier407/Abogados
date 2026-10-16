@@ -1,0 +1,70 @@
+<div class="modulo-container">
+
+  <div class="page-header">
+    <h1>Calendario judicial</h1>
+    <p>Vencimientos de términos y días en que no corren términos</p>
+  </div>
+
+  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+
+  <div class="filtros barra-mes">
+    <button class="btn btn-secondary btn-sm" type="button" (click)="mover(-1)" aria-label="Mes anterior">‹</button>
+    <h2 class="titulo-mes">{{ titulo }}</h2>
+    <button class="btn btn-secondary btn-sm" type="button" (click)="mover(1)" aria-label="Mes siguiente">›</button>
+    <button class="btn btn-secondary btn-sm" type="button" (click)="hoy()">Hoy</button>
+    <label class="resumen-chip">
+      <input type="checkbox" [(ngModel)]="soloMios" (ngModelChange)="cargar()" [disabled]="!sesion.idPersona()" />
+      Solo mis términos
+    </label>
+  </div>
+
+  <div class="leyenda">
+    <span><span class="punto punto-vencido"></span> Vencido</span>
+    <span><span class="punto punto-por-vencer"></span> Por vencer</span>
+    <span><span class="punto punto-al-dia"></span> Al día</span>
+    <span><span class="punto punto-cumplido"></span> Cumplido</span>
+    <span><span class="muestra-inhabil"></span> No corren términos</span>
+  </div>
+
+  <div class="mes" role="grid" [attr.aria-label]="titulo">
+    @for (d of diasSemana; track d) { <div class="encabezado" role="columnheader">{{ d }}</div> }
+    @for (semana of semanas; track $index) {
+      @for (dia of semana; track dia.fecha) {
+        <button type="button" class="dia" role="gridcell"
+          [class.fuera]="!dia.delMes" [class.hoy]="dia.hoy"
+          [class.inhabil]="dia.finDeSemana || dia.inhabil" [class.elegido]="seleccionado?.fecha === dia.fecha"
+          (click)="seleccionado = dia" [attr.aria-label]="dia.fecha + (dia.terminos.length ? ', ' + dia.terminos.length + ' término(s)' : '')">
+          <span class="numero">{{ dia.numero }}</span>
+          @if (dia.inhabil) { <span class="motivo">{{ dia.inhabil.descripcion }}</span> }
+          @for (t of dia.terminos.slice(0, 3); track t.idTermino) {
+            <span class="chip" [class]="'chip ' + claseTermino(t)">{{ t.descripcion }}</span>
+          }
+          @if (dia.terminos.length > 3) { <span class="mas">+{{ dia.terminos.length - 3 }} más</span> }
+        </button>
+      }
+    }
+  </div>
+
+  @if (seleccionado) {
+    <div class="card detalle">
+      <div class="card-header"><h2>{{ seleccionado.fecha }}{{ seleccionado.inhabil ? ' · ' + seleccionado.inhabil.descripcion : '' }}</h2></div>
+      <div class="card-body">
+        @if (seleccionado.terminos.length === 0) {
+          <p class="empty-state" style="padding: 8px">Ningún término vence este día.</p>
+        } @else {
+          <ul class="lista-detalle">
+            @for (t of seleccionado.terminos; track t.idTermino) {
+              <li>
+                <span class="chip" [class]="'chip ' + claseTermino(t)">{{ t.situacion }}</span>
+                <strong>{{ t.descripcion }}</strong> —
+                <a class="mono" [routerLink]="['/procesos', t.idProceso, 'editar']">{{ t.radicadoLegible }}</a>
+                <small> · {{ t.asunto }}</small>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  }
+
+</div>

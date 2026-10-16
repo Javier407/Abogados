@@ -3,7 +3,8 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Observable } from 'rxjs';
 
 import {
-  Abogado, AreaPractica, Cargo, Cliente, DesgloseRadicado, Despacho, Proceso, ProcesoSolicitud, Rama, Sede, TipoProceso
+  Abogado, AreaPractica, Aviso, Cargo, Cliente, DesgloseRadicado, Despacho, DiaInhabil, Proceso, ProcesoSolicitud, Rama,
+  Revision, Sede, Termino, TerminoSolicitud, TipoProceso, Vencimiento
 } from './modelos';
 
 /**
@@ -74,6 +75,49 @@ export class ApiService {
   }
   despachos(rama?: string): Observable<Despacho[]> {
     return this.http.get<Despacho[]>(`${API}/catalogos/despachos`, { params: filtros({ rama }) });
+  }
+
+  // ---------- términos y calendario ----------
+  terminos(f: { situacion?: string; idResponsable?: number | null; idProceso?: number; desde?: string; hasta?: string } = {}):
+    Observable<Termino[]> {
+    return this.http.get<Termino[]>(`${API}/terminos`, { params: filtros(f) });
+  }
+  crearTermino(idProceso: number, t: TerminoSolicitud): Observable<Termino> {
+    return this.http.post<Termino>(`${API}/procesos/${idProceso}/terminos`, t);
+  }
+  cumplirTermino(id: number): Observable<Termino> {
+    return this.http.post<Termino>(`${API}/terminos/${id}/cumplir`, {});
+  }
+  eliminarTermino(id: number): Observable<void> {
+    return this.http.delete<void>(`${API}/terminos/${id}`);
+  }
+  /** Ejecuta ya la revisión que se hace cada mañana a las 7:00. */
+  revisarTerminos(): Observable<Revision> {
+    return this.http.post<Revision>(`${API}/terminos/revision`, {});
+  }
+  diasInhabiles(desde: string, hasta: string): Observable<DiaInhabil[]> {
+    return this.http.get<DiaInhabil[]>(`${API}/calendario`, { params: filtros({ desde, hasta }) });
+  }
+  vencimiento(desde: string, dias: number): Observable<Vencimiento> {
+    return this.http.get<Vencimiento>(`${API}/calendario/vencimiento`, { params: filtros({ desde, dias }) });
+  }
+
+  // ---------- avisos ----------
+  avisos(idPersona: number, soloNoLeidas = false): Observable<Aviso[]> {
+    return this.http.get<Aviso[]>(`${API}/notificaciones`, { params: filtros({ idPersona, soloNoLeidas }) });
+  }
+  avisosNoLeidos(idPersona: number): Observable<{ noLeidas: number }> {
+    return this.http.get<{ noLeidas: number }>(`${API}/notificaciones/resumen`, { params: filtros({ idPersona }) });
+  }
+  marcarAvisoLeido(id: number, idPersona: number): Observable<unknown> {
+    return this.http.post(`${API}/notificaciones/${id}/leida`, {}, { params: filtros({ idPersona }) });
+  }
+  marcarAvisosLeidos(idPersona: number): Observable<unknown> {
+    return this.http.post(`${API}/notificaciones/leidas`, {}, { params: filtros({ idPersona }) });
+  }
+  /** URL del stream de avisos en vivo (Server-Sent Events). */
+  urlAvisosEnVivo(idPersona: number): string {
+    return `${API}/notificaciones/stream?idPersona=${idPersona}`;
   }
 }
 

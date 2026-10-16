@@ -27,3 +27,8 @@ eventos:
 management:
   endpoints.web.exposure.include: health,info
   endpoint.health.probes.enabled: true
+
+terminos:
+  dias-aviso: 5                 # avisar desde 5 días hábiles antes del vencimiento
+  dias-recordar-vencidos: 3     # y recordar los vencidos durante 3 días hábiles más
+  cron: "0 0 7 * * MON-FRI"     # revisión diaria, hora de Colombia

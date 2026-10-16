@@ -1,0 +1,88 @@
+openapi: 3.0.3
+info:
+  title: Servicio notificaciones
+  version: 0.1.0
+  description: |
+    Avisos a los abogados (F2: términos por vencer y vencidos). Escucha los eventos termino.* de RabbitMQ,
+    guarda un aviso dentro de la app y envía un correo. A través del gateway las rutas llevan el prefijo /api.
+
+    Hasta que exista el inicio de sesión (F5), la persona se indica con el parámetro idPersona.
+
+    Errores: `{ "error": "mensaje" }` (y `campos` si falla la validación de la petición).
+servers:
+  - url: http://localhost:8091/api
+    description: Gateway
+
+paths:
+  /notificaciones:
+    get:
+      summary: Avisos dentro de la app de una persona (los más recientes primero)
+      parameters:
+        - { name: idPersona, in: query, required: true, schema: { type: integer, format: int64 } }
+        - { name: soloNoLeidas, in: query, schema: { type: boolean, default: false } }
+        - { name: limite, in: query, schema: { type: integer, default: 50, minimum: 1, maximum: 200 } }
+      responses:
+        '200': { description: Avisos, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Aviso' } } } } }
+        '400': { $ref: '#/components/responses/Error' }
+  /notificaciones/resumen:
+    get:
+      summary: Cuántos avisos sin leer tiene la persona
+      parameters: [ { name: idPersona, in: query, required: true, schema: { type: integer, format: int64 } } ]
+      responses:
+        '200':
+          description: Resumen
+          content: { application/json: { schema: { type: object, properties: { idPersona: { type: integer }, noLeidas: { type: integer } } } } }
+  /notificaciones/{id}/leida:
+    post:
+      summary: Marca un aviso como leído
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: idPersona, in: query, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '200': { description: Leído }
+        '404': { $ref: '#/components/responses/Error' }
+  /notificaciones/leidas:
+    post:
+      summary: Marca como leídos todos los avisos de la persona
+      parameters: [ { name: idPersona, in: query, required: true, schema: { type: integer, format: int64 } } ]
+      responses:
+        '200': { description: Cuántos se marcaron, content: { application/json: { schema: { type: object, properties: { marcadas: { type: integer } } } } } }
+  /notificaciones/stream:
+    get:
+      summary: Avisos nuevos en vivo (Server-Sent Events)
+      description: |
+        Cada aviso nuevo llega como `event: aviso` con un JSON { idNotificacion, titulo, mensaje, evento, referencia }.
+        Cada 25 s se envía un comentario de latido para mantener la conexión.
+      parameters: [ { name: idPersona, in: query, required: true, schema: { type: integer, format: int64 } } ]
+      responses:
+        '200': { description: Flujo de eventos, content: { text/event-stream: { schema: { type: string } } } }
+  /salud:
+    get:
+      summary: Comprobación de vida (healthcheck)
+      servers: [ { url: http://notificaciones:8000 } ]
+      responses:
+        '200': { description: ok }
+
+components:
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string }
+              campos: { type: object, additionalProperties: { type: string } }
+  schemas:
+    Aviso:
+      type: object
+      properties:
+        idNotificacion: { type: integer }
+        evento: { type: string, enum: [termino.por_vencer, termino.vencido, actuacion.detectada] }
+        titulo: { type: string }
+        mensaje: { type: string }
+        referencia: { type: object, properties: { id_proceso: { type: integer }, id_termino: { type: integer } } }
+        leida: { type: boolean }
+        creada: { type: string, format: date-time }

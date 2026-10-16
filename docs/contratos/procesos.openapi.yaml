@@ -110,6 +110,109 @@ paths:
       responses:
         '200': { description: Despachos, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Despacho' } } } } }
 
+  /terminos:
+    get:
+      summary: Agenda de términos con la situación de hoy (F2)
+      parameters:
+        - { name: situacion, in: query, schema: { $ref: '#/components/schemas/Situacion' } }
+        - { name: idResponsable, in: query, schema: { type: integer, format: int64 } }
+        - { name: idProceso, in: query, schema: { type: integer } }
+        - { name: desde, in: query, schema: { type: string, format: date }, description: Vencimiento desde }
+        - { name: hasta, in: query, schema: { type: string, format: date }, description: Vencimiento hasta }
+      responses:
+        '200': { description: Términos ordenados por vencimiento, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Termino' } } } } }
+  /terminos/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer } } ]
+    get:
+      summary: Consulta un término
+      responses:
+        '200': { description: Término, content: { application/json: { schema: { $ref: '#/components/schemas/Termino' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      summary: Quita un término registrado por error
+      responses:
+        '204': { description: Eliminado }
+        '404': { $ref: '#/components/responses/Error' }
+  /terminos/{id}/cumplir:
+    post:
+      summary: Marca el término como cumplido (deja de generar avisos)
+      parameters: [ { name: id, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        '200': { description: Cumplido, content: { application/json: { schema: { $ref: '#/components/schemas/Termino' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /terminos/revision:
+    post:
+      summary: Ejecuta ya la revisión diaria de vencimientos
+      description: |
+        Publica termino.por_vencer (vence en 5 días hábiles o menos) y termino.vencido (venció hace 3 días
+        hábiles o menos) por cada término pendiente. La tarea programada la hace cada día hábil a las 7:00.
+      responses:
+        '200':
+          description: Cuántos avisos se publicaron
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { fecha: { type: string, format: date }, porVencer: { type: integer }, vencidos: { type: integer } }
+  /procesos/{idProceso}/terminos:
+    post:
+      summary: Registra un término; el vencimiento se calcula en días hábiles
+      parameters: [ { name: idProceso, in: path, required: true, schema: { type: integer } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descripcion, fechaInicio, diasHabiles]
+              properties:
+                descripcion: { type: string, maxLength: 150 }
+                fechaInicio: { type: string, format: date, description: Notificación (estado electrónico); no futura }
+                diasHabiles: { type: integer, minimum: 1, maximum: 365 }
+                idProvidencia: { type: integer, description: Debe ser del mismo proceso }
+                idResponsable: { type: integer, format: int64, description: Por defecto, el responsable del proceso }
+      responses:
+        '201': { description: Creado, content: { application/json: { schema: { $ref: '#/components/schemas/Termino' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /calendario:
+    get:
+      summary: Días en que no corren términos (festivos, vacancia judicial, Semana Santa)
+      parameters:
+        - { name: desde, in: query, required: true, schema: { type: string, format: date } }
+        - { name: hasta, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Días inhábiles (los fines de semana no se listan)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    fecha: { type: string, format: date }
+                    descripcion: { type: string }
+                    tipo: { type: string, enum: [FESTIVO, VACANCIA, SEMANA_SANTA] }
+  /calendario/vencimiento:
+    get:
+      summary: Calcula el vencimiento de un término sin guardarlo
+      parameters:
+        - { name: desde, in: query, required: true, schema: { type: string, format: date }, description: Fecha de notificación }
+        - { name: dias, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        '200':
+          description: Vencimiento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { fechaInicio: { type: string, format: date }, diasHabiles: { type: integer }, fechaVencimiento: { type: string, format: date } }
+        '422': { $ref: '#/components/responses/Error' }
+
 components:
   responses:
     Error:
@@ -190,6 +293,26 @@ components:
         instancia: { type: integer }
         despacho: { $ref: '#/components/schemas/Despacho' }
         idProcesoExistente: { type: integer, description: Ausente si el radicado está libre }
+
+    Situacion: { type: string, enum: [VENCIDO, POR_VENCER, AL_DIA, CUMPLIDO], description: POR_VENCER = 5 días hábiles o menos }
+    Termino:
+      type: object
+      properties:
+        idTermino: { type: integer }
+        idProceso: { type: integer }
+        radicado: { type: string }
+        radicadoLegible: { type: string }
+        rama: { type: string }
+        asunto: { type: string }
+        idProvidencia: { type: integer }
+        descripcion: { type: string }
+        fechaInicio: { type: string, format: date }
+        diasHabiles: { type: integer }
+        fechaVencimiento: { type: string, format: date }
+        estado: { type: string, enum: [PENDIENTE, CUMPLIDO] }
+        idResponsable: { type: integer, format: int64 }
+        diasHabilesRestantes: { type: integer, description: Negativo si ya venció }
+        situacion: { $ref: '#/components/schemas/Situacion' }
 
     Rama:
       type: object

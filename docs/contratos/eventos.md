@@ -33,21 +33,28 @@
   "descripcion": "Fija fecha para audiencia de instrucción y juzgamiento", "fuente": "PORTAL", "ocurrido": "..." }
 ```
 
-### `termino.por_vencer` y `termino.vencido` (F2)
+### `termino.por_vencer` y `termino.vencido` (F2, implementado)
 
-**Lo publica:** `procesos`, con una tarea diaria.
-**Lo consume:** `notificaciones`.
+**Lo publica:** `procesos`, cada día hábil a las 7:00 o al pedir la revisión con `POST /terminos/revision`.
+
+- `termino.por_vencer`: términos pendientes que vencen en 5 días hábiles o menos, incluido hoy (`dias_habiles_restantes` = 0).
+- `termino.vencido`: términos pendientes que vencieron hace 1 a 3 días hábiles.
+
+**Lo consume:** `notificaciones`, desde la cola `notificaciones.avisos`. Guarda un aviso en la app y envía un correo.
+
+Para no repetir avisos, cada uno lleva la clave `evento:id_termino:persona:canal:día`. Si la revisión corre dos veces el mismo día, no se repiten.
 
 ```json
-{ "id_termino": 12, "id_proceso": 2, "vence": "2026-10-21", "dias_habiles_restantes": 4,
-  "id_abogado": 52345678, "descripcion": "Sustentar el recurso de apelación", "ocurrido": "..." }
+{ "id_termino": 18, "id_proceso": 34, "radicado": "11001400301520260077700",
+  "descripcion": "Contestar requerimiento del juzgado", "vence": "2026-10-20", "dias_habiles_restantes": 3,
+  "id_abogado": 79123456, "ocurrido": "2026-10-15T12:00:00Z" }
 ```
 
-### `notificacion.enviada` (F2)
+### `notificacion.enviada` (F2, implementado)
 
 **Lo publica:** `notificaciones`.
 **Uso:** auditoría.
 
 ```json
-{ "id_notificacion": 40, "canal": "EMAIL", "destinatario": 52345678, "evento": "termino.por_vencer", "ocurrido": "..." }
+{ "id_notificacion": 40, "canal": "EMAIL", "destinatario": 52345678, "evento": "termino.por_vencer" }
 ```

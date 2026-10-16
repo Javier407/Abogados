@@ -117,7 +117,8 @@ export interface DesgloseRadicado {
 /** Palabras que en el backend van sin tilde (los valores son MAYÚSCULAS ASCII). */
 const TILDES: Record<string, string> = {
   admision: 'admisión', notificacion: 'notificación', contestacion: 'contestación', investigacion: 'investigación',
-  representacion: 'representación', cuantia: 'cuantía', victima: 'víctima', juridica: 'jurídica', minima: 'mínima'
+  representacion: 'representación', cuantia: 'cuantía', victima: 'víctima', juridica: 'jurídica', minima: 'mínima',
+  dia: 'día'
 };
 
 /** Texto legible para valores en MAYÚSCULAS_CON_GUION: 'SIN_CUANTIA' -> 'Sin cuantía'. */
@@ -125,4 +126,57 @@ export function etiqueta(valor: string | null | undefined): string {
   if (!valor) return '';
   const t = valor.toLowerCase().split('_').map(p => TILDES[p] ?? p).join(' ');
   return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+// ---------- términos y calendario (F2) ----------
+export const SITUACIONES = ['VENCIDO', 'POR_VENCER', 'AL_DIA', 'CUMPLIDO'] as const;
+export type Situacion = typeof SITUACIONES[number];
+
+export interface Termino {
+  idTermino: number;
+  idProceso: number;
+  radicado: string;
+  radicadoLegible: string;
+  rama: string;
+  asunto: string;
+  idProvidencia?: number;
+  descripcion: string;
+  fechaInicio: string;
+  diasHabiles: number;
+  fechaVencimiento: string;
+  estado: 'PENDIENTE' | 'CUMPLIDO';
+  idResponsable: number;
+  diasHabilesRestantes: number;
+  situacion: Situacion;
+}
+
+export interface TerminoSolicitud {
+  descripcion: string;
+  fechaInicio: string;
+  diasHabiles: number | null;
+  idProvidencia?: number | null;
+  idResponsable?: number | null;
+}
+
+export interface DiaInhabil { fecha: string; descripcion: string; tipo: 'FESTIVO' | 'VACANCIA' | 'SEMANA_SANTA'; }
+export interface Vencimiento { fechaInicio: string; diasHabiles: number; fechaVencimiento: string; }
+export interface Revision { fecha: string; porVencer: number; vencidos: number; }
+
+// ---------- avisos (servicio notificaciones) ----------
+export interface Aviso {
+  idNotificacion: number;
+  evento: string;
+  titulo: string;
+  mensaje: string;
+  referencia: { id_proceso?: number; id_termino?: number };
+  leida: boolean;
+  creada: string;
+}
+
+/** Texto para los días hábiles que faltan: 'vence hoy', 'faltan 3 días', 'venció hace 2 días'. */
+export function textoRestantes(dias: number): string {
+  if (dias === 0) return 'vence hoy';
+  if (dias > 0) return `falta${dias === 1 ? '' : 'n'} ${dias} día${dias === 1 ? '' : 's'} hábil${dias === 1 ? '' : 'es'}`;
+  const n = -dias;
+  return `venció hace ${n} día${n === 1 ? '' : 's'} hábil${n === 1 ? '' : 'es'}`;
 }

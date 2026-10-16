@@ -28,6 +28,8 @@ export class DashboardComponent implements OnInit {
   cerrados = 0;
   totalClientes = 0;
   abogadosActivos = 0;
+  terminosVencidos = 0;
+  terminosPorVencer = 0;
   porRama: ConteoRama[] = [];
   ultimos: Proceso[] = [];
 
@@ -35,9 +37,12 @@ export class DashboardComponent implements OnInit {
     forkJoin({
       procesos: this.api.procesos(),
       clientes: this.api.clientes(),
-      abogados: this.api.abogados(true)
+      abogados: this.api.abogados(true),
+      terminos: this.api.terminos()
     }).subscribe({
-      next: ({ procesos, clientes, abogados }) => {
+      next: ({ procesos, clientes, abogados, terminos }) => {
+        this.terminosVencidos = terminos.filter(t => t.situacion === 'VENCIDO').length;
+        this.terminosPorVencer = terminos.filter(t => t.situacion === 'POR_VENCER').length;
         this.totalProcesos = procesos.length;
         this.activos = procesos.filter(p => p.estado === 'ACTIVO').length;
         this.suspendidos = procesos.filter(p => p.estado === 'SUSPENDIDO').length;

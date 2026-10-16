@@ -204,7 +204,7 @@ a.btn { display: inline-block; text-decoration: none; }
 .filtros .form-input { width: auto; min-width: 180px; flex: 1; }
 
 .mono { font-family: Consolas, 'Courier New', monospace; letter-spacing: 0.3px; }
-td.mono { white-space: nowrap; }
+.tabla .mono { white-space: nowrap; }
 .acciones-celda { white-space: nowrap; text-align: right; }
 .btn-sm { padding: 5px 10px; font-size: 0.72rem; }
 
@@ -212,3 +212,22 @@ td.mono { white-space: nowrap; }
   .modulo-container { padding: 20px 16px; }
   .filtros .form-input { min-width: 100%; }
 }
+
+/* Puntos de color por situación del término */
+.punto { display: inline-block; width: 10px; height: 10px; border-radius: 99px; vertical-align: middle; margin-right: 4px; }
+.punto-vencido { background: var(--danger-text); }
+.punto-por-vencer { background: #e0a800; }
+.punto-al-dia { background: var(--success-text); }
+.punto-cumplido { background: #b3bcc8; }
+
+/* Lista de avisos */
+.lista-avisos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.aviso {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+  background: var(--bg); border: 1px solid var(--border); border-left: 4px solid var(--border);
+  border-radius: var(--radius); padding: 12px 16px;
+}
+.aviso.no-leido { border-left-color: #e0a800; background: #fffdf2; }
+.aviso.no-leido.urgente { border-left-color: var(--danger-text); background: #fff7f6; }
+.aviso-texto { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 240px; }
+.aviso-texto small { color: var(--text-muted); }

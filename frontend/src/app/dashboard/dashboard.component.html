@@ -16,6 +16,12 @@
   @if (!cargando && !error) {
 
     <div class="metricas-grid">
+      <div class="metrica-card metrica-alerta" [class.sin-alertas]="terminosVencidos + terminosPorVencer === 0">
+        <span class="metrica-label">Términos por vencer</span>
+        <span class="metrica-valor">{{ terminosPorVencer }}</span>
+        <span class="metrica-sub">{{ terminosVencidos }} vencido(s) sin cumplir</span>
+        <a routerLink="/terminos" class="metrica-link">Ver agenda</a>
+      </div>
       <div class="metrica-card">
         <span class="metrica-label">Procesos</span>
         <span class="metrica-valor">{{ totalProcesos }}</span>

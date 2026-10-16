@@ -15,7 +15,13 @@ spring:
         - id: procesos
           uri: ${PROCESOS_URL:http://localhost:8082}
           predicates:
-            - Path=/api/procesos/**,/api/catalogos/**
+            - Path=/api/procesos/**,/api/catalogos/**,/api/terminos/**,/api/calendario/**
+          filters:
+            - StripPrefix=1
+        - id: notificaciones
+          uri: ${NOTIFICACIONES_URL:http://localhost:8000}
+          predicates:
+            - Path=/api/notificaciones/**
           filters:
             - StripPrefix=1
       # Solo para desarrollo con "ng serve" en el PC; en el servidor el frontend llega por el mismo origen (nginx).

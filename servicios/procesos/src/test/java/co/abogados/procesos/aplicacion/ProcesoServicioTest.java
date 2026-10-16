@@ -61,7 +61,11 @@ class ProcesoServicioTest {
 		gabinete = new GabineteFalso();
 		eventos = new ArrayList<>();
 		Clock reloj = Clock.fixed(Instant.parse("2026-10-15T15:00:00Z"), ZoneId.of("America/Bogota"));
-		servicio = new ProcesoServicio(procesos, new CatalogoFijo(), gabinete, eventos::add, reloj);
+		PublicadorEventos publicador = new PublicadorEventos() {
+			public void procesoCreado(ProcesoCreado e) { eventos.add(e); }
+			public void avisoTermino(co.abogados.procesos.dominio.modelo.AvisoTermino a) { }
+		};
+		servicio = new ProcesoServicio(procesos, new CatalogoFijo(), gabinete, publicador, reloj);
 	}
 
 	static Proceso nuevo(String radicado) {

@@ -18,6 +18,7 @@ describe('etiqueta', () => {
     expect(etiqueta('SIN_CUANTIA')).toBe('Sin cuantía');
     expect(etiqueta('ACTIVO')).toBe('Activo');
     expect(etiqueta('ADMISION')).toBe('Admisión');
+    expect(etiqueta('AL_DIA')).toBe('Al día');
     expect(etiqueta(undefined)).toBe('');
   });
 });

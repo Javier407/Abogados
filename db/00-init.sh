@@ -30,4 +30,10 @@ for f in "$DIR"/seed/*.sql; do
   psql_run -f "$f"
 done
 
+echo ">> Migraciones"
+for f in "$DIR"/migraciones/*.sql; do
+  echo "   $f"
+  psql_run -f "$f"
+done
+
 echo ">> Base de datos de pruebas lista"

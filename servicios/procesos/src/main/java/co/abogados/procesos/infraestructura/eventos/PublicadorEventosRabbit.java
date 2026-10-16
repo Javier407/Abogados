@@ -1,5 +1,6 @@
 package co.abogados.procesos.infraestructura.eventos;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import co.abogados.procesos.dominio.modelo.AvisoTermino;
 import co.abogados.procesos.dominio.modelo.ProcesoCreado;
 import co.abogados.procesos.dominio.puertos.PublicadorEventos;
 
@@ -40,6 +42,20 @@ public class PublicadorEventosRabbit implements PublicadorEventos {
 				"id_abogado_responsable", e.idAbogadoResponsable(),
 				"ocurrido", e.ocurrido().toString());
 		despuesDelCommit(() -> enviar("proceso.creado", cuerpo));
+	}
+
+	@Override
+	public void avisoTermino(AvisoTermino a) {
+		Map<String, Object> cuerpo = new LinkedHashMap<>();
+		cuerpo.put("id_termino", a.idTermino());
+		cuerpo.put("id_proceso", a.idProceso());
+		cuerpo.put("radicado", a.radicado());
+		cuerpo.put("descripcion", a.descripcion());
+		cuerpo.put("vence", a.vence().toString());
+		cuerpo.put("dias_habiles_restantes", a.diasHabilesRestantes());
+		cuerpo.put("id_abogado", a.idAbogado());
+		cuerpo.put("ocurrido", a.ocurrido().toString());
+		despuesDelCommit(() -> enviar(a.tipo().clave(), cuerpo));
 	}
 
 	private void enviar(String clave, Map<String, Object> cuerpo) {

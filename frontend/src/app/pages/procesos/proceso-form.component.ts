@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, catchError, debounceTime, distinctUntilChanged, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
+import { TerminosProcesoComponent } from './terminos-proceso.component';
 import {
   Abogado, CLASES_CUANTIA, Cliente, DesgloseRadicado, Despacho, ESTADOS, ETAPAS, ProcesoSolicitud, ROLES_CLIENTE,
   Rama, TIPOS_SERVICIO, TipoProceso, etiqueta
@@ -14,7 +15,7 @@ import {
 @Component({
   selector: 'app-proceso-form',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, TerminosProcesoComponent],
   templateUrl: './proceso-form.component.html'
 })
 export class ProcesoFormComponent implements OnInit {
