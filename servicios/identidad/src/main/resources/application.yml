@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: identidad
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gabinete}
+    username: ${DB_USER:svc_identidad}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 4
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+  shutdown: graceful
+  # Los errores nunca devuelven trazas ni mensajes internos
+  error:
+    include-stacktrace: never
+    include-message: never
+
+jwt:
+  llave-privada: ${JWT_LLAVE_PRIVADA:}
+  vigencia: PT8H
+
+management:
+  endpoints.web.exposure.include: health
+  endpoint.health.probes.enabled: true

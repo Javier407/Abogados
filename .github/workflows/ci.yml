@@ -1,0 +1,88 @@
+# Compila y prueba cada servicio por separado en cada push y pull request.
+# Un servicio que falla no oculta a los demás (fail-fast: false).
+name: CI
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  java:
+    name: Java · ${{ matrix.servicio }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        servicio: [identidad, gabinete, procesos, gateway]
+    defaults:
+      run:
+        working-directory: servicios/${{ matrix.servicio }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          cache-dependency-path: servicios/${{ matrix.servicio }}/pom.xml
+      - name: Compilar y probar
+        run: mvn -B -ntp verify
+
+  python:
+    name: Python · ${{ matrix.servicio }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        servicio: [notificaciones, vigilancia, asistente-ia]
+    defaults:
+      run:
+        working-directory: servicios/${{ matrix.servicio }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: servicios/${{ matrix.servicio }}/requirements*.txt
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Probar
+        run: python -m pytest -q
+
+  frontend:
+    name: Frontend Angular
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Probar
+        run: npx ng test --watch=false
+      - name: Compilar para producción
+        run: npx ng build --configuration production
+
+  infraestructura:
+    name: Compose válido
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar docker-compose.yml con las variables de ejemplo
+        run: |
+          cp infra/.env.example infra/.env
+          docker compose -f infra/docker-compose.yml config --quiet

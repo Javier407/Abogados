@@ -1,0 +1,111 @@
+package co.abogados.identidad.aplicacion;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.util.Locale;
+import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import co.abogados.identidad.dominio.CredencialesInvalidasException;
+import co.abogados.identidad.dominio.CuentaBloqueadaException;
+import co.abogados.identidad.dominio.PoliticaClave;
+import co.abogados.identidad.dominio.RecursoNoEncontradoException;
+import co.abogados.identidad.dominio.ReglaNegocioException;
+import co.abogados.identidad.dominio.Sesion;
+import co.abogados.identidad.dominio.Usuario;
+import co.abogados.identidad.dominio.puertos.Cifrador;
+import co.abogados.identidad.dominio.puertos.EmisorTokens;
+import co.abogados.identidad.dominio.puertos.UsuarioRepositorio;
+
+/**
+ * Inicio de sesión y cambio de contraseña.
+ * - El mensaje de error no dice si falló el usuario o la contraseña (no revela qué cuentas existen).
+ * - Si el usuario no existe se verifica igual un hash ficticio, para que el tiempo de respuesta no lo delate.
+ * - 5 fallos seguidos bloquean la cuenta 15 minutos. Cada intento queda en la bitácora identidad.ingresos.
+ */
+@Service
+public class AutenticacionServicio {
+
+	private static final Logger log = LoggerFactory.getLogger(AutenticacionServicio.class);
+	private static final String MENSAJE = "Usuario o contraseña incorrectos";
+
+	private final UsuarioRepositorio usuarios;
+	private final Cifrador cifrador;
+	private final EmisorTokens tokens;
+	private final Clock reloj;
+	private final String hashFicticio;
+
+	public AutenticacionServicio(UsuarioRepositorio usuarios, Cifrador cifrador, EmisorTokens tokens, Clock reloj) {
+		this.usuarios = usuarios;
+		this.cifrador = cifrador;
+		this.tokens = tokens;
+		this.reloj = reloj;
+		this.hashFicticio = cifrador.cifrar("clave-de-relleno-para-igualar-tiempos");
+	}
+
+	/** Los fallos deben quedar guardados aunque el método termine con excepción: no se deshacen. */
+	@Transactional(noRollbackFor = { CredencialesInvalidasException.class, CuentaBloqueadaException.class })
+	public Sesion iniciarSesion(String usuarioOEmail, String clave, String ip) {
+		String texto = usuarioOEmail == null ? "" : usuarioOEmail.strip().toLowerCase(Locale.ROOT);
+		Instant ahora = Instant.now(reloj);
+		Optional<Usuario> encontrado = texto.isEmpty() ? Optional.empty() : usuarios.porUsuarioOEmail(texto);
+
+		if (encontrado.isEmpty()) {
+			cifrador.coincide(clave == null ? "" : clave, hashFicticio);
+			usuarios.registrarIntento(recortar(texto), null, false, "NO_EXISTE", ip);
+			throw new CredencialesInvalidasException(MENSAJE);
+		}
+		Usuario u = encontrado.get();
+		if (u.bloqueado(ahora)) {
+			usuarios.registrarIntento(recortar(texto), u.idUsuario(), false, "BLOQUEADO", ip);
+			throw new CuentaBloqueadaException(u.minutosDeBloqueo(ahora));
+		}
+		if (clave == null || !cifrador.coincide(clave, u.hashClave())) {
+			Usuario.Fallo fallo = u.registrarFallo(ahora);
+			usuarios.guardarFallo(u.idUsuario(), fallo.intentos(), fallo.bloqueadoHasta());
+			usuarios.registrarIntento(recortar(texto), u.idUsuario(), false, "CLAVE_INCORRECTA", ip);
+			if (fallo.bloquea()) {
+				log.warn("Cuenta {} bloqueada {} min por {} intentos fallidos (IP {})", u.usuario(),
+						Usuario.BLOQUEO.toMinutes(), Usuario.MAX_INTENTOS, ip);
+				throw new CuentaBloqueadaException(Usuario.BLOQUEO.toMinutes());
+			}
+			throw new CredencialesInvalidasException(MENSAJE);
+		}
+		if (!u.activo()) {
+			// Después de verificar la contraseña: solo quien la conoce sabe que la cuenta está inactiva.
+			usuarios.registrarIntento(recortar(texto), u.idUsuario(), false, "INACTIVO", ip);
+			throw new CredencialesInvalidasException("La cuenta está desactivada; hable con el administrador");
+		}
+		usuarios.guardarIngreso(u.idUsuario(), ahora);
+		usuarios.registrarIntento(recortar(texto), u.idUsuario(), true, null, ip);
+		return tokens.emitir(u, ahora);
+	}
+
+	@Transactional(readOnly = true)
+	public Usuario yo(long idUsuario) {
+		return usuarios.porId(idUsuario)
+				.orElseThrow(() -> new RecursoNoEncontradoException("No existe el usuario " + idUsuario));
+	}
+
+	@Transactional
+	public void cambiarClave(long idUsuario, String actual, String nueva) {
+		Usuario u = yo(idUsuario);
+		if (actual == null || !cifrador.coincide(actual, u.hashClave())) {
+			throw new CredencialesInvalidasException("La contraseña actual no es correcta");
+		}
+		PoliticaClave.validar(nueva, u);
+		if (cifrador.coincide(nueva, u.hashClave())) {
+			throw new ReglaNegocioException("La contraseña nueva debe ser distinta de la actual");
+		}
+		usuarios.cambiarClave(idUsuario, cifrador.cifrar(nueva), Instant.now(reloj));
+	}
+
+	private static String recortar(String texto) {
+		return texto.length() > 120 ? texto.substring(0, 120) : texto;
+	}
+
+}

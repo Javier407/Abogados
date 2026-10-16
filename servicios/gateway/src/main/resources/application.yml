@@ -5,7 +5,16 @@ spring:
     name: gateway
   cloud:
     gateway:
+      # El token del stream de avisos llega en la URL: se quita antes de reenviar (no debe quedar en logs).
+      default-filters:
+        - RemoveRequestParameter=access_token
       routes:
+        - id: identidad
+          uri: ${IDENTIDAD_URL:http://localhost:8005}
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=1
         - id: gabinete
           uri: ${GABINETE_URL:http://localhost:8081}
           predicates:
@@ -48,7 +57,12 @@ spring:
 server:
   port: 8080
 
+# Verificación de los tokens: llave pública del servicio identidad y emisor esperado.
+jwt:
+  jwks-uri: ${IDENTIDAD_URL:http://localhost:8005}/.well-known/jwks.json
+  emisor: gestion-juridica
+
+# Solo health: el gateway está publicado y /actuator/gateway mostraría las rutas internas.
 management:
-  endpoints.web.exposure.include: health,info,gateway
+  endpoints.web.exposure.include: health
   endpoint.health.probes.enabled: true
-  endpoint.gateway.enabled: true
