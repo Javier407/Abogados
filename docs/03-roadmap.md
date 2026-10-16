@@ -20,7 +20,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F2 | Terminada: un término que vence en 3 días hábiles generó el correo (Mailpit) y el aviso en la app, en vivo | 2026-10-15 |
 | F3 | Terminada: un auto nuevo (fuente simulada) en el proceso 34 quedó registrado como providencia y llegó por Telegram (@javier_asistente_ia_bot), correo y app | 2026-10-16 |
 | F4 | Terminada: borrador de contestación del proceso 13 generado desde la app con el modelo local (229 s) y pago de honorarios registrado desde la app | 2026-10-16 |
-| F5 | Pendiente | |
+| F5 | Código terminado y pipeline en verde; Seguridad 8/10 en la [evaluación](04-evaluacion-iso25010.md). Falta desplegar y verificar en el servidor | 2026-10-16 |
 
 ## F1: qué quedó y qué falta
 
@@ -38,7 +38,7 @@ Pendiente o decidido para después:
 - El código del laboratorio (`src/`, MySQL) sigue en la raíz porque es la entrega del laboratorio #1. `servicios/gabinete` ya cubre su función. Moverlo o borrarlo lo decide Javier.
 - Sin paginación en los listados: con ~30 procesos no hace falta. Se agrega cuando la firma pase de unos cientos.
 - Si RabbitMQ está caído al crear un proceso, el evento se pierde (queda en el log). Para garantizar la entrega se puede usar una tabla *outbox* en F3, cuando `vigilancia` lo consuma.
-- Sin autenticación: el gateway está abierto dentro de la VPN. Se agrega en F5.
+- ~~Sin autenticación~~: resuelto en F5 (JWT y roles en el gateway).
 
 ## F2: qué quedó y qué falta
 
@@ -115,3 +115,28 @@ Pendiente o decidido para después:
   - Para mejorar: un modelo más grande (más lento y más RAM), una GPU, o un proveedor externo con datos anonimizados (decisión de Javier, ADR 0006).
 - **Pruebas periciales:** se registran en `procesos.pruebas` con `id_perito`, pero todavía no hay pantalla para asignar un perito a una prueba.
 - **Pagos:** no se anulan desde la app. Un pago mal registrado se corrige en la base (pendiente: anulación con motivo).
+
+## F5: qué quedó y qué falta
+
+Hecho:
+
+1. **`identidad`** (Spring Boot, ADR 0004):
+   - Inicio de sesión con usuario o correo; contraseñas con BCrypt.
+   - JWT RS256 de 8 h firmado con una llave que vive solo en el servidor (`infra/secretos/`, fuera de git); JWKS pública para el gateway.
+   - 5 fallos seguidos bloquean la cuenta 15 min (423); más de 20 intentos por IP en 10 min dan 429. Mensaje de error genérico y tiempo de respuesta igual para usuarios que no existen.
+   - Bitácora de ingresos (`identidad.ingresos`, migración 003) y cambio de contraseña con política (10+ caracteres, letras y números, sin el usuario ni el documento).
+2. **`gateway`:**
+   - Toda `/api/**` exige token salvo el login; tabla de permisos por rol (`PoliticaAcceso`); lo que no está en la tabla se niega.
+   - Borra las cabeceras `X-Usuario-*` que mande el cliente y las pone desde el token.
+   - Línea `AUDITORIA` por petición; Actuator solo expone `health`.
+3. **`notificaciones`:** cada persona ve solo sus avisos (ADMIN, todos).
+4. **Frontend:** pantalla de inicio de sesión, guardas por rol, menú filtrado, **Mi cuenta** (cambio de contraseña) y cierre de sesión. El selector "Ver como" desapareció.
+5. **nginx:** CSP y cabeceras de seguridad, sin versión, IP real del cliente; la ruta de avisos en vivo (token en la URL) no se registra.
+6. **CI** en GitHub Actions: cada servicio Java y Python, el frontend y la validación de `docker-compose.yml`. Los errores se publican como anotaciones.
+7. **Evaluación ISO/IEC 25010** en [`04-evaluacion-iso25010.md`](04-evaluacion-iso25010.md): Seguridad 4 → 8; total 7,65 → 8,15.
+
+Pendiente o decidido para después (detalle en el plan de mejora de la evaluación):
+
+- HTTPS, *refresh token* con revocación y validación del JWT en cada servicio: obligatorios antes de publicar fuera de la VPN.
+- Administración de usuarios desde la app (hoy por SQL) y portal del cliente (el rol CLIENTE solo ve **Mi cuenta**).
+- Análisis de dependencias y cobertura en CI.

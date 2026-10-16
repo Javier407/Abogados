@@ -87,6 +87,7 @@ El proyecto evoluciona hacia un sistema de microservicios para firmas de abogado
 | [`docs/01-dominio.md`](docs/01-dominio.md) | Problema, glosario, ramas y tipos de proceso, estructura del radicado (23 dígitos), etapas, términos y tarifas Conalbos 2026 |
 | [`docs/02-arquitectura.md`](docs/02-arquitectura.md) | Opciones evaluadas con pros y contras, microservicios (Java + Python), eventos, orden del repositorio y despliegue |
 | [`docs/03-roadmap.md`](docs/03-roadmap.md) | Fases F0–F5 |
+| [`docs/04-evaluacion-iso25010.md`](docs/04-evaluacion-iso25010.md) | Evaluación ISO/IEC 25010 de F5 (Seguridad 4 → 8; total 8,15) con brechas y plan de mejora |
 | [`docs/adr/`](docs/adr/) | Decisiones de arquitectura (políglota, RabbitMQ, PostgreSQL por esquemas, JWT propio, fuente Rama Judicial) |
 
 ### Base de datos de pruebas (PostgreSQL 16)
@@ -104,10 +105,11 @@ docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/consu
 - Usuarios de prueba de la aplicación (tabla `identidad.usuarios`): contraseña `Prueba2026*`.
 - Para recargar desde cero: `docker compose down -v && docker compose up -d` (borra el volumen).
 
-## Microservicios (fases 1 a 4)
+## Microservicios (fases 1 a 5)
 
 ```
-navegador ──► frontend (nginx :8090) ──/api──► gateway (:8091) ─┬─► gabinete       (clientes, abogados, sedes)
+navegador ──► frontend (nginx :8090) ──/api──► gateway (:8091, valida el JWT y el rol) ─┬─► identidad (login, JWKS)
+                                                                 ├─► gabinete       (clientes, abogados, sedes)
                                                                  ├─► procesos       (procesos, radicado, términos, calendario)
                                                                  ├─► notificaciones (avisos en la app, en vivo por SSE; Telegram)
                                                                  └─► vigilancia     (radicados vigilados en la Rama Judicial)
@@ -124,7 +126,8 @@ navegador ──► frontend (nginx :8090) ──/api──► gateway (:8091) �
 | [`servicios/asistente-ia`](servicios/asistente-ia) | Borradores de contestación y resúmenes para el cliente con un modelo local; encabezado puesto por el sistema, texto por partes (ADR 0006) | Python 3.12 · FastAPI · Ollama |
 | [`servicios/notificaciones`](servicios/notificaciones) | Avisos de términos y de actuaciones nuevas: en la app (en vivo con SSE), por correo y por Telegram (vinculación con código de un solo uso); no repite avisos | Python 3.12 · FastAPI · aio-pika |
 | [`servicios/vigilancia`](servicios/vigilancia) | Consulta cada radicado en su fuente (manual, simulada o portal de la Rama Judicial, ver ADR 0005), detecta actuaciones nuevas y publica `actuacion.detectada` | Python 3.12 · FastAPI · httpx |
-| [`servicios/gateway`](servicios/gateway) | Entrada única: `/api/<recurso>` → servicio dueño | Spring Cloud Gateway |
+| [`servicios/identidad`](servicios/identidad) | Inicio de sesión (BCrypt), JWT RS256 de 8 h, JWKS, cambio de contraseña, bloqueo tras 5 fallos, límite por IP y bitácora de ingresos | Spring Boot 3.3 · Java 17 · JDBC |
+| [`servicios/gateway`](servicios/gateway) | Entrada única: `/api/<recurso>` → servicio dueño. Exige token en toda la API, aplica permisos por rol, pone la identidad en cabeceras (borra las del cliente) y deja una línea `AUDITORIA` por petición | Spring Cloud Gateway · OAuth2 Resource Server |
 | [`frontend`](frontend) | Panel, términos, calendario, avisos, procesos, clientes y abogados (basado en `gestion-juridica-frontend`) | Angular 21 · nginx |
 | [`docs/contratos`](docs/contratos) | OpenAPI de cada servicio y formato de los eventos | |
 
@@ -141,7 +144,20 @@ docker compose exec ollama ollama pull qwen2.5:3b   # una sola vez: descarga el 
 
 Luego abrir http://localhost:8090 (en el servidor: http://100.65.152.112:8090). El gateway queda en el puerto 8091 y el buzón de pruebas Mailpit, donde llegan los correos de aviso, en el 8092.
 
-En la app, elegir en "Ver como" (abajo en el menú) el abogado cuyos avisos se quieren ver; es provisional hasta el inicio de sesión de F5. Los avisos salen solos cada día hábil a las 7:00, o al pulsar **Enviar avisos ahora** en Términos.
+**Inicio de sesión:** cada persona entra con su usuario (por ejemplo `arodriguez`, socio; `scastro`, dependiente). En la base de pruebas todos tienen la contraseña `Prueba2026*`, que se puede cambiar en **Mi cuenta** (mínimo 10 caracteres con letras y números). El menú muestra solo lo que permite el rol, y los avisos son los de la persona conectada.
+
+Antes del primer arranque en un servidor hay que crear la llave de firma de los tokens (nunca va a git):
+
+```bash
+mkdir -m 700 infra/secretos
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out infra/secretos/jwt-privada.pem
+```
+
+Mailpit pide usuario y clave si se define `MAILPIT_UI_AUTH=usuario:clave` en `infra/.env`.
+
+**Integración continua:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) compila y prueba cada servicio Java y Python, el frontend y el `docker-compose.yml` en cada *push*.
+
+Los avisos salen solos cada día hábil a las 7:00, o al pulsar **Enviar avisos ahora** en Términos.
 
 Los correos van a Mailpit y no salen a internet. Para enviarlos de verdad, definir `SMTP_*` en `infra/.env` (ver `.env.example`), nunca con la base de pruebas: sus correos son ficticios.
 

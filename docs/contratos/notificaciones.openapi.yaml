@@ -6,7 +6,8 @@ info:
     Avisos a los abogados (F2: términos por vencer y vencidos). Escucha los eventos termino.* de RabbitMQ,
     guarda un aviso dentro de la app y envía un correo. A través del gateway las rutas llevan el prefijo /api.
 
-    Hasta que exista el inicio de sesión (F5), la persona se indica con el parámetro idPersona.
+    Desde F5 todas las rutas exigen `Authorization: Bearer <token>` (el canal /stream acepta `access_token` en la URL).
+    idPersona debe ser el usuario del token; si no, 403 (salvo ADMIN).
 
     Errores: `{ "error": "mensaje" }` (y `campos` si falla la validación de la petición).
 servers:

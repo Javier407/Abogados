@@ -1,0 +1,111 @@
+openapi: 3.0.3
+info:
+  title: Servicio identidad
+  version: 0.1.0
+  description: |
+    Inicio de sesión y tokens (F5, ADR 0004). A través del gateway las rutas llevan el prefijo /api.
+
+    - POST /auth/login es la única ruta pública de toda la API.
+    - El token es un JWT RS256 (8 h) con los claims iss=gestion-juridica, sub=documento, usuario, nombre y roles.
+    - /auth/yo y /auth/clave usan la identidad que el gateway toma del token (cabecera X-Usuario-Id, que el
+      gateway siempre reescribe).
+
+    Errores: `{ "error": "mensaje" }` (y `campos` si falla la validación de la petición).
+servers:
+  - url: http://localhost:8091/api
+    description: Gateway
+
+paths:
+  /auth/login:
+    post:
+      summary: Inicia sesión con usuario (o correo) y contraseña
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuario, clave]
+              properties:
+                usuario: { type: string, maxLength: 120 }
+                clave: { type: string, maxLength: 200 }
+      responses:
+        "200":
+          description: Sesión iniciada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Sesion" }
+        "400": { description: Faltan datos }
+        "401": { description: Usuario o contraseña incorrectos (mensaje genérico, no dice cuál falló) }
+        "423":
+          description: Cuenta bloqueada tras 5 fallos seguidos
+          headers:
+            Retry-After: { schema: { type: integer }, description: Segundos hasta el desbloqueo }
+        "429":
+          description: Más de 20 intentos desde la misma IP en 10 minutos
+          headers:
+            Retry-After: { schema: { type: integer } }
+  /auth/yo:
+    get:
+      summary: Perfil de la persona conectada
+      responses:
+        "200":
+          description: Perfil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Perfil" }
+        "401": { description: Sin token }
+  /auth/clave:
+    post:
+      summary: Cambia la contraseña de la persona conectada
+      description: Mínimo 10 caracteres con letras y números; no puede contener el usuario ni el documento.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [actual, nueva]
+              properties:
+                actual: { type: string }
+                nueva: { type: string, maxLength: 72 }
+      responses:
+        "204": { description: Contraseña cambiada }
+        "401": { description: La contraseña actual no coincide }
+        "422": { description: La nueva no cumple la política }
+  /.well-known/jwks.json:
+    get:
+      summary: Llave pública para verificar los tokens (solo la usa el gateway; no se publica por /api)
+      security: []
+      responses:
+        "200": { description: JWK Set con la llave RSA pública }
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Sesion:
+      type: object
+      properties:
+        token: { type: string }
+        expira: { type: string, format: date-time }
+        idUsuario: { type: integer, format: int64 }
+        usuario: { type: string }
+        nombre: { type: string }
+        roles:
+          type: array
+          items: { type: string, enum: [ADMIN, SOCIO, ABOGADO, DEPENDIENTE, ADMINISTRATIVO, CLIENTE] }
+    Perfil:
+      type: object
+      properties:
+        idUsuario: { type: integer, format: int64 }
+        usuario: { type: string }
+        nombre: { type: string }
+        email: { type: string }
+        roles: { type: array, items: { type: string } }
+security:
+  - bearer: []
