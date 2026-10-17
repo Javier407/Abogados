@@ -4,16 +4,23 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { mensajeDeError } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
+import { LogoComponent } from '../../core/logo.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, LogoComponent],
   template: `
     <main class="login">
       <form class="login-caja" #form="ngForm" (ngSubmit)="entrar(form)" novalidate>
-        <h1>Gestión Jurídica</h1>
-        <p class="form-ayuda">Rodríguez &amp; Asociados</p>
+        <header class="login-cabeza">
+          <span class="login-logo"><app-logo /></span>
+          <div>
+            <h1>Gestión Jurídica</h1>
+            <p>Rodríguez &amp; Asociados</p>
+          </div>
+        </header>
+        <div class="login-cuerpo">
 
         @if (aviso) { <div class="alerta alerta-exito">{{ aviso }}</div> }
         @if (error) { <div class="alerta alerta-error" role="alert">{{ error }}</div> }
@@ -29,14 +36,21 @@ import { AuthService } from '../../core/auth.service';
             autocomplete="current-password" />
         </div>
         <button class="btn btn-primary" type="submit" [disabled]="entrando">{{ entrando ? 'Entrando...' : 'Entrar' }}</button>
+        </div>
       </form>
     </main>
   `,
   styles: [`
-    .login { min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--primary); }
-    .login-caja { width: 100%; max-width: 360px; background: var(--bg); border-radius: 8px; padding: 28px;
-      display: flex; flex-direction: column; gap: 14px; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
-    h1 { margin: 0; font-size: 1.3rem; color: var(--primary); }
+    .login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+    .login-caja { width: 100%; max-width: 400px; background: var(--bg); border-radius: 24px; overflow: hidden;
+      box-shadow: 0 30px 60px -20px rgba(16,38,64,.5); }
+    .login-cabeza { background: linear-gradient(160deg, var(--blue) 0%, #15304f 100%); padding: 22px 24px;
+      display: flex; align-items: center; gap: 16px; }
+    .login-logo { width: 58px; height: 58px; flex: none; display: grid; }
+    h1 { margin: 0; font-family: var(--display); font-size: 24px; font-weight: 600; color: var(--parchment); }
+    .login-cabeza p { margin: 2px 0 0; font-family: var(--second); color: #c3cfdd; }
+    .login-cuerpo { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 14px; }
+    .login-cuerpo .alerta { margin-bottom: 0; }
   `]
 })
 export class LoginComponent implements OnInit {

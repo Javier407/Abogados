@@ -1,44 +1,73 @@
+<!-- Íconos reutilizables (mismo trazo que gabinete.html) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-panel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M17 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M4 7h16M6 7l-3 7a3 3 0 0 0 6 0zM18 7l-3 7a3 3 0 0 0 6 0z"/></symbol>
+  <symbol id="i-money" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.8"/><path d="M6 10v4M18 10v4"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6L4.5 18.5A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.5L14 9V3"/><path d="M7.5 15h9"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-salir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></symbol>
+</svg>
+
 <div class="shell">
 
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <span class="brand-title">Gestion Juridica</span>
-      <span class="brand-sub">Rodríguez &amp; Asociados</span>
-    </div>
+  <!-- ================= Barra lateral ================= -->
+  <aside class="side">
+    <a class="brand" routerLink="/" title="Rodríguez & Asociados"><app-logo /></a>
 
-    <nav class="sidebar-nav" aria-label="Menú principal">
+    <nav aria-label="Menú principal">
       @if (auth.esPersonal()) {
-        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item">Panel</a>
-        <a routerLink="/terminos" routerLinkActive="active" class="nav-item">Términos</a>
-        <a routerLink="/calendario" routerLinkActive="active" class="nav-item">Calendario</a>
-        <a routerLink="/procesos" routerLinkActive="active" class="nav-item">Procesos</a>
+        <a routerLink="/" routerLinkActive="activo" [routerLinkActiveOptions]="{exact: true}" class="nav-btn"><svg><use href="#i-panel"/></svg>Panel</a>
+        <a routerLink="/terminos" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-clock"/></svg>Términos</a>
+        <a routerLink="/calendario" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-calendar"/></svg>Calendario</a>
+        <a routerLink="/procesos" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-folder"/></svg>Procesos</a>
         @if (auth.tiene('ADMIN', 'SOCIO', 'ABOGADO', 'DEPENDIENTE')) {
-          <a routerLink="/vigilancia" routerLinkActive="active" class="nav-item">Vigilancia</a>
+          <a routerLink="/vigilancia" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-eye"/></svg>Vigilancia</a>
         }
-        <a routerLink="/clientes" routerLinkActive="active" class="nav-item">Clientes</a>
-        <a routerLink="/abogados" routerLinkActive="active" class="nav-item">Abogados</a>
+        <a routerLink="/clientes" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-users"/></svg>Clientes</a>
+        <a routerLink="/abogados" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-scale"/></svg>Abogados</a>
         @if (auth.tiene('ADMIN', 'SOCIO', 'ABOGADO', 'ADMINISTRATIVO')) {
-          <a routerLink="/honorarios" routerLinkActive="active" class="nav-item">Honorarios</a>
+          <a routerLink="/honorarios" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-money"/></svg>Honorarios</a>
         }
-        <a routerLink="/peritos" routerLinkActive="active" class="nav-item">Peritos</a>
-        <a routerLink="/avisos" routerLinkActive="active" class="nav-item">
+        <a routerLink="/peritos" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-flask"/></svg>Peritos</a>
+        <a routerLink="/avisos" routerLinkActive="activo" class="nav-btn">
+          <span class="icono-con-contador">
+            <svg><use href="#i-bell"/></svg>
+            @if (sesion.noLeidos() > 0) { <span class="contador" aria-label="avisos sin leer">{{ sesion.noLeidos() }}</span> }
+          </span>
           Avisos
-          @if (sesion.noLeidos() > 0) { <span class="contador" aria-label="avisos sin leer">{{ sesion.noLeidos() }}</span> }
         </a>
       }
-      <a routerLink="/cuenta" routerLinkActive="active" class="nav-item">Mi cuenta</a>
+      <a routerLink="/cuenta" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-user"/></svg>Mi cuenta</a>
     </nav>
-
-    <div class="sidebar-usuario">
-      <span class="usuario-nombre">{{ auth.sesion()?.nombre }}</span>
-      <small>{{ auth.sesion()?.roles?.join(' · ') }}</small>
-      <button type="button" class="btn-salir" (click)="auth.cerrar()">Cerrar sesión</button>
-    </div>
+    <div class="grow"></div>
   </aside>
 
-  <main class="content">
-    <router-outlet></router-outlet>
-  </main>
+  <!-- ================= Contenido ================= -->
+  <div class="main">
+    <header class="topbar">
+      <div class="top-tools">
+        <span class="fecha">{{ hoy }}</span>
+        <span class="usuario">
+          <span class="usuario-nombre">{{ auth.sesion()?.nombre }}</span>
+          <small>{{ auth.sesion()?.roles?.join(' · ') }}</small>
+        </span>
+        <span class="avatar" aria-hidden="true">{{ iniciales() }}</span>
+        <button type="button" class="btn-salir" (click)="auth.cerrar()" title="Cerrar sesión">
+          <svg><use href="#i-salir"/></svg><span>Cerrar sesión</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="view">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
 
   @if (sesion.ultimoAviso(); as aviso) {
     <a class="aviso-flotante" routerLink="/avisos" role="status">

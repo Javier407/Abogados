@@ -1,27 +1,28 @@
 .barra-mes { align-items: center; }
-.titulo-mes { margin: 0 6px; font-size: 1.1rem; color: var(--primary); text-transform: capitalize; min-width: 180px; text-align: center; }
+.titulo-mes { margin: 0 6px; font-family: var(--display); font-size: 22px; font-weight: 600; color: var(--blue); min-width: 180px; text-align: center; }
+.titulo-mes::first-letter { text-transform: uppercase; }
 .leyenda { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 12px; }
-.muestra-inhabil { display: inline-block; width: 12px; height: 12px; background: #eef0f3; border: 1px solid var(--border); vertical-align: middle; }
+.muestra-inhabil { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: var(--gray-soft); border: 1px solid var(--border); vertical-align: middle; }
 
-.mes { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg); }
-.encabezado { background: var(--primary); color: #fff; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; text-align: center; padding: 8px 0; }
+.mes { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-radius: var(--radius-lg); overflow: hidden; background: var(--bg); box-shadow: var(--shadow-lg); }
+.encabezado { background: var(--parchment); color: var(--blue); font-family: var(--second); font-size: 12.5px; text-align: center; padding: 9px 0; }
 .dia {
   min-height: 96px; padding: 6px; border: none; border-top: 1px solid var(--border); border-left: 1px solid var(--border);
   background: var(--bg); text-align: left; display: flex; flex-direction: column; gap: 3px; cursor: pointer; font: inherit; min-width: 0;
 }
 .dia:nth-child(7n + 1) { border-left: none; }
-.dia:hover { background: var(--secondary-light); }
-.dia.inhabil { background: #eef0f3; }
+.dia:hover { background: var(--parchment-2); }
+.dia.inhabil { background: var(--gray-soft); }
 .dia.fuera .numero { color: #b3bcc8; }
-.dia.hoy .numero { background: var(--primary); color: #fff; border-radius: 99px; padding: 0 7px; }
+.dia.hoy .numero { background: var(--mahogany); color: #fff; border-radius: 99px; padding: 0 7px; }
 .dia.elegido { outline: 2px solid var(--secondary); outline-offset: -2px; }
 .numero { font-weight: 700; font-size: 0.85rem; align-self: flex-start; }
 .motivo { font-size: 0.66rem; color: var(--text-muted); line-height: 1.2; }
-.chip { font-size: 0.68rem; padding: 2px 6px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip { font-size: 0.68rem; padding: 2px 7px; border-radius: 99px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chip-vencido { background: var(--danger-bg); color: var(--danger-text); }
-.chip-por-vencer { background: #fef9c3; color: #7a5a00; }
+.chip-por-vencer { background: var(--warn-soft); color: var(--warn); }
 .chip-al-dia { background: var(--success-bg); color: var(--success-text); }
-.chip-cumplido { background: #eef0f3; color: var(--text-muted); text-decoration: line-through; }
+.chip-cumplido { background: var(--gray-soft); color: var(--text-muted); text-decoration: line-through; }
 .mas { font-size: 0.66rem; color: var(--secondary); }
 
 .detalle { margin-top: 20px; }
