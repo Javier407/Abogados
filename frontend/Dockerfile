@@ -9,5 +9,6 @@ RUN npx ng build --configuration production
 FROM nginx:1.27.3-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY nginx-seguridad.inc /etc/nginx/seguridad.inc
+COPY proxy-api.inc /etc/nginx/proxy-api.inc
 COPY --from=build /app/dist/gestion-juridica-frontend/browser /usr/share/nginx/html
 EXPOSE 80
