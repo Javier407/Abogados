@@ -46,7 +46,7 @@
             <tbody>
               @for (p of procesos; track p.idProceso) {
                 <tr>
-                  <td class="mono">{{ p.radicadoLegible }}
+                  <td class="mono"><a [routerLink]="['/procesos', p.idProceso]" title="Abrir el expediente">{{ p.radicadoLegible }}</a>
                     @if (p.instancia > 0) { <br><span class="badge badge-warning">{{ p.instancia + 1 }}.ª instancia</span> }
                   </td>
                   <td><strong>{{ p.rama }}</strong><br><small>{{ p.tipoProceso }}</small></td>
@@ -63,8 +63,11 @@
                   </td>
                   <td class="fecha-celda">{{ p.fechaRadicacion | date:'dd/MM/yyyy' }}</td>
                   <td class="acciones-celda">
-                    <a class="btn btn-secondary btn-sm" [routerLink]="['/procesos', p.idProceso, 'editar']">Editar</a>
-                    <button class="btn btn-danger btn-sm" type="button" (click)="eliminar(p)">Eliminar</button>
+                    <a class="btn btn-primary btn-sm" [routerLink]="['/procesos', p.idProceso]">Expediente</a>
+                    @if (creaProcesos) {
+                      <a class="btn btn-secondary btn-sm" [routerLink]="['/procesos', p.idProceso, 'editar']">Editar</a>
+                      <button class="btn btn-danger btn-sm" type="button" (click)="eliminar(p)">Eliminar</button>
+                    }
                   </td>
                 </tr>
               }

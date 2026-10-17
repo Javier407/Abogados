@@ -1,0 +1,273 @@
+<div class="modulo-container">
+
+  @if (error) { <div class="alerta alerta-error" role="alert">{{ error }}</div> }
+  @if (cargando && !proceso) { <p class="form-ayuda">Cargando el expediente…</p> }
+
+  @if (proceso; as p) {
+    <div class="page-header cabecera">
+      <div>
+        <p class="mono radicado">{{ p.radicadoLegible }}</p>
+        <h1>{{ p.asunto }}</h1>
+        <p>{{ p.rama }} · {{ p.tipoProceso }} · {{ p.despachoActual }}</p>
+      </div>
+      <div class="cabecera-acciones">
+        <span class="badge" [class.badge-success]="p.estado === 'ACTIVO'" [class.badge-warning]="p.estado === 'SUSPENDIDO'"
+              [class.badge-muted]="p.estado !== 'ACTIVO' && p.estado !== 'SUSPENDIDO'">{{ etiqueta(p.estado) }}</span>
+        <span class="badge badge-primary">Etapa: {{ etiqueta(p.etapa) }}</span>
+        @if (juridico) { <a class="btn btn-secondary btn-sm" [routerLink]="['/procesos', p.idProceso, 'editar']">Editar datos</a> }
+      </div>
+    </div>
+
+    @if (instancias.length) {
+      <div class="instancias">
+        <span class="form-ayuda">Otras instancias del mismo radicado:</span>
+        @for (i of instancias; track i.idProceso) {
+          <a class="badge badge-primary" [routerLink]="['/procesos', i.idProceso]">
+            {{ i.instancia === 0 ? 'Primera instancia' : 'Instancia ' + i.instancia }} · {{ i.despacho }}
+          </a>
+        }
+      </div>
+    }
+
+    @if (mensaje) { <div class="alerta alerta-exito" role="status">{{ mensaje }}</div> }
+
+    <div class="expediente-grid">
+
+      <!-- ================= Línea de tiempo ================= -->
+      <section class="card">
+        <div class="card-header encabezado-tarjeta">
+          <h2>Línea de tiempo</h2>
+          <div class="acciones-tarjeta">
+            @if (registraActuaciones) {
+              <button class="btn btn-primary btn-sm" type="button" (click)="abrir('ACTUACION')" [attr.aria-expanded]="formulario === 'ACTUACION'">Registrar actuación</button>
+            }
+            @if (juridico) {
+              <button class="btn btn-secondary btn-sm" type="button" (click)="abrir('PROVIDENCIA')" [attr.aria-expanded]="formulario === 'PROVIDENCIA'">Registrar providencia</button>
+            }
+          </div>
+        </div>
+        <div class="card-body">
+
+          @if (formulario === 'ACTUACION') {
+            <form class="formulario" #fa="ngForm" (ngSubmit)="registrarActuacion(fa)" novalidate>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label" for="tipoAct">Tipo</label>
+                  <select id="tipoAct" class="form-input" name="tipo" [(ngModel)]="actuacion.tipo" required>
+                    @for (t of tiposActuacion; track t) { <option [value]="t">{{ etiqueta(t) }}</option> }
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="fechaAct">Fecha</label>
+                  <input id="fechaAct" class="form-input" type="date" name="fecha" [(ngModel)]="actuacion.fecha" required />
+                  <span class="form-ayuda">Una fecha futura la deja programada (por ejemplo, una audiencia).</span>
+                </div>
+                <div class="form-group form-group-full">
+                  <label class="form-label" for="descAct">Descripción <span class="requerido">*</span></label>
+                  <input id="descAct" class="form-input" name="descripcion" [(ngModel)]="actuacion.descripcion" required maxlength="200"
+                         placeholder="Ej.: Se radicó la contestación por correo electrónico al juzgado" />
+                </div>
+                @if (actuacion.tipo === 'RECURSO') {
+                  <div class="form-group form-group-full">
+                    <label class="form-label" for="provAct">Providencia que se recurre <span class="requerido">*</span></label>
+                    <select id="provAct" class="form-input" name="idProvidencia" [(ngModel)]="actuacion.idProvidencia" required>
+                      <option [ngValue]="null" disabled>Elija el auto o la sentencia</option>
+                      @for (pr of providencias; track pr.idProvidencia) {
+                        <option [ngValue]="pr.idProvidencia">{{ pr.fechaEstado | date:'dd/MM/yyyy' }} · {{ pr.clase }}</option>
+                      }
+                    </select>
+                  </div>
+                }
+                @if (terminosPendientes.length) {
+                  <div class="form-group">
+                    <label class="form-label" for="termAct">¿Cumple un término?</label>
+                    <select id="termAct" class="form-input" name="idTerminoCumplido" [(ngModel)]="actuacion.idTerminoCumplido">
+                      <option [ngValue]="null">No</option>
+                      @for (t of terminosPendientes; track t.idTermino) {
+                        <option [ngValue]="t.idTermino">{{ t.descripcion }} (vence {{ t.fechaVencimiento | date:'dd/MM' }})</option>
+                      }
+                    </select>
+                  </div>
+                }
+                <div class="form-group">
+                  <label class="form-label" for="docAct">Enlace al documento</label>
+                  <input id="docAct" class="form-input" type="url" name="documentoUrl" [(ngModel)]="actuacion.documentoUrl"
+                         placeholder="https://…" maxlength="300" />
+                </div>
+              </div>
+              @if (errorFormulario) { <div class="alerta alerta-error">{{ errorFormulario }}</div> }
+              <div class="form-actions">
+                <button class="btn btn-primary" type="submit" [disabled]="guardando">{{ guardando ? 'Guardando…' : 'Guardar actuación' }}</button>
+                <button class="btn btn-secondary" type="button" (click)="formulario = null">Cancelar</button>
+              </div>
+            </form>
+          }
+
+          @if (formulario === 'PROVIDENCIA') {
+            <form class="formulario" #fp="ngForm" (ngSubmit)="registrarProvidencia(fp)" novalidate>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label" for="tipoProv">Tipo</label>
+                  <select id="tipoProv" class="form-input" name="tipo" [(ngModel)]="providencia.tipo" required>
+                    <option value="AUTO">Auto</option>
+                    <option value="SENTENCIA">Sentencia</option>
+                  </select>
+                </div>
+                @if (providencia.tipo === 'SENTENCIA') {
+                  <div class="form-group">
+                    <label class="form-label" for="sentProv">Sentido para el cliente <span class="requerido">*</span></label>
+                    <select id="sentProv" class="form-input" name="sentido" [(ngModel)]="providencia.sentido" required>
+                      <option [ngValue]="null" disabled>Elija</option>
+                      <option value="FAVORABLE">Favorable</option>
+                      <option value="PARCIAL">Parcialmente favorable</option>
+                      <option value="DESFAVORABLE">Desfavorable</option>
+                    </select>
+                  </div>
+                }
+                <div class="form-group form-group-full">
+                  <label class="form-label" for="claseProv">Qué decidió el juez <span class="requerido">*</span></label>
+                  <input id="claseProv" class="form-input" name="clase" [(ngModel)]="providencia.clase" required maxlength="120"
+                         placeholder="Ej.: Admite demanda, Decreta pruebas, Sentencia de primera instancia" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="fechaProv">Fecha de la providencia</label>
+                  <input id="fechaProv" class="form-input" type="date" name="fechaProvidencia" [(ngModel)]="providencia.fechaProvidencia" required [max]="hoy" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="estadoProv">Notificada por estado el</label>
+                  <input id="estadoProv" class="form-input" type="date" name="fechaEstado" [(ngModel)]="providencia.fechaEstado" required />
+                </div>
+                <div class="form-group form-group-full">
+                  <label class="form-label" for="decProv">Decisión o resumen</label>
+                  <input id="decProv" class="form-input" name="decision" [(ngModel)]="providencia.decision" maxlength="300" />
+                </div>
+              </div>
+              @if (providencia.tipo === 'SENTENCIA') {
+                <p class="form-ayuda">Al guardar la sentencia, el proceso pasa a la etapa Sentencia. Para recurrirla, registre después una actuación de tipo Recurso.</p>
+              }
+              @if (errorFormulario) { <div class="alerta alerta-error">{{ errorFormulario }}</div> }
+              <div class="form-actions">
+                <button class="btn btn-primary" type="submit" [disabled]="guardando">{{ guardando ? 'Guardando…' : 'Guardar providencia' }}</button>
+                <button class="btn btn-secondary" type="button" (click)="formulario = null">Cancelar</button>
+              </div>
+            </form>
+          }
+
+          <div class="resumen-bar" role="group" aria-label="Filtrar la línea de tiempo">
+            @for (f of ['TODO', 'ACTUACION', 'PROVIDENCIA', 'TERMINO']; track f) {
+              <button type="button" class="resumen-chip chip-filtro" [class.activo]="filtro === f" [attr.aria-pressed]="filtro === f" (click)="filtro = $any(f)">
+                {{ f === 'TODO' ? 'Todo' : f === 'ACTUACION' ? 'De la firma' : f === 'PROVIDENCIA' ? 'Del juzgado' : 'Términos' }}
+                <strong>{{ contar($any(f)) }}</strong>
+              </button>
+            }
+          </div>
+
+          @if (eventosVisibles.length === 0) {
+            <p class="form-ayuda">Todavía no hay nada registrado en este proceso.</p>
+          } @else {
+            <ol class="linea">
+              @for (e of eventosVisibles; track e.categoria + e.id) {
+                <li class="evento" [class]="claseEvento(e)">
+                  <span class="punto-linea" aria-hidden="true"></span>
+                  <div class="evento-fecha">
+                    {{ e.fecha | date:'dd/MM/yyyy' }}
+                    @if (esFutura(e) && e.categoria === 'ACTUACION') { <span class="badge badge-warning">Programada</span> }
+                  </div>
+                  <div class="evento-cuerpo">
+                    <span class="evento-tipo">
+                      {{ e.categoria === 'TERMINO' ? (e.tipo === 'CUMPLIDO' ? 'Término cumplido' : 'Vence término') : etiqueta(e.tipo) }}
+                      @if (e.origen === 'VIGILANCIA') { · detectado en la Rama Judicial }
+                    </span>
+                    <strong>{{ e.titulo }}</strong>
+                    @if (e.detalle) { <small>{{ e.detalle }}</small> }
+                  </div>
+                  @if (juridico && e.categoria === 'ACTUACION') {
+                    <button class="btn-quitar" type="button" (click)="eliminarActuacion(e)" [attr.aria-label]="'Eliminar la actuación ' + e.titulo">×</button>
+                  }
+                </li>
+              }
+            </ol>
+          }
+        </div>
+      </section>
+
+      <!-- ================= Partes ================= -->
+      <section class="card">
+        <div class="card-header encabezado-tarjeta">
+          <h2>Partes ({{ partes.length }})</h2>
+          @if (juridico) {
+            <button class="btn btn-secondary btn-sm" type="button" (click)="abrir('PARTE')" [attr.aria-expanded]="formulario === 'PARTE'">Agregar</button>
+          }
+        </div>
+        <div class="card-body">
+          @if (conflictos.length) {
+            <div class="alerta alerta-error" role="alert">
+              Posible conflicto de intereses:
+              @for (c of conflictos; track c.idCliente) { <br>{{ c.nombre }} ({{ c.numeroDocumento }}): {{ c.motivo }}. }
+              <br><small>El abogado responsable debe revisar si la firma puede llevar el caso.</small>
+            </div>
+          }
+          @if (sinVerificar) {
+            <div class="alerta alerta-error">La parte se guardó, pero no se pudo verificar el conflicto de intereses (el servicio de clientes no respondió). Revise a mano.</div>
+          }
+          @if (formulario === 'PARTE') {
+            <form class="formulario" #fparte="ngForm" (ngSubmit)="agregarParte(fparte)" novalidate>
+              <div class="form-group">
+                <label class="form-label" for="rolParte">Rol</label>
+                <select id="rolParte" class="form-input" name="rol" [(ngModel)]="parte.rol" required>
+                  @for (r of roles; track r) { <option [value]="r">{{ etiqueta(r) }}</option> }
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="nombreParte">Nombre o razón social <span class="requerido">*</span></label>
+                <input id="nombreParte" class="form-input" name="nombre" [(ngModel)]="parte.nombre" required maxlength="150" />
+              </div>
+              <div class="fila-doc">
+                <div class="form-group">
+                  <label class="form-label" for="tipoDocParte">Documento</label>
+                  <select id="tipoDocParte" class="form-input" name="tipoDocumento" [(ngModel)]="parte.tipoDocumento">
+                    <option [ngValue]="null">—</option>
+                    <option value="CC">CC</option><option value="CE">CE</option><option value="NIT">NIT</option><option value="PAS">PAS</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="numDocParte">Número</label>
+                  <input id="numDocParte" class="form-input" name="numeroDocumento" [(ngModel)]="parte.numeroDocumento" maxlength="15"
+                         [required]="!!parte.tipoDocumento" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="apoParte">Apoderado (abogado de esa parte)</label>
+                <input id="apoParte" class="form-input" name="apoderado" [(ngModel)]="parte.apoderado" maxlength="120" />
+              </div>
+              <p class="form-ayuda">Al guardar se busca si la persona ya es cliente de la firma (conflicto de intereses).</p>
+              @if (errorFormulario) { <div class="alerta alerta-error">{{ errorFormulario }}</div> }
+              <div class="form-actions">
+                <button class="btn btn-primary" type="submit" [disabled]="guardando">{{ guardando ? 'Guardando…' : 'Agregar parte' }}</button>
+              </div>
+            </form>
+          }
+
+          <ul class="lista-partes">
+            @for (pt of partes; track pt.idParte) {
+              <li>
+                <div>
+                  <strong>{{ pt.nombre }}</strong>
+                  @if (pt.esCliente) { <span class="badge badge-success">Cliente</span> }
+                  <small>{{ etiqueta(pt.rol) }}@if (pt.numeroDocumento) { · {{ pt.tipoDocumento }} {{ pt.numeroDocumento }} }</small>
+                  @if (pt.apoderado) { <small>Apoderado: {{ pt.apoderado }}</small> }
+                </div>
+                @if (juridico && !pt.esCliente) {
+                  <button class="btn-quitar" type="button" (click)="quitarParte(pt)" [attr.aria-label]="'Quitar a ' + pt.nombre">×</button>
+                }
+              </li>
+            }
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    @for (v of [version]; track v) { <app-terminos-proceso [idProceso]="idProceso" /> }
+    @if (juridico) { <app-asistente-proceso [idProceso]="idProceso" [radicado]="p.radicado" /> }
+  }
+</div>

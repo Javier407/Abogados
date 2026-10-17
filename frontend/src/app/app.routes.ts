@@ -3,6 +3,7 @@ import { LayoutComponent } from './layout/layout.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { ProcesosComponent } from './pages/procesos/procesos.component';
 import { ProcesoFormComponent } from './pages/procesos/proceso-form.component';
+import { ExpedienteComponent } from './pages/procesos/expediente.component';
 import { ClientesComponent } from './pages/clientes/clientes.component';
 import { AbogadosComponent } from './pages/abogados/abogados.component';
 import { HonorariosComponent } from './pages/honorarios/honorarios.component';
@@ -30,6 +31,7 @@ export const routes: Routes = [
       { path: '', component: DashboardComponent, title: 'Panel', canActivate: [personal] },
       { path: 'procesos', component: ProcesosComponent, title: 'Procesos', canActivate: [personal] },
       { path: 'procesos/nuevo', component: ProcesoFormComponent, title: 'Nuevo proceso', canActivate: [juridico] },
+      { path: 'procesos/:id', component: ExpedienteComponent, title: 'Expediente', canActivate: [personal] },
       { path: 'procesos/:id/editar', component: ProcesoFormComponent, title: 'Editar proceso', canActivate: [juridico] },
       { path: 'clientes', component: ClientesComponent, title: 'Clientes', canActivate: [personal] },
       { path: 'abogados', component: AbogadosComponent, title: 'Abogados', canActivate: [personal] },

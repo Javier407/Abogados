@@ -39,6 +39,11 @@ class SeguridadTest {
 		assertThat(permitido("GET", "/api/procesos", "DEPENDIENTE")).isTrue();
 		assertThat(permitido("POST", "/api/procesos", "DEPENDIENTE")).isFalse();
 		assertThat(permitido("POST", "/api/procesos/34/terminos", "DEPENDIENTE")).isTrue();
+		assertThat(permitido("POST", "/api/procesos/34/actuaciones", "DEPENDIENTE")).isTrue();
+		assertThat(permitido("DELETE", "/api/procesos/34/actuaciones/3", "DEPENDIENTE")).isFalse();
+		assertThat(permitido("POST", "/api/procesos/34/partes", "DEPENDIENTE")).isFalse();
+		assertThat(permitido("POST", "/api/procesos/34/providencias", "ABOGADO")).isTrue();
+		assertThat(permitido("GET", "/api/procesos/34/expediente", "ADMINISTRATIVO")).isTrue();
 		assertThat(permitido("POST", "/api/procesos", "ABOGADO")).isTrue();
 		assertThat(permitido("GET", "/api/honorarios", "DEPENDIENTE")).isFalse();
 		assertThat(permitido("GET", "/api/honorarios", "ABOGADO")).isTrue();

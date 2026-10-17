@@ -106,7 +106,7 @@ docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/consu
 - Usuarios de prueba de la aplicación (tabla `identidad.usuarios`): contraseña `Prueba2026*`.
 - Para recargar desde cero: `docker compose down -v && docker compose up -d` (borra el volumen).
 
-## Microservicios (fases 1 a 5)
+## Microservicios (fases 1 a 6)
 
 ```
 navegador ──► frontend (nginx :8090) ──/api──► gateway (:8091, valida el JWT y el rol) ─┬─► identidad (login, JWKS)
@@ -122,7 +122,7 @@ navegador ──► frontend (nginx :8090) ──/api──► gateway (:8091, v
 
 | Carpeta | Qué es | Tecnología |
 |---|---|---|
-| [`servicios/procesos`](servicios/procesos) | Procesos con validación del radicado (23 dígitos y despacho registrado), responsable y catálogos. Términos con vencimiento en días hábiles (festivos, Semana Santa y vacancia), calendario judicial y revisión diaria a las 7:00 que publica los avisos | Spring Boot 3.3 · Java 17 · JDBC |
+| [`servicios/procesos`](servicios/procesos) | Procesos con validación del radicado (23 dígitos y despacho registrado), responsable y catálogos. Expediente: partes con aviso de conflicto de intereses, actuaciones, providencias manuales, sentencia, recursos y línea de tiempo. Términos con vencimiento en días hábiles (festivos, Semana Santa y vacancia), calendario judicial y revisión diaria a las 7:00 que publica los avisos | Spring Boot 3.3 · Java 17 · JDBC |
 | [`servicios/gabinete`](servicios/gabinete) | Clientes, abogados, peritos, tarifas de referencia en pesos, acuerdos de honorarios y pagos (evolución de este laboratorio: `javax` → `jakarta`, MySQL → PostgreSQL) | Spring Boot 3.3 · Java 17 · JPA |
 | [`servicios/asistente-ia`](servicios/asistente-ia) | Borradores de contestación y resúmenes para el cliente con un modelo local; encabezado puesto por el sistema, texto por partes (ADR 0006) | Python 3.12 · FastAPI · Ollama |
 | [`servicios/notificaciones`](servicios/notificaciones) | Avisos de términos y de actuaciones nuevas: en la app (en vivo con SSE), por correo y por Telegram (vinculación con código de un solo uso); no repite avisos | Python 3.12 · FastAPI · aio-pika |
@@ -155,6 +155,18 @@ openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out infra/secretos
 ```
 
 Mailpit pide usuario y clave si se define `MAILPIT_UI_AUTH=usuario:clave` en `infra/.env`.
+
+**Copias de seguridad:** el contenedor `respaldo` hace un `pg_dump` cada día a las 02:30 (y al arrancar, si la última copia tiene más de un día) en `infra/respaldos/`, fuera de git, y guarda 14 días. Para probar que la última copia se restaura bien (en una base temporal que luego borra):
+
+```bash
+docker compose exec respaldo sh /respaldo/respaldar.sh probar
+```
+
+Restaurar de verdad (reemplaza los datos actuales; detener antes los servicios):
+
+```bash
+docker compose exec -T postgres sh -c 'pg_restore --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < respaldos/gabinete-AAAAMMDD-HHMMSS.dump
+```
 
 **Integración continua:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) compila y prueba cada servicio Java y Python, el frontend y el `docker-compose.yml` en cada *push*.
 

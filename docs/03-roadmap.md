@@ -10,6 +10,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | **F3. Vigilancia** | Enterarse de los autos sin entrar al portal | `vigilancia` con la interfaz `FuenteRamaJudicial`; consulta programada; evento `actuacion.detectada`; notificaciones por Telegram | Un auto nuevo en un radicado vigilado llega por Telegram y queda registrado en el proceso |
 | **F4. Asistente y administración** | Apoyo a la redacción y gestión de la firma | `asistente-ia` con Hermes (borradores y resúmenes); módulo de peritos; tarifas, honorarios pactados y pagos | Generar un borrador de contestación a partir de un proceso y registrar un pago de honorarios |
 | **F5. Seguridad y calidad** | Listo para uso real | `identidad` con JWT y roles; contraseñas con BCrypt; CI con GitHub Actions (build y pruebas por servicio); nueva evaluación ISO/IEC 25010 | Ningún servicio responde sin token; el pipeline pasa en verde; Seguridad ≥ 7 en la evaluación |
+| **F6. Expediente** | Que cada proceso tenga su historia completa y los datos estén respaldados | Partes con aviso de conflicto de intereses; actuaciones con línea de tiempo; providencia y sentencia manuales; recursos contra una providencia; otras instancias del radicado; copias de seguridad diarias | Desde la app: agregar la contraparte (con aviso si es cliente), registrar una actuación y una providencia y verlas en la línea de tiempo; existe un respaldo diario que se restaura sin errores |
 
 ## Estado
 
@@ -21,6 +22,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F3 | Terminada: un auto nuevo (fuente simulada) en el proceso 34 quedó registrado como providencia y llegó por Telegram (@javier_asistente_ia_bot), correo y app | 2026-10-16 |
 | F4 | Terminada: borrador de contestación del proceso 13 generado desde la app con el modelo local (229 s) y pago de honorarios registrado desde la app | 2026-10-16 |
 | F5 | Terminada: en el servidor las 13 rutas de la API responden 401 sin token (también con cabeceras falsas o token `alg none`); 403 por rol; bloqueo al 5.º fallo; pipeline en verde; Seguridad 8/10 en la [evaluación](04-evaluacion-iso25010.md) | 2026-10-16 |
+| F6 | Terminada: en el servidor, contraparte con el NIT de un cliente → aviso de conflicto; "Constructora Altamira S.A.S." detectada contra el cliente "Constructora Altamira SAS"; memorial del dependiente y auto manual en la línea de tiempo; respaldo diario restaurado en una base temporal (31 procesos, 30 clientes, 19 términos, 16 usuarios) | 2026-10-17 |
 
 ## F1: qué quedó y qué falta
 
@@ -142,3 +144,29 @@ Pendiente o decidido para después (detalle en el plan de mejora de la evaluaci�
 - HTTPS, *refresh token* con revocación y validación del JWT en cada servicio: obligatorios antes de publicar fuera de la VPN.
 - Administración de usuarios desde la app (hoy por SQL) y portal del cliente (el rol CLIENTE solo ve **Mi cuenta**).
 - Análisis de dependencias y cobertura en CI.
+
+## F6: qué quedó y qué falta
+
+Hecho:
+
+1. **Partes** (`/procesos/{id}/partes`): contraparte, terceros y llamados en garantía, con documento y apoderado. El cliente lo crea el proceso y no se edita ni se quita desde aquí.
+2. **Conflicto de intereses:** al agregar o editar una parte se compara con todos los clientes de la firma, por documento exacto o por nombre normalizado (sin tildes, puntos ni mayúsculas). Es un **aviso**, no un bloqueo. Si gabinete no responde, la parte se guarda y se avisa que no se verificó.
+3. **Actuaciones** (`/procesos/{id}/actuaciones`): poder, demanda, contestación, memorial, recurso, audiencia, alegatos, notificación.
+   - Una fecha futura queda como programada.
+   - Pueden **cumplir un término** del proceso.
+   - DEMANDA, CONTESTACION y RECURSO mueven la etapa si es posterior a la actual (nunca retrocede).
+   - Un RECURSO exige la providencia que se recurre.
+   - Guardan quién las registró (del token). Los dependientes también pueden registrarlas (radican memoriales).
+4. **Providencias manuales** (`POST /procesos/{id}/providencias`): auto o sentencia. La sentencia exige su sentido (favorable, desfavorable, parcial) y lleva el proceso a la etapa SENTENCIA.
+5. **Línea de tiempo y otras instancias** (`/procesos/{id}/expediente`): actuaciones, providencias y términos en una sola lista. Las otras instancias son los procesos con los mismos 21 primeros dígitos del radicado.
+6. **Pantalla del expediente** (`/procesos/{id}`): encabezado del proceso, línea de tiempo con filtros, formularios, partes, términos y asistente. La lista de procesos y el formulario de edición llevan a ella.
+7. **Copias de seguridad:** contenedor `respaldo` con `pg_dump` diario a las 02:30 (y al arrancar si la última tiene más de un día), 14 días de historia en `infra/respaldos/` (fuera de git). `respaldar.sh probar` restaura la última copia en una base temporal y cuenta filas.
+8. Migración `db/migraciones/004-f6-expediente.sql`. Pruebas: 14 nuevas del expediente y 3 de providencia manual. Contrato OpenAPI de `procesos` actualizado.
+
+Pendiente o decidido para después:
+
+- **Las copias viven en la misma VM.** Si se daña el disco del servidor se pierden con la base. Siguiente paso: copiarlas al host Windows o al PC (por ejemplo, `scp` programado) o a un almacenamiento externo.
+- **Conflicto de intereses a escala:** se trae la lista completa de clientes. Sirve para cientos o pocos miles; más allá conviene una búsqueda normalizada en gabinete (con `unaccent`).
+- **Documentos:** la actuación guarda un enlace (`https://…`), no el archivo. El expediente digital con almacenamiento propio queda para después.
+- **Providencias:** no se editan ni se borran desde la app (para no alterar lo que dijo el juez). Una registrada por error se corrige en la base.
+- Las audiencias se registran como actuaciones programadas, pero todavía no salen en el calendario ni generan aviso. Es lo primero de F7.

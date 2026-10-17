@@ -6,7 +6,8 @@ import {
   Abogado, AreaPractica, Aviso, Cargo, Cliente, ConsultaVigilancia, EstadoAsistente, Honorario, HonorarioSolicitud,
   Pago, Perito, Tarifa, DesgloseRadicado, Despacho, DiaInhabil, EstadoTelegram,
   FuenteVigilancia, Proceso, ProcesoSolicitud, Providencia, RadicadoVigilado, Rama, ResultadoConsulta, Revision, Sede,
-  Termino, TerminoSolicitud, TipoProceso, Vencimiento, VinculoTelegram
+  Termino, TerminoSolicitud, TipoProceso, Vencimiento, VinculoTelegram,
+  Actuacion, ActuacionSolicitud, Expediente, Parte, ParteRegistrada, ParteSolicitud, ProvidenciaSolicitud
 } from './modelos';
 
 /**
@@ -125,6 +126,33 @@ export class ApiService {
   // ---------- providencias ----------
   providencias(idProceso: number): Observable<Providencia[]> {
     return this.http.get<Providencia[]>(`${API}/procesos/${idProceso}/providencias`);
+  }
+
+  registrarProvidencia(idProceso: number, p: ProvidenciaSolicitud): Observable<Providencia> {
+    return this.http.post<Providencia>(`${API}/procesos/${idProceso}/providencias`, p);
+  }
+
+  // ---------- expediente ----------
+  expediente(idProceso: number): Observable<Expediente> {
+    return this.http.get<Expediente>(`${API}/procesos/${idProceso}/expediente`);
+  }
+  partes(idProceso: number): Observable<Parte[]> {
+    return this.http.get<Parte[]>(`${API}/procesos/${idProceso}/partes`);
+  }
+  agregarParte(idProceso: number, p: ParteSolicitud): Observable<ParteRegistrada> {
+    return this.http.post<ParteRegistrada>(`${API}/procesos/${idProceso}/partes`, p);
+  }
+  eliminarParte(idProceso: number, idParte: number): Observable<void> {
+    return this.http.delete<void>(`${API}/procesos/${idProceso}/partes/${idParte}`);
+  }
+  actuaciones(idProceso: number): Observable<Actuacion[]> {
+    return this.http.get<Actuacion[]>(`${API}/procesos/${idProceso}/actuaciones`);
+  }
+  registrarActuacion(idProceso: number, a: ActuacionSolicitud): Observable<Actuacion> {
+    return this.http.post<Actuacion>(`${API}/procesos/${idProceso}/actuaciones`, a);
+  }
+  eliminarActuacion(idProceso: number, idActuacion: number): Observable<void> {
+    return this.http.delete<void>(`${API}/procesos/${idProceso}/actuaciones/${idActuacion}`);
   }
 
   // ---------- vigilancia ----------

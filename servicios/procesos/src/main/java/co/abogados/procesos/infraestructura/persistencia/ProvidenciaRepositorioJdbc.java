@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import co.abogados.procesos.dominio.modelo.ActuacionDetectada;
+import co.abogados.procesos.dominio.modelo.NuevaProvidencia;
 import co.abogados.procesos.dominio.modelo.ProvidenciaVista;
 import co.abogados.procesos.dominio.puertos.ProvidenciaRepositorio;
 
@@ -58,6 +59,26 @@ public class ProvidenciaRepositorioJdbc implements ProvidenciaRepositorio {
 				.param("fecha", a.fecha())
 				.param("decision", anotacion)
 				.param("referencia", a.referencia())
+				.query(Integer.class)
+				.single();
+	}
+
+	@Override
+	public int registrarManual(int idProceso, NuevaProvidencia p, Long registradoPor) {
+		return jdbc.sql("""
+				INSERT INTO procesos.providencias (id_proceso, tipo, clase, fecha_providencia, fecha_estado, decision,
+				       sentido, fuente, registrado_por)
+				VALUES (:proceso, :tipo, :clase, :fecha, :estado, :decision, :sentido, 'MANUAL', :quien)
+				RETURNING id_providencia
+				""")
+				.param("proceso", idProceso)
+				.param("tipo", p.tipo())
+				.param("clase", p.clase())
+				.param("fecha", p.fechaProvidencia())
+				.param("estado", p.fechaEstado())
+				.param("decision", p.decision())
+				.param("sentido", p.sentido())
+				.param("quien", registradoPor)
 				.query(Integer.class)
 				.single();
 	}

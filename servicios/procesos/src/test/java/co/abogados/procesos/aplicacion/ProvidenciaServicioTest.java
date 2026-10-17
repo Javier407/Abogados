@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +19,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 
 import co.abogados.procesos.dominio.excepciones.RecursoNoEncontradoException;
+import co.abogados.procesos.dominio.excepciones.ReglaNegocioException;
+import co.abogados.procesos.dominio.modelo.EtapaProceso;
+import co.abogados.procesos.dominio.modelo.NuevaProvidencia;
 import co.abogados.procesos.dominio.modelo.ActuacionDetectada;
 import co.abogados.procesos.dominio.modelo.FiltroProcesos;
 import co.abogados.procesos.dominio.modelo.Proceso;
@@ -31,13 +37,17 @@ class ProvidenciaServicioTest {
 
 	static final String RADICADO = "11001400301520260077700";
 
+	static final Clock HOY = Clock.fixed(Instant.parse("2026-10-16T15:00:00Z"), ZoneOffset.UTC);
+
 	ProvidenciasEnMemoria providencias;
+	ExpedienteServicioTest.ExpedienteEnMemoria expediente;
 	ProvidenciaServicio servicio;
 
 	@BeforeEach
 	void preparar() {
 		providencias = new ProvidenciasEnMemoria();
-		servicio = new ProvidenciaServicio(providencias, new ProcesoUnico());
+		expediente = new ExpedienteServicioTest.ExpedienteEnMemoria();
+		servicio = new ProvidenciaServicio(providencias, new ProcesoUnico(), expediente, HOY);
 	}
 
 	static ActuacionDetectada actuacion(String referencia, int idProceso, String radicado) {
@@ -90,6 +100,44 @@ class ProvidenciaServicioTest {
 		assertThat(ConsumidorActuacionesPrueba.leer(completo).fecha()).isEqualTo(LocalDate.of(2026, 10, 15));
 	}
 
+	// ----------------------------------------------------------------- registro manual (F6)
+
+	@Test
+	void unaSentenciaManualQuedaConSuSentidoYLlevaElProcesoASentencia() {
+		ProvidenciaVista p = servicio.registrarManual(34, new NuevaProvidencia("SENTENCIA", "Sentencia de primera instancia",
+				LocalDate.of(2026, 10, 14), LocalDate.of(2026, 10, 15), "Accede a las pretensiones", "FAVORABLE"), 79123456L);
+
+		assertThat(p.fuente()).isEqualTo("MANUAL");
+		assertThat(p.sentido()).isEqualTo("FAVORABLE");
+		assertThat(expediente.etapas).containsExactly(EtapaProceso.SENTENCIA);
+	}
+
+	@Test
+	void unAutoManualNoCambiaLaEtapa() {
+		servicio.registrarManual(34, new NuevaProvidencia("AUTO", "Fija fecha de audiencia",
+				LocalDate.of(2026, 10, 14), LocalDate.of(2026, 10, 15), null, null), null);
+
+		assertThat(expediente.etapas).isEmpty();
+		assertThat(servicio.deProceso(34)).hasSize(1);
+	}
+
+	@Test
+	void reglasDeLaProvidenciaManual() {
+		LocalDate dia = LocalDate.of(2026, 10, 14);
+		assertThatThrownBy(() -> new NuevaProvidencia("SENTENCIA", "Fallo", dia, dia, null, null))
+				.isInstanceOf(ReglaNegocioException.class).hasMessageContaining("favorable");
+		assertThatThrownBy(() -> new NuevaProvidencia("AUTO", "Admite", dia, dia, null, "FAVORABLE"))
+				.isInstanceOf(ReglaNegocioException.class);
+		assertThatThrownBy(() -> new NuevaProvidencia("AUTO", "Admite", dia, dia.minusDays(1), null, null))
+				.isInstanceOf(ReglaNegocioException.class).hasMessageContaining("estado");
+		assertThatThrownBy(() -> servicio.registrarManual(34, new NuevaProvidencia("AUTO", "Admite",
+				LocalDate.of(2026, 10, 20), LocalDate.of(2026, 10, 20), null, null), null))
+				.isInstanceOf(ReglaNegocioException.class).hasMessageContaining("futura");
+		assertThatThrownBy(() -> servicio.registrarManual(34, new NuevaProvidencia("AUTO", "Admite",
+				LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 1), null, null), null))
+				.isInstanceOf(ReglaNegocioException.class).hasMessageContaining("radicación");
+	}
+
 	// ----------------------------------------------------------------- dobles
 
 	static class ProcesoUnico implements ProcesoRepositorio {
@@ -120,6 +168,12 @@ class ProvidenciaServicioTest {
 			datos.add(new ProvidenciaVista(id, idProceso, a.tipo(), a.actuacion(), a.fecha(), a.fecha(), a.anotacion(),
 					null, "VIGILANCIA"));
 			referencias.add(a.referencia());
+			return id;
+		}
+		public int registrarManual(int idProceso, NuevaProvidencia p, Long quien) {
+			int id = datos.size() + 1;
+			datos.add(new ProvidenciaVista(id, idProceso, p.tipo(), p.clase(), p.fechaProvidencia(), p.fechaEstado(),
+					p.decision(), p.sentido(), "MANUAL"));
 			return id;
 		}
 	}

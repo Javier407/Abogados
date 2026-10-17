@@ -1,6 +1,8 @@
 # 5. Mapa de procesos: qué está hecho, qué falta y dónde va el código
 
-Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-dominio.md`) con lo que el código hace hoy (fases F1 a F5, rama `feature/f5-seguridad`, 2026-10-17). Sirve para decidir las fases siguientes.
+Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-dominio.md`) con lo que el código hace hoy. Sirve para decidir las fases siguientes.
+
+> Escrito al cerrar F5 y **actualizado con F6** (rama `feature/f6-expediente`, 2026-10-17): partes y conflicto de intereses, actuaciones, providencia manual, sentencia, recursos, otras instancias y copias de seguridad.
 
 **Estados:**
 - ✅ **Hecho:** tiene lógica, API, pantalla y pruebas.
@@ -11,25 +13,25 @@ Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-domin
 
 | # | Macroproceso | Estado | Resumen |
 |---|---|---|---|
-| 1 | Captación y vinculación del cliente | 🟡 | Hay clientes y acuerdos de honorarios. Faltan la consulta inicial, el conflicto de intereses y el poder. |
-| 2 | Gestión del proceso judicial | 🟡 | Hay radicado, responsable, providencias detectadas y términos. Faltan partes, actuaciones, audiencias, pruebas, sentencia y recursos. |
+| 1 | Captación y vinculación del cliente | 🟡 | Clientes, acuerdos de honorarios, conflicto de intereses y poder (F6). Falta la consulta inicial. |
+| 2 | Gestión del proceso judicial | 🟡 | Con F6 el expediente tiene partes, actuaciones, providencias, sentencia, recursos y línea de tiempo. Faltan audiencias en la agenda, pruebas y el expediente digital. |
 | 3 | Vigilancia y alertas | ✅ | Rama Judicial (real o simulada), correo, avisos en la app y Telegram. |
 | 4 | Redacción asistida (IA) | 🟡 | Contestación y resumen para el cliente. Faltan la demanda, los recursos y el resumen de autos. |
 | 5 | Finanzas | 🟡 | Tarifas, acuerdos y pagos. Faltan anulación de pagos, gastos procesales, facturación y cartera. |
 | 6 | Administración de la firma | 🟡 | Abogados, peritos y seguridad. Sedes, áreas y cargos son solo de lectura. No hay administración de usuarios. |
 | 7 | Portal del cliente | ❌ | El rol CLIENTE solo ve "Mi cuenta". |
 | 8 | Reportes e indicadores | 🟡 | Panel general. Faltan reportes por abogado, área y resultados. |
-| 9 | Plataforma (no funcional) | 🟡 | CI, JWT, auditoría y healthchecks. Faltan HTTPS, refresh token, outbox y copias de seguridad. |
+| 9 | Plataforma (no funcional) | 🟡 | CI, JWT, auditoría, healthchecks y copias de seguridad diarias (F6). Faltan HTTPS, refresh token, outbox y copias fuera del servidor. |
 
 ## 1. Captación y vinculación del cliente
 
 | Proceso | Estado | Código actual | Dónde iría lo que falta |
 |---|---|---|---|
 | Registrar consulta inicial (quién, qué caso, resultado) | ❌ | — | `gabinete`: tabla `gabinete.consultas` (nueva) y pantalla de secretaría. |
-| Verificar conflicto de intereses (¿la contraparte ya es cliente?) | ❌ | — | `procesos`: buscar el nombre o documento de la contraparte en `procesos.partes` y en `gabinete.clientes` al crear el proceso. |
+| Verificar conflicto de intereses (¿la contraparte ya es cliente?) | ✅ F6 | `ExpedienteServicio.conflictos`: documento exacto o nombre normalizado contra los clientes de gabinete; aviso en la tarjeta de partes | A escala (miles de clientes), búsqueda normalizada en gabinete. |
 | Registrar cliente | ✅ | `gabinete` → `ClientesRecurso`, `pages/clientes` | — |
 | Pactar honorarios | ✅ | `gabinete` → `HonorariosRecurso`, `pages/honorarios` | — |
-| Otorgar poder (documento firmado) | ❌ | La tabla `procesos.actuaciones` admite el tipo `PODER` y tiene `documento_url`, pero nada la usa. | Ver "Actuaciones" y "Expediente digital" en la sección 2. |
+| Otorgar poder (documento firmado) | 🟡 F6 | Actuación tipo `PODER` con enlace al documento. | Guardar el archivo: ver "Expediente digital". |
 
 ## 2. Gestión del proceso judicial
 
@@ -38,18 +40,18 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Proceso | Estado | Código actual | Dónde iría lo que falta |
 |---|---|---|---|
 | Registrar el proceso con su radicado | ✅ | `procesos` → `ProcesoServicio.crear`, validación del radicado y despacho, `pages/procesos/proceso-form` | — |
-| Partes: cliente, contraparte y terceros | 🟡 | `ProcesoRepositorioJdbc` solo guarda la parte que es el cliente (`es_cliente`). | CRUD `/procesos/{id}/partes` y una sección en el formulario. También es la base del conflicto de intereses. |
+| Partes: cliente, contraparte y terceros | ✅ F6 | `ExpedienteRecurso` `/procesos/{id}/partes`, tarjeta "Partes" del expediente | — |
 | Equipo: responsable y apoyo | 🟡 | Hay responsable. El anterior pasa a `APOYO` automáticamente, pero no hay forma de agregar apoyo. | `/procesos/{id}/asignaciones` y una lista en el detalle del proceso. |
-| Actuaciones (demanda, contestación, memoriales, alegatos) | ❌ | Existe la tabla `procesos.actuaciones` (tipos PODER…OTRO), sin código. | `ActuacionServicio` y `/procesos/{id}/actuaciones` en `procesos`, con una línea de tiempo en el detalle. Al registrar una actuación se puede marcar como cumplido el término que la origina. |
+| Actuaciones (demanda, contestación, memoriales, alegatos) | ✅ F6 | `/procesos/{id}/actuaciones`, línea de tiempo del expediente; cumplen términos y mueven la etapa | — |
 | Providencias detectadas por la vigilancia | ✅ | `ConsumidorActuaciones` → `ProvidenciaServicio.registrarDetectada`, `providencias-proceso.component` | — |
-| Registrar una providencia a mano | ❌ | Solo existe `GET /procesos/{id}/providencias`. | `POST` en `ProvidenciasRecurso`, para procesos sin vigilancia o con la fuente MANUAL. |
+| Registrar una providencia a mano | ✅ F6 | `POST /procesos/{id}/providencias` | — |
 | Términos (crear, cumplir, revisión diaria, calendario) | ✅ | `TerminoServicio`, `CalendarioServicio`, `RevisionDiariaTerminos`, `pages/terminos`, `pages/calendario` | — |
 | Términos sugeridos al llegar un auto (por ejemplo, admite demanda → 20 días en un verbal) | ❌ | Los términos de referencia están en `01-dominio.md` §1.6, pero no en el código. | Tabla `procesos.reglas_termino` (tipo de proceso × clase de auto → días). `ProvidenciaServicio` propone el término y el abogado lo confirma. Las reglas debe validarlas un abogado. |
 | Audiencias y agenda | ❌ | El calendario solo muestra términos. | Actuación tipo `AUDIENCIA` con fecha futura, mostrada en el calendario, con un aviso el día antes (evento `audiencia.proxima`). |
 | Pruebas (documental, pericial, testimonial…) | ❌ | Existe la tabla `procesos.pruebas` con `id_perito`, sin código. | CRUD `/procesos/{id}/pruebas`, asignación de perito (lee `gabinete` vía `DirectorioGabinete`) y fecha de entrega del dictamen como término. |
-| Sentencia y resultado | 🟡 | Las sentencias detectadas se guardan como providencia. El estado del proceso se cambia editándolo. | Registrar la sentencia con su `sentido` (favorable, desfavorable o parcial). Eso cierra la instancia y alimenta la cuota litis (sección 5) y los reportes (sección 8). |
-| Recursos (apelación, reposición, impugnación de tutela) | ❌ | — | Actuación tipo `RECURSO` y su término de 3 días. La segunda instancia es el mismo radicado con sufijo `01`: vincularla con el proceso original. |
-| Expediente digital (documentos) | ❌ | Solo existe la columna `documento_url`. | Servicio `documentos` o almacenamiento tipo S3/MinIO (ya hay uno en el servidor, de otro proyecto: crear uno propio). Debe tener control de acceso por proceso. |
+| Sentencia y resultado | ✅ F6 | Sentencia manual con `sentido`; el proceso pasa a la etapa SENTENCIA | Usar el sentido en la cuota litis (sección 5) y en los reportes (sección 8). |
+| Recursos (apelación, reposición, impugnación de tutela) | 🟡 F6 | Actuación `RECURSO` contra una providencia; otras instancias del mismo radicado enlazadas en el expediente | El término de 3 días se crea a mano: sugerirlo automáticamente (F7). |
+| Expediente digital (documentos) | 🟡 F6 | Las actuaciones guardan un enlace (`documento_url`). | Servicio `documentos` o almacenamiento tipo S3/MinIO (ya hay uno en el servidor, de otro proyecto: crear uno propio). Debe tener control de acceso por proceso. |
 
 ## 3. Vigilancia y alertas ✅
 
@@ -123,7 +125,7 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Refresh token y revocación | ❌ | Prioridad 2. |
 | Validar el JWT en cada servicio | ❌ | Prioridad 3. |
 | Outbox de eventos | ❌ | Prioridad 6. |
-| Copias de seguridad de PostgreSQL | ❌ | No existe ninguna. Un `pg_dump` diario con rotación es **lo más urgente si entran datos reales**. |
+| Copias de seguridad de PostgreSQL | 🟡 F6 | `pg_dump` diario con 14 días de historia y prueba de restauración (`infra/respaldo/respaldar.sh`). Falta copiarlas **fuera de la VM**. |
 | Monitoreo y logs centralizados | ❌ | Solo `docker compose logs`. |
 | IP real del cliente (Tailscale SNAT) | ❌ | Brecha 7 de la evaluación ISO. |
 
@@ -133,7 +135,7 @@ Ordenadas por valor para la firma y por dependencias:
 
 | Fase | Contenido | Por qué en este orden |
 |---|---|---|
-| **F6. Expediente** | Partes (con conflicto de intereses), actuaciones con línea de tiempo, providencia manual, sentencia con sentido, recursos. Copias de seguridad diarias. | Completa el corazón del dominio: hoy un proceso no tiene historia propia, solo términos y autos detectados. Antes de meter datos reales hacen falta copias de seguridad. |
+| **F6. Expediente** ✅ | Partes (con conflicto de intereses), actuaciones con línea de tiempo, providencia manual, sentencia con sentido, recursos. Copias de seguridad diarias. | Completa el corazón del dominio: hoy un proceso no tiene historia propia, solo términos y autos detectados. Antes de meter datos reales hacen falta copias de seguridad. |
 | **F7. Agenda y pruebas** | Audiencias en el calendario con aviso, pruebas con perito, términos sugeridos al llegar un auto (reglas validadas por un abogado). | Usa las actuaciones de F6. Es lo que más evita olvidos después de los términos. |
 | **F8. Administración y finanzas** | Usuarios y roles desde la app, anulación de pagos, gastos, cuota litis, reportes. | Quita el trabajo por SQL y da información a los socios. |
 | **F9. Portal del cliente y endurecimiento** | Portal, avisos al cliente, HTTPS, refresh token, outbox. | El portal expone datos fuera del equipo: requiere primero las prioridades 1 a 3 de seguridad. |

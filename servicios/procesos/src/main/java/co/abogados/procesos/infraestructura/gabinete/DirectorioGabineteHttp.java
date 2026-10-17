@@ -1,6 +1,7 @@
 package co.abogados.procesos.infraestructura.gabinete;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +35,18 @@ public class DirectorioGabineteHttp implements DirectorioGabinete {
 	@Override
 	public Optional<Abogado> abogado(long idPersona) {
 		return consultar("/abogados/{id}", Abogado.class, idPersona);
+	}
+
+	@Override
+	public List<ClienteResumen> buscarClientes(String texto) {
+		try {
+			ClienteResumen[] encontrados = http.get()
+					.uri(b -> texto == null ? b.path("/clientes").build() : b.path("/clientes").queryParam("q", texto).build())
+					.retrieve().body(ClienteResumen[].class);
+			return encontrados == null ? List.of() : List.of(encontrados);
+		} catch (RestClientException e) {
+			throw new ServicioNoDisponibleException("El servicio gabinete no responde; intente de nuevo en unos segundos");
+		}
 	}
 
 	private <T> Optional<T> consultar(String ruta, Class<T> tipo, Object id) {

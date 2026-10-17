@@ -213,6 +213,143 @@ paths:
                 properties: { fechaInicio: { type: string, format: date }, diasHabiles: { type: integer }, fechaVencimiento: { type: string, format: date } }
         '422': { $ref: '#/components/responses/Error' }
 
+  # ---------------------------------------------------------------- expediente (F6)
+  /procesos/{idProceso}/expediente:
+    get:
+      summary: Línea de tiempo (actuaciones, providencias y términos, la más reciente primero) y otras instancias del radicado
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Expediente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lineaDeTiempo:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        fecha: { type: string, format: date }
+                        categoria: { type: string, enum: [ACTUACION, PROVIDENCIA, TERMINO] }
+                        tipo: { type: string, description: 'Tipo de actuación, AUTO/SENTENCIA o PENDIENTE/CUMPLIDO' }
+                        id: { type: integer }
+                        titulo: { type: string }
+                        detalle: { type: string, nullable: true }
+                        origen: { type: string, nullable: true, description: 'FIRMA, MANUAL o VIGILANCIA' }
+                  otrasInstancias:
+                    type: array
+                    items:
+                      type: object
+                      properties: { idProceso: { type: integer }, radicadoLegible: { type: string }, instancia: { type: integer }, despacho: { type: string }, estado: { type: string } }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /procesos/{idProceso}/partes:
+    get:
+      summary: Partes del proceso (primero el cliente)
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Partes, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Parte' } } } } }
+    post:
+      summary: Agrega la contraparte o un tercero y avisa si coincide con un cliente de la firma (conflicto de intereses)
+      description: No bloquea. Si el servicio gabinete no responde, guarda la parte con conflictosVerificados = false.
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ParteSolicitud' } } } }
+      responses:
+        '201': { description: Parte agregada, content: { application/json: { schema: { $ref: '#/components/schemas/ParteRegistrada' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /procesos/{idProceso}/partes/{idParte}:
+    put:
+      summary: Edita una parte (no la del cliente, que se cambia editando el proceso)
+      parameters:
+        - { name: idProceso, in: path, required: true, schema: { type: integer } }
+        - { name: idParte, in: path, required: true, schema: { type: integer } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ParteSolicitud' } } } }
+      responses:
+        '200': { description: Parte editada, content: { application/json: { schema: { $ref: '#/components/schemas/ParteRegistrada' } } } }
+        '422': { $ref: '#/components/responses/Error' }
+    delete:
+      summary: Quita una parte (nunca al cliente)
+      parameters:
+        - { name: idProceso, in: path, required: true, schema: { type: integer } }
+        - { name: idParte, in: path, required: true, schema: { type: integer } }
+      responses:
+        '204': { description: Quitada }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /procesos/{idProceso}/actuaciones:
+    get:
+      summary: Actuaciones de la firma, la más reciente primero
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Actuaciones, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Actuacion' } } } } }
+    post:
+      summary: Registra una actuación (también los dependientes)
+      description: |
+        - Un RECURSO exige idProvidencia, de este mismo proceso.
+        - idTerminoCumplido marca ese término como cumplido (no se permite con fecha futura).
+        - DEMANDA, CONTESTACION y RECURSO con fecha pasada mueven el proceso a esa etapa si es posterior a la actual.
+        - Quién la registró sale del token (cabecera X-Usuario-Id puesta por el gateway).
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tipo, fecha, descripcion]
+              properties:
+                tipo: { $ref: '#/components/schemas/TipoActuacion' }
+                fecha: { type: string, format: date, description: 'Futura = programada (p. ej., una audiencia)' }
+                descripcion: { type: string, maxLength: 200 }
+                idPersona: { type: integer, format: int64, nullable: true }
+                idProvidencia: { type: integer, nullable: true }
+                documentoUrl: { type: string, maxLength: 300, nullable: true, pattern: '^https?://' }
+                idTerminoCumplido: { type: integer, nullable: true }
+      responses:
+        '201': { description: Registrada, content: { application/json: { schema: { $ref: '#/components/schemas/Actuacion' } } } }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /procesos/{idProceso}/actuaciones/{idActuacion}:
+    delete:
+      summary: Elimina una actuación registrada por error
+      parameters:
+        - { name: idProceso, in: path, required: true, schema: { type: integer } }
+        - { name: idActuacion, in: path, required: true, schema: { type: integer } }
+      responses:
+        '204': { description: Eliminada }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /procesos/{idProceso}/providencias:
+    get:
+      summary: Autos y sentencias del proceso (manuales y detectados por la vigilancia)
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Providencias }
+    post:
+      summary: Registra a mano un auto o una sentencia (fuente MANUAL)
+      description: La sentencia exige sentido (FAVORABLE, DESFAVORABLE o PARCIAL) y lleva el proceso a la etapa SENTENCIA. No se aceptan fechas futuras ni anteriores a la radicación.
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tipo, clase, fechaProvidencia, fechaEstado]
+              properties:
+                tipo: { type: string, enum: [AUTO, SENTENCIA] }
+                clase: { type: string, maxLength: 120 }
+                fechaProvidencia: { type: string, format: date }
+                fechaEstado: { type: string, format: date }
+                decision: { type: string, maxLength: 300, nullable: true }
+                sentido: { type: string, enum: [FAVORABLE, DESFAVORABLE, PARCIAL], nullable: true }
+      responses:
+        '201': { description: Registrada }
+        '422': { $ref: '#/components/responses/Error' }
+
 components:
   responses:
     Error:
@@ -233,6 +370,44 @@ components:
     RolCliente: { type: string, enum: [DEMANDANTE, DEMANDADO, VICTIMA, PROCESADO, ACCIONANTE, ACCIONADO] }
     ClaseCuantia: { type: string, enum: [MINIMA, MENOR, MAYOR, SIN_CUANTIA] }
     TipoServicio: { type: string, enum: [PRESENCIAL, VIRTUAL, REPRESENTACION] }
+    RolParte: { type: string, enum: [DEMANDANTE, DEMANDADO, VICTIMA, PROCESADO, ACCIONANTE, ACCIONADO, TERCERO, LLAMADO_GARANTIA] }
+    TipoActuacion: { type: string, enum: [PODER, DEMANDA, CONTESTACION, MEMORIAL, RECURSO, AUDIENCIA, ALEGATOS, NOTIFICACION, OTRO] }
+    ParteSolicitud:
+      type: object
+      required: [rol, nombre]
+      properties:
+        rol: { $ref: '#/components/schemas/RolParte' }
+        tipoDocumento: { type: string, enum: [CC, CE, NIT, PAS], nullable: true }
+        numeroDocumento: { type: string, maxLength: 15, nullable: true, description: 'Obligatorio si hay tipoDocumento; solo dígitos (PAS admite letras)' }
+        nombre: { type: string, maxLength: 150 }
+        apoderado: { type: string, maxLength: 120, nullable: true }
+    Parte:
+      allOf:
+        - $ref: '#/components/schemas/ParteSolicitud'
+        - type: object
+          properties: { idParte: { type: integer }, idProceso: { type: integer }, esCliente: { type: boolean } }
+    ParteRegistrada:
+      type: object
+      properties:
+        parte: { $ref: '#/components/schemas/Parte' }
+        conflictosVerificados: { type: boolean }
+        conflictos:
+          type: array
+          items:
+            type: object
+            properties: { idCliente: { type: integer }, nombre: { type: string }, numeroDocumento: { type: string }, motivo: { type: string } }
+    Actuacion:
+      type: object
+      properties:
+        idActuacion: { type: integer }
+        idProceso: { type: integer }
+        fecha: { type: string, format: date }
+        tipo: { $ref: '#/components/schemas/TipoActuacion' }
+        descripcion: { type: string }
+        idPersona: { type: integer, format: int64, nullable: true }
+        idProvidencia: { type: integer, nullable: true }
+        documentoUrl: { type: string, nullable: true }
+        registradoPor: { type: integer, format: int64, nullable: true }
 
     ProcesoSolicitud:
       type: object

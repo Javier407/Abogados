@@ -36,4 +36,5 @@ build/
 .env
 infra/.env
 infra/secretos/
+infra/respaldos/
 *.pem

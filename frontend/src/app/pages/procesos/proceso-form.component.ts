@@ -5,9 +5,6 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, catchError, debounceTime, distinctUntilChanged, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
-import { TerminosProcesoComponent } from './terminos-proceso.component';
-import { ProvidenciasProcesoComponent } from './providencias-proceso.component';
-import { AsistenteProcesoComponent } from './asistente-proceso.component';
 import {
   Abogado, CLASES_CUANTIA, Cliente, DesgloseRadicado, Despacho, ESTADOS, ETAPAS, ProcesoSolicitud, ROLES_CLIENTE,
   Rama, TIPOS_SERVICIO, TipoProceso, etiqueta
@@ -17,8 +14,7 @@ import {
 @Component({
   selector: 'app-proceso-form',
   standalone: true,
-  imports: [FormsModule, RouterLink, TerminosProcesoComponent, ProvidenciasProcesoComponent,
-    AsistenteProcesoComponent],
+  imports: [FormsModule, RouterLink],
   templateUrl: './proceso-form.component.html'
 })
 export class ProcesoFormComponent implements OnInit {
@@ -149,7 +145,7 @@ export class ProcesoFormComponent implements OnInit {
       ? this.api.actualizarProceso(this.idProceso, datos)
       : this.api.crearProceso(datos);
     peticion.subscribe({
-      next: () => this.router.navigate(['/procesos']),
+      next: p => this.router.navigate(['/procesos', p.idProceso]),   // al expediente del proceso guardado
       error: e => { this.error = mensajeDeError(e); this.guardando = false; }
     });
   }

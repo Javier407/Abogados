@@ -45,6 +45,35 @@ services:
     mem_limit: 512m
     logging: *logs
 
+  # Copia diaria de la base (pg_dump) en ./respaldos, 14 días de historia. Ver respaldo/respaldar.sh.
+  # Solo recibe las credenciales de PostgreSQL, no el resto del .env.
+  respaldo:
+    image: postgres:16.4-alpine
+    container_name: abogados-respaldo
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/respaldo/respaldar.sh"]
+    environment:
+      TZ: America/Bogota
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      HORA_RESPALDO: "02:30"
+      RETENER_DIAS: "14"
+    volumes:
+      - ./respaldo/respaldar.sh:/respaldo/respaldar.sh:ro
+      - ./respaldos:/respaldos
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # Sano si hay un respaldo de menos de 26 horas
+      test: ["CMD-SHELL", "find /respaldos -name 'gabinete-*.dump' -mmin -1560 | grep -q ."]
+      interval: 5m
+      timeout: 10s
+      start_period: 2m
+    mem_limit: 128m
+    logging: *logs
+
   rabbitmq:
     image: rabbitmq:3.13.7-management-alpine
     container_name: abogados-rabbitmq

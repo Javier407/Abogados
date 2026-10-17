@@ -301,3 +301,70 @@ export interface Pago {
 export type TipoBorrador = 'CONTESTACION' | 'RESUMEN_CLIENTE';
 export interface EstadoAsistente { modelo: string; disponible: boolean; detalle: string; }
 export interface EventoBorrador { evento: 'inicio' | 'texto' | 'aviso' | 'fin'; texto?: string; mensaje?: string; modelo?: string | null; conModelo?: boolean; segundos?: number; }
+
+// ---------- expediente (F6) ----------
+export const ROLES_PARTE = ['DEMANDANTE', 'DEMANDADO', 'VICTIMA', 'PROCESADO', 'ACCIONANTE', 'ACCIONADO', 'TERCERO', 'LLAMADO_GARANTIA'] as const;
+export type RolParte = typeof ROLES_PARTE[number];
+
+export interface Parte {
+  idParte: number;
+  idProceso: number;
+  rol: RolParte;
+  tipoDocumento?: TipoDocumento | null;
+  numeroDocumento?: string | null;
+  nombre: string;
+  esCliente: boolean;
+  apoderado?: string | null;
+}
+export interface ParteSolicitud {
+  rol: RolParte;
+  tipoDocumento?: TipoDocumento | null;
+  numeroDocumento?: string | null;
+  nombre: string;
+  apoderado?: string | null;
+}
+export interface ConflictoInteres { idCliente: number; nombre: string; numeroDocumento: string; motivo: string; }
+export interface ParteRegistrada { parte: Parte; conflictos: ConflictoInteres[]; conflictosVerificados: boolean; }
+
+export const TIPOS_ACTUACION = ['PODER', 'DEMANDA', 'CONTESTACION', 'MEMORIAL', 'RECURSO', 'AUDIENCIA', 'ALEGATOS', 'NOTIFICACION', 'OTRO'] as const;
+export type TipoActuacion = typeof TIPOS_ACTUACION[number];
+
+export interface Actuacion {
+  idActuacion: number;
+  idProceso: number;
+  fecha: string;
+  tipo: TipoActuacion;
+  descripcion: string;
+  idPersona?: number | null;
+  idProvidencia?: number | null;
+  documentoUrl?: string | null;
+  registradoPor?: number | null;
+}
+export interface ActuacionSolicitud {
+  tipo: TipoActuacion;
+  fecha: string;
+  descripcion: string;
+  idPersona?: number | null;
+  idProvidencia?: number | null;
+  documentoUrl?: string | null;
+  idTerminoCumplido?: number | null;
+}
+export interface ProvidenciaSolicitud {
+  tipo: 'AUTO' | 'SENTENCIA';
+  clase: string;
+  fechaProvidencia: string;
+  fechaEstado: string;
+  decision?: string | null;
+  sentido?: 'FAVORABLE' | 'DESFAVORABLE' | 'PARCIAL' | null;
+}
+export interface EventoExpediente {
+  fecha: string;
+  categoria: 'ACTUACION' | 'PROVIDENCIA' | 'TERMINO';
+  tipo: string;
+  id: number;
+  titulo: string;
+  detalle?: string | null;
+  origen?: string | null;
+}
+export interface Instancia { idProceso: number; radicadoLegible: string; instancia: number; despacho: string; estado: string; }
+export interface Expediente { lineaDeTiempo: EventoExpediente[]; otrasInstancias: Instancia[]; }

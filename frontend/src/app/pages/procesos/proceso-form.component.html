@@ -183,8 +183,6 @@
   </form>
 
   @if (idProceso) {
-    <app-providencias-proceso [idProceso]="idProceso" />
-    <app-terminos-proceso [idProceso]="idProceso" />
-    <app-asistente-proceso [idProceso]="idProceso" [radicado]="proceso.radicado" />
+    <p class="form-ayuda">Partes, actuaciones, providencias, términos y el asistente están en el <a [routerLink]="['/procesos', idProceso]">expediente del proceso</a>.</p>
   }
 </div>

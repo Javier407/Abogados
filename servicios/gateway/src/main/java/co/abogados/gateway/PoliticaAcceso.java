@@ -63,6 +63,7 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			// procesos, términos y calendario
 			r(GET, "/api/procesos/**", INTERNOS),
 			r(HttpMethod.POST, "/api/procesos/*/terminos", JURIDICO_Y_DEPENDIENTES),
+			r(HttpMethod.POST, "/api/procesos/*/actuaciones", JURIDICO_Y_DEPENDIENTES),   // el dependiente radica memoriales
 			r(null, "/api/procesos/**", JURIDICO),
 			r(GET, "/api/terminos/**", INTERNOS),
 			r(null, "/api/terminos/**", JURIDICO_Y_DEPENDIENTES),
