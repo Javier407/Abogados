@@ -88,6 +88,7 @@ El proyecto evoluciona hacia un sistema de microservicios para firmas de abogado
 | [`docs/02-arquitectura.md`](docs/02-arquitectura.md) | Opciones evaluadas con pros y contras, microservicios (Java + Python), eventos, orden del repositorio y despliegue |
 | [`docs/03-roadmap.md`](docs/03-roadmap.md) | Fases F0–F5 |
 | [`docs/04-evaluacion-iso25010.md`](docs/04-evaluacion-iso25010.md) | Evaluación ISO/IEC 25010 de F5 (Seguridad 4 → 8; total 8,15) con brechas y plan de mejora |
+| [`docs/05-mapa-procesos.md`](docs/05-mapa-procesos.md) | Mapa de procesos de la firma: qué está hecho, qué falta, dónde va el código y fases F6–F9 propuestas |
 | [`docs/adr/`](docs/adr/) | Decisiones de arquitectura (políglota, RabbitMQ, PostgreSQL por esquemas, JWT propio, fuente Rama Judicial) |
 
 ### Base de datos de pruebas (PostgreSQL 16)
