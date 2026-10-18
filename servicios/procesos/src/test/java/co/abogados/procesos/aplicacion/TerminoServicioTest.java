@@ -154,6 +154,7 @@ class TerminoServicioTest {
 	static class GabineteFijo implements DirectorioGabinete {
 		public Optional<Cliente> cliente(int id) { return Optional.empty(); }
 		public List<ClienteResumen> buscarClientes(String texto) { return List.of(); }
+		public Optional<Perito> perito(int id) { return Optional.empty(); }
 		public Optional<Abogado> abogado(long id) {
 			return id == OTRA_ABOGADA ? Optional.of(new Abogado(id, "Laura", "Pineda", true)) : Optional.empty();
 		}

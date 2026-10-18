@@ -10,6 +10,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | **F3. Vigilancia** | Enterarse de los autos sin entrar al portal | `vigilancia` con la interfaz `FuenteRamaJudicial`; consulta programada; evento `actuacion.detectada`; notificaciones por Telegram | Un auto nuevo en un radicado vigilado llega por Telegram y queda registrado en el proceso |
 | **F4. Asistente y administración** | Apoyo a la redacción y gestión de la firma | `asistente-ia` con Hermes (borradores y resúmenes); módulo de peritos; tarifas, honorarios pactados y pagos | Generar un borrador de contestación a partir de un proceso y registrar un pago de honorarios |
 | **F5. Seguridad y calidad** | Listo para uso real | `identidad` con JWT y roles; contraseñas con BCrypt; CI con GitHub Actions (build y pruebas por servicio); nueva evaluación ISO/IEC 25010 | Ningún servicio responde sin token; el pipeline pasa en verde; Seguridad ≥ 7 en la evaluación |
+| **F7. Agenda y pruebas** | Que no se olvide una audiencia ni una entrega, y que los términos de cada auto no dependan de la memoria | Audiencias con hora y lugar en el calendario y aviso el día hábil anterior (`audiencia.proxima`); pruebas con perito y término de entrega; términos sugeridos al llegar una providencia | Una audiencia programada sale en el calendario y se avisa el día hábil anterior; una prueba pericial con perito y fecha de entrega crea su término; un auto que admite la demanda en un verbal sugiere contestar en 20 días y el término se crea con un clic |
 | **F6. Expediente** | Que cada proceso tenga su historia completa y los datos estén respaldados | Partes con aviso de conflicto de intereses; actuaciones con línea de tiempo; providencia y sentencia manuales; recursos contra una providencia; otras instancias del radicado; copias de seguridad diarias | Desde la app: agregar la contraparte (con aviso si es cliente), registrar una actuación y una providencia y verlas en la línea de tiempo; existe un respaldo diario que se restaura sin errores |
 
 ## Estado
@@ -23,6 +24,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F4 | Terminada: borrador de contestación del proceso 13 generado desde la app con el modelo local (229 s) y pago de honorarios registrado desde la app | 2026-10-16 |
 | F5 | Terminada: en el servidor las 13 rutas de la API responden 401 sin token (también con cabeceras falsas o token `alg none`); 403 por rol; bloqueo al 5.º fallo; pipeline en verde; Seguridad 8/10 en la [evaluación](04-evaluacion-iso25010.md) | 2026-10-16 |
 | F6 | Terminada: en el servidor, contraparte con el NIT de un cliente → aviso de conflicto; "Constructora Altamira S.A.S." detectada contra el cliente "Constructora Altamira SAS"; memorial del dependiente y auto manual en la línea de tiempo; respaldo diario restaurado en una base temporal (31 procesos, 30 clientes, 19 términos, 16 usuarios) | 2026-10-17 |
+| F7 | Terminada: en el proceso 2 (verbal, cliente demandado) un auto "admite la demanda" sugirió contestar en 20 días y el término se creó con un clic (vence 17/11/2026); una audiencia del lunes se avisó el domingo por la app, el correo y Telegram; una prueba pericial con entrega el 2/11 (festivo) creó su término al 30/10 y quedó cumplido al practicarla | 2026-10-18 |
 
 ## F1: qué quedó y qué falta
 
@@ -170,3 +172,26 @@ Pendiente o decidido para después:
 - **Documentos:** la actuación guarda un enlace (`https://…`), no el archivo. El expediente digital con almacenamiento propio queda para después.
 - **Providencias:** no se editan ni se borran desde la app (para no alterar lo que dijo el juez). Una registrada por error se corrige en la base.
 - Las audiencias se registran como actuaciones programadas, pero todavía no salen en el calendario ni generan aviso. Es lo primero de F7.
+
+## F7: qué quedó y qué falta
+
+Hecho:
+
+1. **Audiencias:** actuación de tipo AUDIENCIA con **hora y lugar** (sala o enlace). Salen en el **calendario** (azul) y en `GET /audiencias`.
+   - Cada mañana hábil, la misma revisión de los términos publica `audiencia.proxima` para las audiencias del **próximo día hábil**. Contempla los fines de semana y los festivos: el viernes avisa las del lunes, y antes de un festivo las del día siguiente.
+   - `notificaciones` avisa por la app, el correo y Telegram, una vez por audiencia y fecha.
+2. **Pruebas** (`/procesos/{id}/pruebas`): documental, pericial (con perito de gabinete), testimonial, etc.; estados SOLICITADA → DECRETADA/NEGADA → PRACTICADA.
+   - Si está pendiente y tiene fecha de entrega, se crea un término que vence ese día, o el último día hábil antes si ese día no es hábil.
+   - Practicarla cumple el término; negarla o borrarla lo quita; cambiar la fecha lo reemplaza.
+3. **Términos sugeridos** (`/procesos/{id}/providencias/{idProv}/sugerencias`):
+   - Reglas de referencia en `procesos.reglas_termino`: contestar (días del tipo de proceso), subsanar 5, excepciones 5, reposición 3, apelar sentencia 3 (CGP) o 10 (CPACA), impugnar tutela 3.
+   - También se sugiere el plazo escrito en la propia providencia ("en 5 días").
+   - Nada se crea solo: el abogado confirma con "Crear término". Al registrar una providencia, el expediente muestra sus sugerencias de inmediato.
+4. Migración `005-f7-agenda-y-pruebas.sql`, que incluye el nuevo evento en la restricción de `notificaciones`. Pruebas: 9 de agenda y pruebas, 6 del sugeridor y 6 de avisos de audiencia.
+
+Pendiente o decidido para después:
+
+- **Las reglas están sin validar** (`validada = false`, y la app lo dice). Un abogado debe revisarlas antes de confiar en ellas. Laboral y penal no tienen reglas de recursos porque se interponen en audiencia.
+- Las reglas se editan por SQL; no hay pantalla de administración.
+- Una prueba no muestra su término en la lista de términos con un enlace de vuelta (se ve en "Términos del proceso" como "Entrega de prueba: …").
+- **Red del servidor:** durante el despliegue la VM y el host Windows tenían la misma IP local (`192.168.1.41`), y la conexión se cortaba cada pocos minutos. Ver `servidor/BITACORA-REINICIOS.md`.

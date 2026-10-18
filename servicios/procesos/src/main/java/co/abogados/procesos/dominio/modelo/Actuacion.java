@@ -1,12 +1,13 @@
 package co.abogados.procesos.dominio.modelo;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 import co.abogados.procesos.dominio.excepciones.ReglaNegocioException;
 
 /**
  * Paso del proceso que da la firma: poder, demanda, contestación, memorial, recurso, audiencia...
- * Si la fecha es futura, la actuación está programada (por ejemplo, una audiencia).
+ * Si la fecha es futura, la actuación está programada (por ejemplo, una audiencia, con hora y lugar).
  * Un RECURSO siempre se interpone contra una providencia del mismo proceso (idProvidencia).
  */
 public record Actuacion(
@@ -18,7 +19,9 @@ public record Actuacion(
 		Long idPersona,
 		Integer idProvidencia,
 		String documentoUrl,
-		Long registradoPor) {
+		Long registradoPor,
+		LocalTime hora,
+		String lugar) {
 
 	public Actuacion {
 		if (tipo == null) {
@@ -40,6 +43,10 @@ public record Actuacion(
 		documentoUrl = documentoUrl == null || documentoUrl.isBlank() ? null : documentoUrl.strip();
 		if (documentoUrl != null && !documentoUrl.matches("https?://\\S{3,290}")) {
 			throw new ReglaNegocioException("El enlace del documento debe empezar por http:// o https://");
+		}
+		lugar = lugar == null || lugar.isBlank() ? null : lugar.strip();
+		if (lugar != null && lugar.length() > 200) {
+			throw new ReglaNegocioException("El lugar admite máximo 200 caracteres");
 		}
 	}
 

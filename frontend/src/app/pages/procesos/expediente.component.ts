@@ -7,8 +7,9 @@ import { forkJoin } from 'rxjs';
 import { ApiService, mensajeDeError } from '../../core/api.service';
 import { AuthService, JURIDICO, JURIDICO_Y_DEPENDIENTES } from '../../core/auth.service';
 import {
-  ActuacionSolicitud, ConflictoInteres, EventoExpediente, Instancia, Parte, ParteSolicitud, Proceso, Providencia,
-  ProvidenciaSolicitud, ROLES_PARTE, TIPOS_ACTUACION, Termino, etiqueta
+  ActuacionSolicitud, ConflictoInteres, ESTADOS_PRUEBA, EstadoPrueba, EventoExpediente, Instancia, Parte, ParteSolicitud,
+  Perito, Proceso, Providencia, ProvidenciaSolicitud, Prueba, PruebaSolicitud, ROLES_PARTE, SugerenciaTermino,
+  TIPOS_ACTUACION, TIPOS_PRUEBA, Termino, etiqueta
 } from '../../core/modelos';
 import { TerminosProcesoComponent } from './terminos-proceso.component';
 import { AsistenteProcesoComponent } from './asistente-proceso.component';
@@ -33,6 +34,8 @@ export class ExpedienteComponent implements OnInit {
 
   readonly roles = ROLES_PARTE;
   readonly tiposActuacion = TIPOS_ACTUACION;
+  readonly tiposPrueba = TIPOS_PRUEBA;
+  readonly estadosPrueba = ESTADOS_PRUEBA;
   readonly etiqueta = etiqueta;
   readonly juridico = this.auth.tiene(...JURIDICO);
   readonly registraActuaciones = this.auth.tiene(...JURIDICO_Y_DEPENDIENTES);
@@ -45,10 +48,19 @@ export class ExpedienteComponent implements OnInit {
   partes: Parte[] = [];
   providencias: Providencia[] = [];
   terminosPendientes: Termino[] = [];
+  pruebas: Prueba[] = [];
+  peritos: Perito[] = [];
   filtro: Filtro = 'TODO';
+
+  // Términos sugeridos de una providencia (se abren desde la línea de tiempo o al registrarla)
+  sugerenciasDe: number | null = null;
+  sugerencias: SugerenciaTermino[] = [];
+  cargandoSugerencias = false;
+  errorSugerencias = '';
   version = 0;               // vuelve a crear la tarjeta de términos cuando una actuación cumple uno
 
-  formulario: 'ACTUACION' | 'PROVIDENCIA' | 'PARTE' | null = null;
+  formulario: 'ACTUACION' | 'PROVIDENCIA' | 'PARTE' | 'PRUEBA' | null = null;
+  prueba: PruebaSolicitud = this.pruebaVacia();
   actuacion: ActuacionSolicitud = this.actuacionVacia();
   providencia: ProvidenciaSolicitud = this.providenciaVacia();
   parte: ParteSolicitud = { rol: 'DEMANDADO', nombre: '' };
@@ -62,6 +74,7 @@ export class ExpedienteComponent implements OnInit {
   mensaje = '';
 
   ngOnInit(): void {
+    this.api.peritos().subscribe({ next: p => this.peritos = p, error: () => this.peritos = [] });
     this.ruta.paramMap.subscribe(p => {
       this.idProceso = Number(p.get('id'));
       this.formulario = null;
@@ -85,7 +98,8 @@ export class ExpedienteComponent implements OnInit {
       expediente: this.api.expediente(this.idProceso),
       partes: this.api.partes(this.idProceso),
       providencias: this.api.providencias(this.idProceso),
-      terminos: this.api.terminos({ idProceso: this.idProceso })
+      terminos: this.api.terminos({ idProceso: this.idProceso }),
+      pruebas: this.api.pruebas(this.idProceso)
     }).subscribe({
       next: r => {
         this.proceso = r.proceso;
@@ -94,14 +108,18 @@ export class ExpedienteComponent implements OnInit {
         this.partes = r.partes;
         this.providencias = r.providencias;
         this.terminosPendientes = r.terminos.filter(t => t.estado === 'PENDIENTE');
+        this.pruebas = r.pruebas;
         this.cargando = false;
       },
       error: e => { this.error = mensajeDeError(e); this.cargando = false; }
     });
   }
 
-  abrir(f: 'ACTUACION' | 'PROVIDENCIA' | 'PARTE'): void {
+  abrir(f: 'ACTUACION' | 'PROVIDENCIA' | 'PARTE' | 'PRUEBA'): void {
     this.formulario = this.formulario === f ? null : f;
+    if (f === 'PRUEBA' && !this.peritos.length) {
+      this.api.peritos().subscribe({ next: p => this.peritos = p, error: () => this.peritos = [] });
+    }
     this.errorFormulario = this.mensaje = '';
     this.conflictos = [];
     this.sinVerificar = false;
@@ -121,7 +139,9 @@ export class ExpedienteComponent implements OnInit {
 
   registrarActuacion(form: NgForm): void {
     if (form.invalid) { form.control.markAllAsTouched(); return; }
-    this.enviar(this.api.registrarActuacion(this.idProceso, this.limpiar(this.actuacion)), () => {
+    const a = this.limpiar(this.actuacion);
+    if (a.tipo !== 'AUDIENCIA') { a.hora = null; a.lugar = null; }
+    this.enviar(this.api.registrarActuacion(this.idProceso, a), () => {
       const cumplio = !!this.actuacion.idTerminoCumplido;
       this.mensaje = 'Actuación registrada' + (cumplio ? ' y término marcado como cumplido' : '');
       this.actuacion = this.actuacionVacia();
@@ -133,9 +153,10 @@ export class ExpedienteComponent implements OnInit {
     if (form.invalid) { form.control.markAllAsTouched(); return; }
     const p = this.limpiar(this.providencia);
     if (p.tipo === 'AUTO') p.sentido = null;
-    this.enviar(this.api.registrarProvidencia(this.idProceso, p), () => {
-      this.mensaje = p.tipo === 'SENTENCIA' ? 'Sentencia registrada' : 'Auto registrado';
+    this.enviar(this.api.registrarProvidencia(this.idProceso, p), creada => {
+      this.mensaje = (p.tipo === 'SENTENCIA' ? 'Sentencia registrada' : 'Auto registrado') + '. Revise los términos sugeridos.';
       this.providencia = this.providenciaVacia();
+      this.verSugerencias(creada.idProvidencia, true);
     });
   }
 
@@ -165,6 +186,69 @@ export class ExpedienteComponent implements OnInit {
     });
   }
 
+  // ---------- términos sugeridos ----------
+
+  verSugerencias(idProvidencia: number, abrir = false): void {
+    if (this.sugerenciasDe === idProvidencia && !abrir) { this.sugerenciasDe = null; return; }
+    this.sugerenciasDe = idProvidencia;
+    this.sugerencias = [];
+    this.errorSugerencias = '';
+    this.cargandoSugerencias = true;
+    this.api.sugerencias(this.idProceso, idProvidencia).subscribe({
+      next: s => { this.sugerencias = s; this.cargandoSugerencias = false; },
+      error: e => { this.errorSugerencias = mensajeDeError(e); this.cargandoSugerencias = false; }
+    });
+  }
+
+  crearSugerido(s: SugerenciaTermino): void {
+    if (this.sugerenciasDe === null) return;
+    const idProvidencia = this.sugerenciasDe;
+    this.api.crearTermino(this.idProceso, {
+      descripcion: s.descripcion, fechaInicio: s.fechaInicio, diasHabiles: s.diasHabiles, idProvidencia
+    }).subscribe({
+      next: t => {
+        this.mensaje = `Término creado: «${t.descripcion}», vence el ${t.fechaVencimiento.split('-').reverse().join('/')}`;
+        this.version++;
+        this.cargar();
+        this.verSugerencias(idProvidencia, true);
+      },
+      error: e => this.errorSugerencias = mensajeDeError(e)
+    });
+  }
+
+  // ---------- pruebas ----------
+
+  nombrePerito(id?: number | null): string {
+    return id ? (this.peritos.find(p => p.idPerito === id)?.nombre ?? 'Perito ' + id) : '';
+  }
+
+  registrarPrueba(form: NgForm): void {
+    if (form.invalid) { form.control.markAllAsTouched(); return; }
+    const p = this.limpiar(this.prueba);
+    if (p.tipo !== 'PERICIAL') p.idPerito = null;
+    this.enviar(this.api.crearPrueba(this.idProceso, p), creada => {
+      this.mensaje = 'Prueba registrada' + (creada.idTermino ? ' con su término de entrega' : '');
+      this.prueba = this.pruebaVacia();
+      if (creada.idTermino) this.version++;
+    });
+  }
+
+  cambiarEstado(p: Prueba, estado: EstadoPrueba): void {
+    const datos: PruebaSolicitud = { tipo: p.tipo, descripcion: p.descripcion, idPerito: p.idPerito, estado, fechaEntrega: p.fechaEntrega };
+    this.api.actualizarPrueba(this.idProceso, p.idPrueba, datos).subscribe({
+      next: () => { this.version++; this.cargar(); },
+      error: e => { this.error = mensajeDeError(e); this.cargar(); }
+    });
+  }
+
+  quitarPrueba(p: Prueba): void {
+    if (!confirm(`¿Eliminar la prueba «${p.descripcion}»?`)) return;
+    this.api.eliminarPrueba(this.idProceso, p.idPrueba).subscribe({
+      next: () => { this.version++; this.cargar(); },
+      error: e => this.error = mensajeDeError(e)
+    });
+  }
+
   eliminarActuacion(e: EventoExpediente): void {
     if (!confirm(`¿Eliminar la actuación «${e.titulo}»?`)) return;
     this.api.eliminarActuacion(this.idProceso, e.id).subscribe({
@@ -173,11 +257,11 @@ export class ExpedienteComponent implements OnInit {
     });
   }
 
-  private enviar(peticion: import('rxjs').Observable<unknown>, alTerminar: () => void): void {
+  private enviar<T>(peticion: import('rxjs').Observable<T>, alTerminar: (resultado: T) => void): void {
     this.guardando = true;
     this.errorFormulario = this.mensaje = '';
     peticion.subscribe({
-      next: () => { this.guardando = false; alTerminar(); this.formulario = null; this.cargar(); },
+      next: r => { this.guardando = false; alTerminar(r); this.formulario = null; this.cargar(); },
       error: e => { this.guardando = false; this.errorFormulario = mensajeDeError(e); }
     });
   }
@@ -189,6 +273,10 @@ export class ExpedienteComponent implements OnInit {
 
   private actuacionVacia(): ActuacionSolicitud {
     return { tipo: 'MEMORIAL', fecha: this.hoy, descripcion: '', idProvidencia: null, idTerminoCumplido: null, documentoUrl: '' };
+  }
+
+  private pruebaVacia(): PruebaSolicitud {
+    return { tipo: 'DOCUMENTAL', descripcion: '', idPerito: null, estado: 'SOLICITADA', fechaEntrega: null };
   }
 
   private providenciaVacia(): ProvidenciaSolicitud {

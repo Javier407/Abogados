@@ -7,9 +7,9 @@ from datetime import date, datetime
 from typing import Callable, Protocol
 from zoneinfo import ZoneInfo
 
-from .dominio import (EVENTO_ACTUACION, EVENTOS_TERMINO, AvisoActuacion, AvisoTermino, Canal, Contenido,
-                      EventoInvalido, NotificacionNueva, Preferencia, canales, contenido_actuacion,
-                      contenido_termino, correo_de, texto_telegram)
+from .dominio import (EVENTO_ACTUACION, EVENTO_AUDIENCIA, EVENTOS_TERMINO, AvisoActuacion, AvisoAudiencia,
+                      AvisoTermino, Canal, Contenido, EventoInvalido, NotificacionNueva, Preferencia, canales,
+                      contenido_actuacion, contenido_audiencia, contenido_termino, correo_de, texto_telegram)
 
 log = logging.getLogger(__name__)
 BOGOTA = ZoneInfo("America/Bogota")
@@ -95,6 +95,8 @@ class ServicioNotificaciones:
                             actuacion.id_proceso, actuacion.referencia)
                 return 0
             contenido = contenido_actuacion(actuacion, responsable)
+        elif evento == EVENTO_AUDIENCIA:
+            contenido = contenido_audiencia(AvisoAudiencia.desde_mensaje(cuerpo), self.hoy())
         else:
             raise EventoInvalido(f"Evento no soportado: {evento}")
         return await self._avisar(contenido)

@@ -13,8 +13,10 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import co.abogados.procesos.aplicacion.ProvidenciaServicio;
+import co.abogados.procesos.aplicacion.SugerenciaServicio;
 import co.abogados.procesos.dominio.modelo.NuevaProvidencia;
 import co.abogados.procesos.dominio.modelo.ProvidenciaVista;
+import co.abogados.procesos.dominio.modelo.SugerenciaTermino;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -34,14 +36,22 @@ public class ProvidenciasRecurso {
 	}
 
 	private final ProvidenciaServicio servicio;
+	private final SugerenciaServicio sugerencias;
 
-	public ProvidenciasRecurso(ProvidenciaServicio servicio) {
+	public ProvidenciasRecurso(ProvidenciaServicio servicio, SugerenciaServicio sugerencias) {
 		this.servicio = servicio;
+		this.sugerencias = sugerencias;
 	}
 
 	@GetMapping("/procesos/{idProceso}/providencias")
 	public List<ProvidenciaVista> deProceso(@PathVariable int idProceso) {
 		return servicio.deProceso(idProceso);
+	}
+
+	/** Términos que abre la providencia según las reglas de referencia o su propio texto; no crea nada. */
+	@GetMapping("/procesos/{idProceso}/providencias/{idProvidencia}/sugerencias")
+	public List<SugerenciaTermino> sugerencias(@PathVariable int idProceso, @PathVariable int idProvidencia) {
+		return sugerencias.sugerencias(idProceso, idProvidencia);
 	}
 
 	@PostMapping("/procesos/{idProceso}/providencias")

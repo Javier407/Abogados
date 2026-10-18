@@ -13,6 +13,8 @@ public interface DirectorioGabinete {
 
 	Optional<Abogado> abogado(long idPersona);
 
+	Optional<Perito> perito(int idPerito);
+
 	/** Clientes cuyo nombre o documento contienen el texto; con texto null, todos (conflictos de intereses). */
 	List<ClienteResumen> buscarClientes(String texto);
 
@@ -20,6 +22,9 @@ public interface DirectorioGabinete {
 	}
 
 	record ClienteResumen(int idCliente, String nombre, String numeroDocumento) {
+	}
+
+	record Perito(int idPerito, String nombre, String especialidad) {
 	}
 
 	record Abogado(long idPersona, String nombres, String apellidos, boolean activo) {

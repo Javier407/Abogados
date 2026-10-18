@@ -2,6 +2,7 @@ package co.abogados.procesos.infraestructura.rest;
 
 import java.net.URI;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -53,7 +54,9 @@ public class ExpedienteRecurso {
 			Long idPersona,
 			Integer idProvidencia,
 			@Size(max = 300) String documentoUrl,
-			Integer idTerminoCumplido) {
+			Integer idTerminoCumplido,
+			LocalTime hora,
+			@Size(max = 200) String lugar) {
 	}
 
 	public record Expediente(List<EventoExpediente> lineaDeTiempo, List<Instancia> otrasInstancias) {
@@ -107,7 +110,7 @@ public class ExpedienteRecurso {
 			@Valid @RequestBody ActuacionSolicitud s,
 			@RequestHeader(value = "X-Usuario-Id", required = false) Long usuario) {
 		Actuacion datos = new Actuacion(null, idProceso, s.fecha(), s.tipo(), s.descripcion(), s.idPersona(),
-				s.idProvidencia(), s.documentoUrl(), usuario);
+				s.idProvidencia(), s.documentoUrl(), usuario, s.hora(), s.lugar());
 		Actuacion creada = servicio.registrarActuacion(idProceso, datos, s.idTerminoCumplido(), usuario);
 		return ResponseEntity.created(URI.create("/procesos/" + idProceso + "/actuaciones/" + creada.idActuacion()))
 				.body(creada);

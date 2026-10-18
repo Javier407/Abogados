@@ -1,6 +1,5 @@
 package co.abogados.procesos.aplicacion;
 
-import java.text.Normalizer;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -24,6 +23,7 @@ import co.abogados.procesos.dominio.modelo.Parte;
 import co.abogados.procesos.dominio.modelo.ParteRegistrada;
 import co.abogados.procesos.dominio.modelo.ProcesoVista;
 import co.abogados.procesos.dominio.modelo.TerminoVista;
+import co.abogados.procesos.dominio.modelo.Texto;
 import co.abogados.procesos.dominio.puertos.ActuacionRepositorio;
 import co.abogados.procesos.dominio.puertos.DirectorioGabinete;
 import co.abogados.procesos.dominio.puertos.DirectorioGabinete.ClienteResumen;
@@ -116,12 +116,12 @@ public class ExpedienteServicio {
 	 * más allá conviene una búsqueda normalizada en gabinete (por ejemplo, con unaccent).
 	 */
 	List<ConflictoInteres> conflictos(ProcesoVista proceso, Parte parte) {
-		String nombre = normalizar(parte.nombre());
+		String nombre = Texto.normalizar(parte.nombre());
 		List<ConflictoInteres> encontrados = new ArrayList<>();
 		for (ClienteResumen c : gabinete.buscarClientes(null)) {
 			boolean mismoDocumento = parte.numeroDocumento() != null
 					&& parte.numeroDocumento().equalsIgnoreCase(c.numeroDocumento());
-			boolean mismoNombre = nombre.equals(normalizar(c.nombre()));
+			boolean mismoNombre = nombre.equals(Texto.normalizar(c.nombre()));
 			if (!mismoDocumento && !mismoNombre) {
 				continue;
 			}
@@ -132,15 +132,6 @@ public class ExpedienteServicio {
 			encontrados.add(new ConflictoInteres(c.idCliente(), c.nombre(), c.numeroDocumento(), motivo));
 		}
 		return encontrados;
-	}
-
-	/** Sin tildes, mayúsculas, puntos ni espacios repetidos: "Constructora  Altamira S.A.S." = "constructora altamira sas". */
-	static String normalizar(String texto) {
-		if (texto == null) {
-			return "";
-		}
-		String sinTildes = Normalizer.normalize(texto, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
-		return sinTildes.toLowerCase().replaceAll("[^a-z0-9 ]", "").replaceAll("\\s+", " ").strip();
 	}
 
 	// ----------------------------------------------------------------- actuaciones
@@ -175,7 +166,7 @@ public class ExpedienteServicio {
 		}
 
 		int id = actuaciones.crear(new Actuacion(null, idProceso, datos.fecha(), datos.tipo(), datos.descripcion(),
-				datos.idPersona(), datos.idProvidencia(), datos.documentoUrl(), registradoPor));
+				datos.idPersona(), datos.idProvidencia(), datos.documentoUrl(), registradoPor, datos.hora(), datos.lugar()));
 		if (idTerminoCumplido != null) {
 			terminos.marcarCumplido(idTerminoCumplido);
 		}

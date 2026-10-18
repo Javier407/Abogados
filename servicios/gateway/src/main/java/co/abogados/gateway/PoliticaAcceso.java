@@ -60,7 +60,7 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			r(null, "/api/peritos/**", JURIDICO),
 			r(GET, "/api/honorarios/**", Set.of("ADMIN", "SOCIO", "ABOGADO", "ADMINISTRATIVO")),
 			r(null, "/api/honorarios/**", Set.of("ADMIN", "SOCIO", "ADMINISTRATIVO")),
-			// procesos, términos y calendario
+			// procesos, términos, calendario y audiencias
 			r(GET, "/api/procesos/**", INTERNOS),
 			r(HttpMethod.POST, "/api/procesos/*/terminos", JURIDICO_Y_DEPENDIENTES),
 			r(HttpMethod.POST, "/api/procesos/*/actuaciones", JURIDICO_Y_DEPENDIENTES),   // el dependiente radica memoriales
@@ -69,6 +69,8 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			r(null, "/api/terminos/**", JURIDICO_Y_DEPENDIENTES),
 			r(GET, "/api/catalogos/**", INTERNOS),
 			r(GET, "/api/calendario/**", INTERNOS),
+			r(GET, "/api/audiencias/**", INTERNOS),
+			r(HttpMethod.POST, "/api/audiencias/avisos", JURIDICO_Y_DEPENDIENTES),
 			// vigilancia, avisos y asistente
 			r(null, "/api/vigilancia/**", JURIDICO_Y_DEPENDIENTES),
 			r(null, "/api/notificaciones/**", INTERNOS),   // cada quien solo los suyos: lo valida notificaciones

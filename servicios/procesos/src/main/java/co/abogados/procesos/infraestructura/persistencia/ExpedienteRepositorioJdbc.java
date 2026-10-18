@@ -24,7 +24,8 @@ public class ExpedienteRepositorioJdbc implements ExpedienteRepositorio {
 	public List<EventoExpediente> lineaDeTiempo(int idProceso) {
 		return jdbc.sql("""
 				SELECT a.fecha, 'ACTUACION' AS categoria, a.tipo, a.id_actuacion AS id, a.descripcion AS titulo,
-				       CASE WHEN pr.id_providencia IS NOT NULL THEN 'Contra: ' || pr.clase END AS detalle,
+				       nullif(concat_ws(' · ', CASE WHEN pr.id_providencia IS NOT NULL THEN 'Contra: ' || pr.clase END,
+				                 to_char(a.hora, 'HH24:MI'), a.lugar), '') AS detalle,
 				       'FIRMA' AS origen
 				FROM procesos.actuaciones a
 				LEFT JOIN procesos.providencias pr ON pr.id_providencia = a.id_providencia

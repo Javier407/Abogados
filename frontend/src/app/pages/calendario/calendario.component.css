@@ -34,3 +34,8 @@
   .chip, .motivo, .mas { display: none; }
   .dia:has(.chip)::after { content: ''; width: 6px; height: 6px; border-radius: 99px; background: var(--secondary); }
 }
+
+/* Audiencias: azul de la firma, distintas de los vencimientos */
+.chip-audiencia { background: var(--blue); color: #fff; }
+.punto-audiencia { background: var(--blue); }
+.lista-audiencias { margin-bottom: 14px; }

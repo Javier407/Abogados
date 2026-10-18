@@ -339,6 +339,8 @@ export interface Actuacion {
   idProvidencia?: number | null;
   documentoUrl?: string | null;
   registradoPor?: number | null;
+  hora?: string | null;
+  lugar?: string | null;
 }
 export interface ActuacionSolicitud {
   tipo: TipoActuacion;
@@ -348,6 +350,8 @@ export interface ActuacionSolicitud {
   idProvidencia?: number | null;
   documentoUrl?: string | null;
   idTerminoCumplido?: number | null;
+  hora?: string | null;
+  lugar?: string | null;
 }
 export interface ProvidenciaSolicitud {
   tipo: 'AUTO' | 'SENTENCIA';
@@ -368,3 +372,51 @@ export interface EventoExpediente {
 }
 export interface Instancia { idProceso: number; radicadoLegible: string; instancia: number; despacho: string; estado: string; }
 export interface Expediente { lineaDeTiempo: EventoExpediente[]; otrasInstancias: Instancia[]; }
+
+// ---------- agenda, pruebas y términos sugeridos (F7) ----------
+export interface Audiencia {
+  idActuacion: number;
+  idProceso: number;
+  radicado: string;
+  radicadoLegible: string;
+  asunto: string;
+  fecha: string;
+  hora?: string | null;
+  descripcion: string;
+  lugar?: string | null;
+  idAsistente?: number | null;
+}
+
+export const TIPOS_PRUEBA = ['DOCUMENTAL', 'PERICIAL', 'TESTIMONIAL', 'INTERROGATORIO', 'INSPECCION', 'VIDEO', 'ANEXO'] as const;
+export type TipoPrueba = typeof TIPOS_PRUEBA[number];
+export const ESTADOS_PRUEBA = ['SOLICITADA', 'DECRETADA', 'PRACTICADA', 'NEGADA'] as const;
+export type EstadoPrueba = typeof ESTADOS_PRUEBA[number];
+
+export interface Prueba {
+  idPrueba: number;
+  idProceso: number;
+  tipo: TipoPrueba;
+  descripcion: string;
+  idPerito?: number | null;
+  estado: EstadoPrueba;
+  fechaEntrega?: string | null;
+  idTermino?: number | null;
+}
+export interface PruebaSolicitud {
+  tipo: TipoPrueba;
+  descripcion: string;
+  idPerito?: number | null;
+  estado: EstadoPrueba;
+  fechaEntrega?: string | null;
+}
+
+export interface SugerenciaTermino {
+  descripcion: string;
+  diasHabiles: number;
+  fechaInicio: string;
+  fechaVencimiento: string;
+  norma: string;
+  origen: 'REGLA' | 'PROVIDENCIA';
+  prioridad: number;
+  validada: boolean;
+}

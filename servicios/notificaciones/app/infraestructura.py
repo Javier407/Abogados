@@ -287,13 +287,13 @@ class AvisosEnVivoMemoria:
 
 class Mensajeria:
     """
-    Consume termino.* y actuacion.detectada de la cola durable notificaciones.avisos y publica
+    Consume termino.*, actuacion.detectada y audiencia.proxima de la cola durable notificaciones.avisos y publica
     notificacion.enviada.
     Si RabbitMQ no está listo al arrancar, reintenta en segundo plano sin tumbar la API.
     """
 
     COLA = "notificaciones.avisos"
-    CLAVES = ("termino.por_vencer", "termino.vencido", "actuacion.detectada")
+    CLAVES = ("termino.por_vencer", "termino.vencido", "actuacion.detectada", "audiencia.proxima")
 
     def __init__(self, cfg: Config):
         self.cfg = cfg

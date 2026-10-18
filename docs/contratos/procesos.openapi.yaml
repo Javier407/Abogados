@@ -308,6 +308,8 @@ paths:
                 idProvidencia: { type: integer, nullable: true }
                 documentoUrl: { type: string, maxLength: 300, nullable: true, pattern: '^https?://' }
                 idTerminoCumplido: { type: integer, nullable: true }
+                hora: { type: string, format: time, nullable: true, description: 'Audiencias (F7): hora, p. ej. 09:30' }
+                lugar: { type: string, maxLength: 200, nullable: true, description: 'Audiencias (F7): sala o enlace' }
       responses:
         '201': { description: Registrada, content: { application/json: { schema: { $ref: '#/components/schemas/Actuacion' } } } }
         '409': { $ref: '#/components/responses/Error' }
@@ -350,6 +352,100 @@ paths:
         '201': { description: Registrada }
         '422': { $ref: '#/components/responses/Error' }
 
+  # ---------------------------------------------------------------- agenda, pruebas y términos sugeridos (F7)
+  /procesos/{idProceso}/providencias/{idProvidencia}/sugerencias:
+    get:
+      summary: Términos que abre la providencia (reglas de referencia y plazos escritos en ella); no crea nada
+      description: |
+        El abogado crea el que quiera con POST /procesos/{id}/terminos indicando idProvidencia; así deja de sugerirse.
+        validada = false: la regla es de referencia y falta que un abogado la revise.
+      parameters:
+        - { name: idProceso, in: path, required: true, schema: { type: integer } }
+        - { name: idProvidencia, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Sugerencias, primero las principales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    descripcion: { type: string }
+                    diasHabiles: { type: integer }
+                    fechaInicio: { type: string, format: date }
+                    fechaVencimiento: { type: string, format: date }
+                    norma: { type: string }
+                    origen: { type: string, enum: [REGLA, PROVIDENCIA] }
+                    prioridad: { type: integer, description: '1 principal, 2 opcional (si procede)' }
+                    validada: { type: boolean }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /procesos/{idProceso}/pruebas:
+    get:
+      summary: Pruebas del proceso
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Pruebas, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Prueba' } } } } }
+    post:
+      summary: Registra una prueba; si está pendiente y tiene fechaEntrega, crea el término que vence ese día
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PruebaSolicitud' } } } }
+      responses:
+        '201': { description: Registrada, content: { application/json: { schema: { $ref: '#/components/schemas/Prueba' } } } }
+        '422': { $ref: '#/components/responses/Error' }
+  /procesos/{idProceso}/pruebas/{idPrueba}:
+    put:
+      summary: Actualiza la prueba. PRACTICADA cumple su término; NEGADA lo borra; otra fecha de entrega lo reemplaza
+      parameters:
+        - { name: idProceso, in: path, required: true, schema: { type: integer } }
+        - { name: idPrueba, in: path, required: true, schema: { type: integer } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PruebaSolicitud' } } } }
+      responses:
+        '200': { description: Actualizada, content: { application/json: { schema: { $ref: '#/components/schemas/Prueba' } } } }
+        '422': { $ref: '#/components/responses/Error' }
+    delete:
+      summary: Elimina la prueba y su término pendiente
+      parameters:
+        - { name: idProceso, in: path, required: true, schema: { type: integer } }
+        - { name: idPrueba, in: path, required: true, schema: { type: integer } }
+      responses:
+        '204': { description: Eliminada }
+
+  /audiencias:
+    get:
+      summary: Agenda de audiencias (actuaciones de tipo AUDIENCIA) entre dos fechas, por fecha y hora
+      parameters:
+        - { name: desde, in: query, required: true, schema: { type: string, format: date } }
+        - { name: hasta, in: query, required: true, schema: { type: string, format: date } }
+        - { name: idAsistente, in: query, required: false, schema: { type: integer, format: int64 }, description: Solo las que atiende esa persona }
+      responses:
+        '200':
+          description: Audiencias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    idActuacion: { type: integer }
+                    idProceso: { type: integer }
+                    radicadoLegible: { type: string }
+                    asunto: { type: string }
+                    fecha: { type: string, format: date }
+                    hora: { type: string, format: time, nullable: true }
+                    descripcion: { type: string }
+                    lugar: { type: string, nullable: true }
+                    idAsistente: { type: integer, format: int64, nullable: true }
+        '422': { $ref: '#/components/responses/Error' }
+  /audiencias/avisos:
+    post:
+      summary: Publica ya audiencia.proxima para las audiencias del próximo día hábil (lo hace sola cada mañana)
+      responses:
+        '200': { description: Cuántas se avisaron, content: { application/json: { schema: { type: object, properties: { avisadas: { type: integer } } } } } }
+
 components:
   responses:
     Error:
@@ -372,6 +468,20 @@ components:
     TipoServicio: { type: string, enum: [PRESENCIAL, VIRTUAL, REPRESENTACION] }
     RolParte: { type: string, enum: [DEMANDANTE, DEMANDADO, VICTIMA, PROCESADO, ACCIONANTE, ACCIONADO, TERCERO, LLAMADO_GARANTIA] }
     TipoActuacion: { type: string, enum: [PODER, DEMANDA, CONTESTACION, MEMORIAL, RECURSO, AUDIENCIA, ALEGATOS, NOTIFICACION, OTRO] }
+    PruebaSolicitud:
+      type: object
+      required: [tipo, descripcion]
+      properties:
+        tipo: { type: string, enum: [DOCUMENTAL, PERICIAL, TESTIMONIAL, INTERROGATORIO, INSPECCION, VIDEO, ANEXO] }
+        descripcion: { type: string, maxLength: 200 }
+        idPerito: { type: integer, nullable: true, description: 'Solo en PERICIAL; debe existir en gabinete' }
+        estado: { type: string, enum: [SOLICITADA, DECRETADA, PRACTICADA, NEGADA], default: SOLICITADA }
+        fechaEntrega: { type: string, format: date, nullable: true }
+    Prueba:
+      allOf:
+        - $ref: '#/components/schemas/PruebaSolicitud'
+        - type: object
+          properties: { idPrueba: { type: integer }, idProceso: { type: integer }, idTermino: { type: integer, nullable: true } }
     ParteSolicitud:
       type: object
       required: [rol, nombre]

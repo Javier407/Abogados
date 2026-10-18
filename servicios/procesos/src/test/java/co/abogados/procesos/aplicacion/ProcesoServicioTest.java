@@ -252,6 +252,7 @@ class ProcesoServicioTest {
 		}
 
 		public List<ClienteResumen> buscarClientes(String texto) { return List.of(); }
+		public Optional<Perito> perito(int id) { return Optional.empty(); }
 
 		void verificar() {
 			if (caido) throw new ServicioNoDisponibleException("gabinete caído");

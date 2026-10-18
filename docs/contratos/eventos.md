@@ -58,6 +58,21 @@ Para no repetir avisos, cada uno lleva la clave `evento:id_termino:persona:canal
   "id_abogado": 79123456, "ocurrido": "2026-10-15T12:00:00Z" }
 ```
 
+### `audiencia.proxima` (F7, implementado)
+
+**Lo publica:** `procesos`, en la misma revisión de cada día hábil a las 7:00 o al pedirla con `POST /audiencias/avisos`. Avisa las audiencias del **próximo día hábil**: el viernes, las del sábado al lunes; antes de un festivo, también las del día siguiente al festivo.
+
+- `id_abogado`: quien atiende la audiencia (la persona de la actuación o, si no se indicó, el responsable del proceso).
+- `hora` y `lugar` pueden ser `null`.
+
+**Lo consume:** `notificaciones` (cola `notificaciones.avisos`): aviso en la app, correo y Telegram. La clave `audiencia.proxima:id_actuacion:persona:canal:fecha` evita repetir el aviso; si la audiencia se reprograma a otra fecha, se avisa de nuevo.
+
+```json
+{ "id_actuacion": 77, "id_proceso": 34, "radicado": "11001400301520260077700",
+  "descripcion": "Audiencia inicial", "fecha": "2026-10-19", "hora": "09:30:00", "lugar": "Sala virtual",
+  "id_abogado": 79123456, "ocurrido": "2026-10-18T12:00:00Z" }
+```
+
 ### `notificacion.enviada` (F2, implementado)
 
 **Lo publica:** `notificaciones`.

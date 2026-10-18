@@ -11,6 +11,8 @@ from enum import Enum
 
 EVENTOS_TERMINO = ("termino.por_vencer", "termino.vencido")
 EVENTO_ACTUACION = "actuacion.detectada"
+EVENTO_AUDIENCIA = "audiencia.proxima"
+DIAS_SEMANA = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 LARGO_MENSAJE = 1000
 
 
@@ -138,6 +140,36 @@ class AvisoActuacion:
 
 
 @dataclass(frozen=True)
+class AvisoAudiencia:
+    """Evento audiencia.proxima que publica procesos el día hábil anterior a la audiencia."""
+    id_actuacion: int
+    id_proceso: int
+    radicado: str
+    descripcion: str
+    fecha: date
+    hora: str | None          # "09:00" o None si no se registró
+    lugar: str | None
+    id_abogado: int
+
+    @staticmethod
+    def desde_mensaje(cuerpo: dict) -> "AvisoAudiencia":
+        try:
+            hora = cuerpo.get("hora")
+            return AvisoAudiencia(
+                id_actuacion=int(cuerpo["id_actuacion"]),
+                id_proceso=int(cuerpo["id_proceso"]),
+                radicado=str(cuerpo["radicado"]),
+                descripcion=str(cuerpo["descripcion"]),
+                fecha=date.fromisoformat(cuerpo["fecha"]),
+                hora=str(hora)[:5] if hora else None,
+                lugar=str(cuerpo["lugar"]) if cuerpo.get("lugar") else None,
+                id_abogado=int(cuerpo["id_abogado"]),
+            )
+        except (KeyError, TypeError, ValueError) as e:
+            raise EventoInvalido(f"Mensaje audiencia.proxima incompleto o mal formado: {e}") from e
+
+
+@dataclass(frozen=True)
 class Contenido:
     """Lo que se le avisa a una persona, sin importar el canal. La clave lleva {canal} para completar."""
     evento: str
@@ -165,6 +197,21 @@ def contenido_actuacion(a: AvisoActuacion, id_persona: int) -> Contenido:
     return Contenido("actuacion.detectada", id_persona, titulo, mensaje[:LARGO_MENSAJE],
                      {"id_proceso": a.id_proceso, "referencia": a.referencia},
                      f"actuacion.detectada:{a.referencia}:{id_persona}:{{canal}}")
+
+
+def contenido_audiencia(a: AvisoAudiencia, hoy: date) -> Contenido:
+    """Una audiencia se avisa una vez por persona, canal y fecha (si la reprograman, se avisa de nuevo)."""
+    dias = (a.fecha - hoy).days
+    fecha = a.fecha.strftime("%d/%m/%Y")
+    cuando = "mañana" if dias == 1 else f"el {DIAS_SEMANA[a.fecha.weekday()]} {fecha}"
+    titulo = f"Audiencia {cuando}"
+    detalle = a.fecha.strftime("%d/%m/%Y") + (f" a las {a.hora}" if a.hora else "")
+    mensaje = f"{a.descripcion} — proceso {radicado_legible(a.radicado)} — {detalle}"
+    if a.lugar:
+        mensaje += f" — {a.lugar}"
+    return Contenido(EVENTO_AUDIENCIA, a.id_abogado, titulo, mensaje[:LARGO_MENSAJE],
+                     {"id_proceso": a.id_proceso, "id_actuacion": a.id_actuacion},
+                     f"{EVENTO_AUDIENCIA}:{a.id_actuacion}:{a.id_abogado}:{{canal}}:{a.fecha.isoformat()}")
 
 
 def canales(c: Contenido, preferencias: list[Preferencia], correo_respaldo: str | None,
@@ -200,12 +247,12 @@ def avisos_para(aviso: AvisoTermino, preferencias: list[Preferencia], correo_res
 
 
 def enlace_de(n: NotificacionNueva, url_app: str) -> tuple[str, str]:
-    """Adónde lleva el aviso: la agenda para los términos, el proceso para las actuaciones."""
+    """Adónde lleva el aviso: la agenda para los términos, el expediente del proceso para lo demás."""
     if not url_app:
         return "", ""
     base = url_app.rstrip("/")
-    if n.evento == "actuacion.detectada" and n.referencia.get("id_proceso"):
-        return f"{base}/procesos/{n.referencia['id_proceso']}/editar", "Ver el proceso"
+    if n.evento in (EVENTO_ACTUACION, EVENTO_AUDIENCIA) and n.referencia.get("id_proceso"):
+        return f"{base}/procesos/{n.referencia['id_proceso']}", "Ver el expediente"
     return f"{base}/terminos", "Ver la agenda de términos"
 
 

@@ -22,7 +22,7 @@ import org.springframework.web.server.ServerWebExchange;
 /** Ninguna ruta de la API responde sin token, y cada rol solo llega a lo que le corresponde. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK, properties = {
 		"GABINETE_URL=http://127.0.0.1:9", "PROCESOS_URL=http://127.0.0.1:9", "IDENTIDAD_URL=http://127.0.0.1:9" })
-@AutoConfigureWebTestClient
+@AutoConfigureWebTestClient(timeout = "30s")   // la primera petición (JVM en frío, servidor cargado) puede pasar de 5 s
 class SeguridadTest {
 
 	@Autowired
@@ -44,6 +44,11 @@ class SeguridadTest {
 		assertThat(permitido("POST", "/api/procesos/34/partes", "DEPENDIENTE")).isFalse();
 		assertThat(permitido("POST", "/api/procesos/34/providencias", "ABOGADO")).isTrue();
 		assertThat(permitido("GET", "/api/procesos/34/expediente", "ADMINISTRATIVO")).isTrue();
+		assertThat(permitido("GET", "/api/audiencias", "ADMINISTRATIVO")).isTrue();
+		assertThat(permitido("POST", "/api/audiencias/avisos", "DEPENDIENTE")).isTrue();
+		assertThat(permitido("POST", "/api/audiencias/avisos", "ADMINISTRATIVO")).isFalse();
+		assertThat(permitido("POST", "/api/procesos/34/pruebas", "DEPENDIENTE")).isFalse();
+		assertThat(permitido("GET", "/api/audiencias", "CLIENTE")).isFalse();
 		assertThat(permitido("POST", "/api/procesos", "ABOGADO")).isTrue();
 		assertThat(permitido("GET", "/api/honorarios", "DEPENDIENTE")).isFalse();
 		assertThat(permitido("GET", "/api/honorarios", "ABOGADO")).isTrue();

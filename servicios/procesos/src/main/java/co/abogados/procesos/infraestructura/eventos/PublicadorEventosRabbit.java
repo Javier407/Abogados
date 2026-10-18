@@ -12,8 +12,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import co.abogados.procesos.dominio.modelo.AvisoAudiencia;
 import co.abogados.procesos.dominio.modelo.AvisoTermino;
 import co.abogados.procesos.dominio.modelo.ProcesoCreado;
+import co.abogados.procesos.dominio.puertos.PublicadorAgenda;
 import co.abogados.procesos.dominio.puertos.PublicadorEventos;
 
 /**
@@ -22,7 +24,7 @@ import co.abogados.procesos.dominio.puertos.PublicadorEventos;
  * Formato del mensaje: docs/contratos/eventos.md.
  */
 @Component
-public class PublicadorEventosRabbit implements PublicadorEventos {
+public class PublicadorEventosRabbit implements PublicadorEventos, PublicadorAgenda {
 
 	private static final Logger log = LoggerFactory.getLogger(PublicadorEventosRabbit.class);
 
@@ -56,6 +58,21 @@ public class PublicadorEventosRabbit implements PublicadorEventos {
 		cuerpo.put("id_abogado", a.idAbogado());
 		cuerpo.put("ocurrido", a.ocurrido().toString());
 		despuesDelCommit(() -> enviar(a.tipo().clave(), cuerpo));
+	}
+
+	@Override
+	public void avisoAudiencia(AvisoAudiencia a) {
+		Map<String, Object> cuerpo = new LinkedHashMap<>();
+		cuerpo.put("id_actuacion", a.idActuacion());
+		cuerpo.put("id_proceso", a.idProceso());
+		cuerpo.put("radicado", a.radicado());
+		cuerpo.put("descripcion", a.descripcion());
+		cuerpo.put("fecha", a.fecha().toString());
+		cuerpo.put("hora", a.hora() == null ? null : a.hora().toString());
+		cuerpo.put("lugar", a.lugar());
+		cuerpo.put("id_abogado", a.idAbogado());
+		cuerpo.put("ocurrido", a.ocurrido().toString());
+		despuesDelCommit(() -> enviar("audiencia.proxima", cuerpo));
 	}
 
 	private void enviar(String clave, Map<String, Object> cuerpo) {

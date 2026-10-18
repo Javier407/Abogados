@@ -2,7 +2,8 @@
 
 Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-dominio.md`) con lo que el código hace hoy. Sirve para decidir las fases siguientes.
 
-> Escrito al cerrar F5 y **actualizado con F6** (rama `feature/f6-expediente`, 2026-10-17): partes y conflicto de intereses, actuaciones, providencia manual, sentencia, recursos, otras instancias y copias de seguridad.
+> Escrito al cerrar F5, **actualizado con F6 y F7**. F7 trajo audiencias en la agenda con aviso, pruebas con perito y términos sugeridos.
+> Actualización de F6 (rama `feature/f6-expediente`, 2026-10-17): partes y conflicto de intereses, actuaciones, providencia manual, sentencia, recursos, otras instancias y copias de seguridad.
 
 **Estados:**
 - ✅ **Hecho:** tiene lógica, API, pantalla y pruebas.
@@ -46,9 +47,9 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Providencias detectadas por la vigilancia | ✅ | `ConsumidorActuaciones` → `ProvidenciaServicio.registrarDetectada`, `providencias-proceso.component` | — |
 | Registrar una providencia a mano | ✅ F6 | `POST /procesos/{id}/providencias` | — |
 | Términos (crear, cumplir, revisión diaria, calendario) | ✅ | `TerminoServicio`, `CalendarioServicio`, `RevisionDiariaTerminos`, `pages/terminos`, `pages/calendario` | — |
-| Términos sugeridos al llegar un auto (por ejemplo, admite demanda → 20 días en un verbal) | ❌ | Los términos de referencia están en `01-dominio.md` §1.6, pero no en el código. | Tabla `procesos.reglas_termino` (tipo de proceso × clase de auto → días). `ProvidenciaServicio` propone el término y el abogado lo confirma. Las reglas debe validarlas un abogado. |
-| Audiencias y agenda | ❌ | El calendario solo muestra términos. | Actuación tipo `AUDIENCIA` con fecha futura, mostrada en el calendario, con un aviso el día antes (evento `audiencia.proxima`). |
-| Pruebas (documental, pericial, testimonial…) | ❌ | Existe la tabla `procesos.pruebas` con `id_perito`, sin código. | CRUD `/procesos/{id}/pruebas`, asignación de perito (lee `gabinete` vía `DirectorioGabinete`) y fecha de entrega del dictamen como término. |
+| Términos sugeridos al llegar un auto (por ejemplo, admite demanda → 20 días en un verbal) | ✅ F7 (reglas a validar) | Los términos de referencia están en `01-dominio.md` §1.6, pero no en el código. | Tabla `procesos.reglas_termino` (tipo de proceso × clase de auto → días). `ProvidenciaServicio` propone el término y el abogado lo confirma. Las reglas debe validarlas un abogado. |
+| Audiencias y agenda | ✅ F7 | Hora y lugar, calendario y aviso `audiencia.proxima` el día hábil anterior. | Actuación tipo `AUDIENCIA` con fecha futura, mostrada en el calendario, con un aviso el día antes (evento `audiencia.proxima`). |
+| Pruebas (documental, pericial, testimonial…) | ✅ F7 | `/procesos/{id}/pruebas` con perito y término de entrega. | CRUD `/procesos/{id}/pruebas`, asignación de perito (lee `gabinete` vía `DirectorioGabinete`) y fecha de entrega del dictamen como término. |
 | Sentencia y resultado | ✅ F6 | Sentencia manual con `sentido`; el proceso pasa a la etapa SENTENCIA | Usar el sentido en la cuota litis (sección 5) y en los reportes (sección 8). |
 | Recursos (apelación, reposición, impugnación de tutela) | 🟡 F6 | Actuación `RECURSO` contra una providencia; otras instancias del mismo radicado enlazadas en el expediente | El término de 3 días se crea a mano: sugerirlo automáticamente (F7). |
 | Expediente digital (documentos) | 🟡 F6 | Las actuaciones guardan un enlace (`documento_url`). | Servicio `documentos` o almacenamiento tipo S3/MinIO (ya hay uno en el servidor, de otro proyecto: crear uno propio). Debe tener control de acceso por proceso. |
@@ -136,6 +137,6 @@ Ordenadas por valor para la firma y por dependencias:
 | Fase | Contenido | Por qué en este orden |
 |---|---|---|
 | **F6. Expediente** ✅ | Partes (con conflicto de intereses), actuaciones con línea de tiempo, providencia manual, sentencia con sentido, recursos. Copias de seguridad diarias. | Completa el corazón del dominio: hoy un proceso no tiene historia propia, solo términos y autos detectados. Antes de meter datos reales hacen falta copias de seguridad. |
-| **F7. Agenda y pruebas** | Audiencias en el calendario con aviso, pruebas con perito, términos sugeridos al llegar un auto (reglas validadas por un abogado). | Usa las actuaciones de F6. Es lo que más evita olvidos después de los términos. |
+| **F7. Agenda y pruebas** ✅ | Audiencias en el calendario con aviso, pruebas con perito, términos sugeridos al llegar un auto (reglas validadas por un abogado). | Usa las actuaciones de F6. Es lo que más evita olvidos después de los términos. |
 | **F8. Administración y finanzas** | Usuarios y roles desde la app, anulación de pagos, gastos, cuota litis, reportes. | Quita el trabajo por SQL y da información a los socios. |
 | **F9. Portal del cliente y endurecimiento** | Portal, avisos al cliente, HTTPS, refresh token, outbox. | El portal expone datos fuera del equipo: requiere primero las prioridades 1 a 3 de seguridad. |

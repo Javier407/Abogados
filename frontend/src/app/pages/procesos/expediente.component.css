@@ -47,3 +47,13 @@
   .evento { grid-template-columns: 1fr auto; }
   .evento-fecha { grid-column: 1 / -1; flex-direction: row; }
 }
+
+/* Términos sugeridos bajo la providencia */
+.btn-sugerir { grid-column: 2 / -1; justify-self: start; margin-top: 4px; }
+.sugerencias { grid-column: 2 / -1; display: flex; flex-direction: column; gap: 8px; background: var(--parchment-2); border-radius: 12px; padding: 10px 12px; }
+.sugerencia { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.sugerencia div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sugerencia small { color: var(--muted); }
+.sugerencia.opcional strong { font-weight: 500; color: var(--muted); }
+.a-validar { color: var(--warn) !important; }
+.select-estado { width: auto; min-width: 130px; padding: 6px 8px; }

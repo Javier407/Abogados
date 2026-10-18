@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
-import { DiaInhabil, Termino } from '../../core/modelos';
+import { Audiencia, DiaInhabil, Termino } from '../../core/modelos';
 import { SesionService } from '../../core/sesion.service';
 
 interface Dia {
@@ -15,12 +15,13 @@ interface Dia {
   finDeSemana: boolean;
   inhabil?: DiaInhabil;
   terminos: Termino[];
+  audiencias: Audiencia[];
 }
 
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre',
   'octubre', 'noviembre', 'diciembre'];
 
-/** Mes con los días inhábiles judiciales y los vencimientos de términos de cada día. */
+/** Mes con los días inhábiles judiciales, los vencimientos de términos y las audiencias de cada día. */
 @Component({
   selector: 'app-calendario',
   standalone: true,
@@ -74,9 +75,10 @@ export class CalendarioComponent implements OnInit {
 
     forkJoin({
       inhabiles: this.api.diasInhabiles(desde, hasta),
-      terminos: this.api.terminos({ desde, hasta, idResponsable: this.soloMios ? this.sesion.idPersona() : undefined })
+      terminos: this.api.terminos({ desde, hasta, idResponsable: this.soloMios ? this.sesion.idPersona() : undefined }),
+      audiencias: this.api.audiencias(desde, hasta, this.soloMios ? this.sesion.idPersona() : undefined)
     }).subscribe({
-      next: ({ inhabiles, terminos }) => {
+      next: ({ inhabiles, terminos, audiencias }) => {
         const porFecha = new Map(inhabiles.map(d => [d.fecha, d]));
         const hoy = iso(new Date());
         const dias: Dia[] = [];
@@ -87,7 +89,8 @@ export class CalendarioComponent implements OnInit {
           dias.push({
             fecha: f, numero: d.getDate(), delMes: d.getMonth() === this.mes, hoy: f === hoy,
             finDeSemana: d.getDay() === 0 || d.getDay() === 6, inhabil: porFecha.get(f),
-            terminos: terminos.filter(t => t.fechaVencimiento === f)
+            terminos: terminos.filter(t => t.fechaVencimiento === f),
+            audiencias: audiencias.filter(a => a.fecha === f)
           });
         }
         this.semanas = Array.from({ length: 6 }, (_, s) => dias.slice(s * 7, s * 7 + 7));
@@ -95,6 +98,11 @@ export class CalendarioComponent implements OnInit {
       },
       error: e => this.error = mensajeDeError(e)
     });
+  }
+
+  /** Cuántos vencimientos caben en la celda después de las audiencias (máximo 3 renglones). */
+  cupoTerminos(dia: Dia): number {
+    return 3 - Math.min(dia.audiencias.length, 2);
   }
 
   claseTermino(t: Termino): string {

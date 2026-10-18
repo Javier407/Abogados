@@ -7,7 +7,8 @@ import {
   Pago, Perito, Tarifa, DesgloseRadicado, Despacho, DiaInhabil, EstadoTelegram,
   FuenteVigilancia, Proceso, ProcesoSolicitud, Providencia, RadicadoVigilado, Rama, ResultadoConsulta, Revision, Sede,
   Termino, TerminoSolicitud, TipoProceso, Vencimiento, VinculoTelegram,
-  Actuacion, ActuacionSolicitud, Expediente, Parte, ParteRegistrada, ParteSolicitud, ProvidenciaSolicitud
+  Actuacion, ActuacionSolicitud, Expediente, Parte, ParteRegistrada, ParteSolicitud, ProvidenciaSolicitud,
+  Audiencia, Prueba, PruebaSolicitud, SugerenciaTermino
 } from './modelos';
 
 /**
@@ -153,6 +154,27 @@ export class ApiService {
   }
   eliminarActuacion(idProceso: number, idActuacion: number): Observable<void> {
     return this.http.delete<void>(`${API}/procesos/${idProceso}/actuaciones/${idActuacion}`);
+  }
+
+  sugerencias(idProceso: number, idProvidencia: number): Observable<SugerenciaTermino[]> {
+    return this.http.get<SugerenciaTermino[]>(`${API}/procesos/${idProceso}/providencias/${idProvidencia}/sugerencias`);
+  }
+
+  // ---------- pruebas y agenda ----------
+  pruebas(idProceso: number): Observable<Prueba[]> {
+    return this.http.get<Prueba[]>(`${API}/procesos/${idProceso}/pruebas`);
+  }
+  crearPrueba(idProceso: number, p: PruebaSolicitud): Observable<Prueba> {
+    return this.http.post<Prueba>(`${API}/procesos/${idProceso}/pruebas`, p);
+  }
+  actualizarPrueba(idProceso: number, idPrueba: number, p: PruebaSolicitud): Observable<Prueba> {
+    return this.http.put<Prueba>(`${API}/procesos/${idProceso}/pruebas/${idPrueba}`, p);
+  }
+  eliminarPrueba(idProceso: number, idPrueba: number): Observable<void> {
+    return this.http.delete<void>(`${API}/procesos/${idProceso}/pruebas/${idPrueba}`);
+  }
+  audiencias(desde: string, hasta: string, idAsistente?: number | null): Observable<Audiencia[]> {
+    return this.http.get<Audiencia[]>(`${API}/audiencias`, { params: filtros({ desde, hasta, idAsistente }) });
   }
 
   // ---------- vigilancia ----------

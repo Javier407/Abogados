@@ -38,6 +38,11 @@ public class DirectorioGabineteHttp implements DirectorioGabinete {
 	}
 
 	@Override
+	public Optional<Perito> perito(int idPerito) {
+		return consultar("/peritos/{id}", Perito.class, idPerito);
+	}
+
+	@Override
 	public List<ClienteResumen> buscarClientes(String texto) {
 		try {
 			ClienteResumen[] encontrados = http.get()

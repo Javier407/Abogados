@@ -70,7 +70,7 @@ def test_telegram_solo_si_esta_vinculado_y_el_bot_activo():
 def test_el_aviso_de_actuacion_lleva_al_proceso():
     c = contenido_actuacion(AvisoActuacion.desde_mensaje(ACTUACION), ABOGADO)
     n = canales(c, [Preferencia(Canal.TELEGRAM, "555")], None, telegram_activo=True)[-1]
-    assert texto_telegram(n, "http://app/").endswith("http://app/procesos/34/editar")
+    assert texto_telegram(n, "http://app/").endswith("http://app/procesos/34")
     assert n.clave == "actuacion.detectada:SIM:1:79123456:TELEGRAM"
 
 

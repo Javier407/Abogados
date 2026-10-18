@@ -3,6 +3,7 @@ package co.abogados.procesos.infraestructura.persistencia;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,7 +19,7 @@ public class ActuacionRepositorioJdbc implements ActuacionRepositorio {
 
 	private static final String SELECT = """
 			SELECT id_actuacion, id_proceso, fecha, tipo, descripcion, id_persona, id_providencia, documento_url,
-			       registrado_por
+			       registrado_por, hora, lugar
 			FROM procesos.actuaciones
 			""";
 
@@ -48,8 +49,8 @@ public class ActuacionRepositorioJdbc implements ActuacionRepositorio {
 	public int crear(Actuacion a) {
 		return jdbc.sql("""
 				INSERT INTO procesos.actuaciones (id_proceso, fecha, tipo, descripcion, id_persona, id_providencia,
-				       documento_url, registrado_por)
-				VALUES (:proceso, :fecha, :tipo, :descripcion, :persona, :providencia, :documento, :quien)
+				       documento_url, registrado_por, hora, lugar)
+				VALUES (:proceso, :fecha, :tipo, :descripcion, :persona, :providencia, :documento, :quien, :hora, :lugar)
 				RETURNING id_actuacion
 				""")
 				.param("proceso", a.idProceso())
@@ -60,6 +61,8 @@ public class ActuacionRepositorioJdbc implements ActuacionRepositorio {
 				.param("providencia", a.idProvidencia())
 				.param("documento", a.documentoUrl())
 				.param("quien", a.registradoPor())
+				.param("hora", a.hora())
+				.param("lugar", a.lugar())
 				.query(Integer.class)
 				.single();
 	}
@@ -73,7 +76,8 @@ public class ActuacionRepositorioJdbc implements ActuacionRepositorio {
 		return new Actuacion(rs.getInt("id_actuacion"), rs.getInt("id_proceso"), rs.getObject("fecha", LocalDate.class),
 				TipoActuacion.valueOf(rs.getString("tipo")), rs.getString("descripcion"),
 				rs.getObject("id_persona", Long.class), rs.getObject("id_providencia", Integer.class),
-				rs.getString("documento_url"), rs.getObject("registrado_por", Long.class));
+				rs.getString("documento_url"), rs.getObject("registrado_por", Long.class),
+				rs.getObject("hora", LocalTime.class), rs.getString("lugar"));
 	}
 
 }

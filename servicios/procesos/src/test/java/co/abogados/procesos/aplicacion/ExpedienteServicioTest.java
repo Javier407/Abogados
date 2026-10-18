@@ -27,6 +27,7 @@ import co.abogados.procesos.dominio.modelo.ParteRegistrada;
 import co.abogados.procesos.dominio.modelo.RolParte;
 import co.abogados.procesos.dominio.modelo.Termino;
 import co.abogados.procesos.dominio.modelo.TerminoVista;
+import co.abogados.procesos.dominio.modelo.Texto;
 import co.abogados.procesos.dominio.modelo.TipoActuacion;
 import co.abogados.procesos.dominio.puertos.ActuacionRepositorio;
 import co.abogados.procesos.dominio.puertos.DirectorioGabinete;
@@ -85,7 +86,7 @@ class ExpedienteServicioTest {
 
 		ParteRegistrada parecida = servicio.agregarParte(34, contraparte(null, null, "Altamira"));
 		assertThat(parecida.conflictos()).isEmpty();
-		assertThat(ExpedienteServicio.normalizar("José  Gómez S.A.S.")).isEqualTo("jose gomez sas");
+		assertThat(Texto.normalizar("José  Gómez S.A.S.")).isEqualTo("jose gomez sas");
 	}
 
 	@Test
@@ -129,7 +130,7 @@ class ExpedienteServicioTest {
 	// ----------------------------------------------------------------- actuaciones
 
 	static Actuacion actuacion(TipoActuacion tipo, LocalDate fecha, Integer idProvidencia) {
-		return new Actuacion(null, 34, fecha, tipo, "Radicada por correo al juzgado", 52345678L, idProvidencia, null, null);
+		return new Actuacion(null, 34, fecha, tipo, "Radicada por correo al juzgado", 52345678L, idProvidencia, null, null, null, null);
 	}
 
 	@Test
@@ -185,7 +186,7 @@ class ExpedienteServicioTest {
 	@Test
 	void elDocumentoDebeSerUnEnlaceWeb() {
 		assertThatThrownBy(() -> new Actuacion(null, 34, LocalDate.of(2026, 10, 15), TipoActuacion.PODER, "Poder",
-				null, null, "C:\\poderes\\poder.pdf", null)).isInstanceOf(ReglaNegocioException.class);
+				null, null, "C:\\poderes\\poder.pdf", null, null, null)).isInstanceOf(ReglaNegocioException.class);
 	}
 
 	@Test
@@ -225,7 +226,7 @@ class ExpedienteServicioTest {
 		public int crear(Actuacion a) {
 			int id = datos.size() + 1;
 			datos.put(id, new Actuacion(id, a.idProceso(), a.fecha(), a.tipo(), a.descripcion(), a.idPersona(),
-					a.idProvidencia(), a.documentoUrl(), a.registradoPor()));
+					a.idProvidencia(), a.documentoUrl(), a.registradoPor(), a.hora(), a.lugar()));
 			return id;
 		}
 		public void eliminar(int id) { datos.remove(id); }
@@ -273,6 +274,9 @@ class ExpedienteServicioTest {
 
 		public Optional<Cliente> cliente(int id) { return Optional.empty(); }
 		public Optional<Abogado> abogado(long id) { return Optional.empty(); }
+		public Optional<Perito> perito(int id) {
+			return id == 3 ? Optional.of(new Perito(3, "Marta Lucía Ospina", "Psicología forense")) : Optional.empty();
+		}
 		public List<ClienteResumen> buscarClientes(String texto) {
 			if (caido) throw new ServicioNoDisponibleException("gabinete caído");
 			if (texto == null) return clientes;

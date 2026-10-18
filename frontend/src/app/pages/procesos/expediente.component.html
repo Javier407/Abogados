@@ -60,8 +60,19 @@
                 <div class="form-group">
                   <label class="form-label" for="fechaAct">Fecha</label>
                   <input id="fechaAct" class="form-input" type="date" name="fecha" [(ngModel)]="actuacion.fecha" required />
-                  <span class="form-ayuda">Una fecha futura la deja programada (por ejemplo, una audiencia).</span>
+                  <span class="form-ayuda">Una fecha futura la deja programada; una audiencia sale en el calendario y se avisa el día hábil anterior.</span>
                 </div>
+                @if (actuacion.tipo === 'AUDIENCIA') {
+                  <div class="form-group">
+                    <label class="form-label" for="horaAct">Hora</label>
+                    <input id="horaAct" class="form-input" type="time" name="hora" [(ngModel)]="actuacion.hora" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="lugarAct">Lugar o enlace</label>
+                    <input id="lugarAct" class="form-input" name="lugar" [(ngModel)]="actuacion.lugar" maxlength="200"
+                           placeholder="Sala 4 o enlace de la audiencia virtual" />
+                  </div>
+                }
                 <div class="form-group form-group-full">
                   <label class="form-label" for="descAct">Descripción <span class="requerido">*</span></label>
                   <input id="descAct" class="form-input" name="descripcion" [(ngModel)]="actuacion.descripcion" required maxlength="200"
@@ -184,6 +195,29 @@
                   @if (juridico && e.categoria === 'ACTUACION') {
                     <button class="btn-quitar" type="button" (click)="eliminarActuacion(e)" [attr.aria-label]="'Eliminar la actuación ' + e.titulo">×</button>
                   }
+                  @if (registraActuaciones && e.categoria === 'PROVIDENCIA') {
+                    <button class="btn btn-secondary btn-sm btn-sugerir" type="button" (click)="verSugerencias(e.id)"
+                            [attr.aria-expanded]="sugerenciasDe === e.id">Términos sugeridos</button>
+                  }
+                  @if (sugerenciasDe === e.id && e.categoria === 'PROVIDENCIA') {
+                    <div class="sugerencias">
+                      @if (cargandoSugerencias) { <p class="form-ayuda">Buscando términos…</p> }
+                      @if (errorSugerencias) { <div class="alerta alerta-error">{{ errorSugerencias }}</div> }
+                      @if (!cargandoSugerencias && !errorSugerencias && sugerencias.length === 0) {
+                        <p class="form-ayuda">No hay términos sugeridos para esta providencia (o ya se crearon).</p>
+                      }
+                      @for (s of sugerencias; track s.descripcion) {
+                        <div class="sugerencia" [class.opcional]="s.prioridad > 1">
+                          <div>
+                            <strong>{{ s.descripcion }}</strong>
+                            <small>{{ s.diasHabiles }} días hábiles · vence {{ s.fechaVencimiento | date:'dd/MM/yyyy' }} · {{ s.norma }}</small>
+                            @if (!s.validada) { <small class="a-validar">Regla de referencia, pendiente de validar por un abogado</small> }
+                          </div>
+                          <button class="btn btn-primary btn-sm" type="button" (click)="crearSugerido(s)">Crear término</button>
+                        </div>
+                      }
+                    </div>
+                  }
                 </li>
               }
             </ol>
@@ -266,6 +300,93 @@
         </div>
       </section>
     </div>
+
+    <!-- ================= Pruebas ================= -->
+    <section class="card">
+      <div class="card-header encabezado-tarjeta">
+        <h2>Pruebas ({{ pruebas.length }})</h2>
+        @if (juridico) {
+          <button class="btn btn-secondary btn-sm" type="button" (click)="abrir('PRUEBA')" [attr.aria-expanded]="formulario === 'PRUEBA'">Agregar prueba</button>
+        }
+      </div>
+      <div class="card-body">
+        @if (formulario === 'PRUEBA') {
+          <form class="formulario" #fpr="ngForm" (ngSubmit)="registrarPrueba(fpr)" novalidate>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label" for="tipoPrueba">Tipo</label>
+                <select id="tipoPrueba" class="form-input" name="tipo" [(ngModel)]="prueba.tipo" required>
+                  @for (t of tiposPrueba; track t) { <option [value]="t">{{ etiqueta(t) }}</option> }
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="estadoPrueba">Estado</label>
+                <select id="estadoPrueba" class="form-input" name="estado" [(ngModel)]="prueba.estado" required>
+                  @for (e of estadosPrueba; track e) { <option [value]="e">{{ etiqueta(e) }}</option> }
+                </select>
+              </div>
+              <div class="form-group form-group-full">
+                <label class="form-label" for="descPrueba">Descripción <span class="requerido">*</span></label>
+                <input id="descPrueba" class="form-input" name="descripcion" [(ngModel)]="prueba.descripcion" required maxlength="200"
+                       placeholder="Ej.: Dictamen de ingeniería sobre los defectos de obra" />
+              </div>
+              @if (prueba.tipo === 'PERICIAL') {
+                <div class="form-group">
+                  <label class="form-label" for="peritoPrueba">Perito</label>
+                  <select id="peritoPrueba" class="form-input" name="idPerito" [(ngModel)]="prueba.idPerito">
+                    <option [ngValue]="null">Sin asignar</option>
+                    @for (pe of peritos; track pe.idPerito) { <option [ngValue]="pe.idPerito">{{ pe.nombre }} · {{ pe.especialidad }}</option> }
+                  </select>
+                </div>
+              }
+              <div class="form-group">
+                <label class="form-label" for="entregaPrueba">Fecha de entrega</label>
+                <input id="entregaPrueba" class="form-input" type="date" name="fechaEntrega" [(ngModel)]="prueba.fechaEntrega" [min]="hoy" />
+                <span class="form-ayuda">Si la prueba está pendiente, se crea un término que vence ese día.</span>
+              </div>
+            </div>
+            @if (errorFormulario) { <div class="alerta alerta-error">{{ errorFormulario }}</div> }
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit" [disabled]="guardando">{{ guardando ? 'Guardando…' : 'Guardar prueba' }}</button>
+              <button class="btn btn-secondary" type="button" (click)="formulario = null">Cancelar</button>
+            </div>
+          </form>
+        }
+
+        @if (pruebas.length === 0) {
+          <p class="form-ayuda">No hay pruebas registradas.</p>
+        } @else {
+          <div class="tabla-wrapper">
+            <table class="tabla">
+              <thead><tr><th>Tipo</th><th>Prueba</th><th>Entrega</th><th>Estado</th>@if (juridico) {<th></th>}</tr></thead>
+              <tbody>
+                @for (pr of pruebas; track pr.idPrueba) {
+                  <tr>
+                    <td><span class="badge badge-primary">{{ etiqueta(pr.tipo) }}</span></td>
+                    <td class="titulo-celda">{{ pr.descripcion }}@if (pr.idPerito) {<br><small>Perito: {{ nombrePerito(pr.idPerito) }}</small>}</td>
+                    <td class="fecha-celda">{{ pr.fechaEntrega ? (pr.fechaEntrega | date:'dd/MM/yyyy') : '—' }}@if (pr.idTermino) {<br><small>con término</small>}</td>
+                    <td>
+                      @if (juridico) {
+                        <select class="form-input select-estado" [ngModel]="pr.estado" (ngModelChange)="cambiarEstado(pr, $event)"
+                                [attr.aria-label]="'Estado de ' + pr.descripcion">
+                          @for (e of estadosPrueba; track e) { <option [value]="e">{{ etiqueta(e) }}</option> }
+                        </select>
+                      } @else {
+                        <span class="badge" [class.badge-success]="pr.estado === 'PRACTICADA'" [class.badge-danger]="pr.estado === 'NEGADA'"
+                              [class.badge-warning]="pr.estado === 'DECRETADA'" [class.badge-muted]="pr.estado === 'SOLICITADA'">{{ etiqueta(pr.estado) }}</span>
+                      }
+                    </td>
+                    @if (juridico) {
+                      <td class="acciones-celda"><button class="btn-quitar" type="button" (click)="quitarPrueba(pr)" [attr.aria-label]="'Eliminar la prueba ' + pr.descripcion">×</button></td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </section>
 
     @for (v of [version]; track v) { <app-terminos-proceso [idProceso]="idProceso" /> }
     @if (juridico) { <app-asistente-proceso [idProceso]="idProceso" [radicado]="p.radicado" /> }
