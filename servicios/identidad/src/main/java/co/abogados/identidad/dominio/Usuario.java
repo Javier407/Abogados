@@ -7,6 +7,7 @@ import java.util.Set;
 /**
  * Cuenta para entrar al sistema. idUsuario es el número de documento: para el personal coincide con
  * gabinete.personal.id_persona, así los avisos y los términos se asocian a quien inicia sesión.
+ * idCliente: solo en las cuentas con rol CLIENTE, la ficha del cliente en gabinete (el portal muestra lo suyo).
  */
 public record Usuario(
 		long idUsuario,
@@ -17,7 +18,8 @@ public record Usuario(
 		boolean activo,
 		Set<String> roles,
 		int intentosFallidos,
-		Instant bloqueadoHasta) {
+		Instant bloqueadoHasta,
+		Integer idCliente) {
 
 	/** Intentos fallidos seguidos que bloquean la cuenta. */
 	public static final int MAX_INTENTOS = 5;
@@ -27,6 +29,11 @@ public record Usuario(
 
 	public Usuario {
 		roles = roles == null ? Set.of() : Set.copyOf(roles);
+	}
+
+	public Usuario(long idUsuario, String usuario, String nombre, String email, String hashClave, boolean activo,
+			Set<String> roles, int intentosFallidos, Instant bloqueadoHasta) {
+		this(idUsuario, usuario, nombre, email, hashClave, activo, roles, intentosFallidos, bloqueadoHasta, null);
 	}
 
 	public boolean bloqueado(Instant ahora) {

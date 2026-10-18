@@ -1,11 +1,12 @@
-# Infraestructura del gabinete (fases F1 a F5): PostgreSQL, RabbitMQ, microservicios, gateway, frontend, Mailpit y Ollama.
+# Infraestructura del gabinete (fases F1 a F9): PostgreSQL, RabbitMQ, microservicios, gateway, frontend, Mailpit y Ollama.
 # Secretos fuera de git: infra/.env y infra/secretos/ (llave privada de los tokens). Ver README.
 # Uso:  cd infra && cp .env.example .env  (escribir las claves)  &&  docker compose up -d --build
 # La primera vez que se crea el volumen de PostgreSQL se ejecuta db/00-init.sh: crea los esquemas y carga los datos de prueba.
 # Para recargar la base desde cero: docker compose down -v && docker compose up -d   (borra los volúmenes)
 #
-# Solo se publican el frontend (8090), el gateway (8091) y el buzón de pruebas Mailpit (8092). PostgreSQL, RabbitMQ y los servicios
-# solo son visibles dentro de la red interna de compose.
+# Por la VPN solo se publican el frontend (8090) y el buzón de pruebas Mailpit (8092). El gateway (8091) y la entrada de
+# tailscale serve (8093, HTTPS) solo escuchan en la propia VM. PostgreSQL, RabbitMQ y los servicios solo son visibles
+# dentro de la red interna de compose; aun así cada servicio verifica el token de cada petición (F9).
 
 name: abogados
 
@@ -106,6 +107,10 @@ services:
       DB_USER: svc_identidad
       DB_PASSWORD: ${SVC_PASSWORD}
       JWT_LLAVE_PRIVADA: /run/secrets/jwt-privada.pem
+      # F9: el refresh token va en una cookie Secure (solo HTTPS). false únicamente mientras no haya HTTPS.
+      COOKIE_SEGURA: ${COOKIE_SEGURA:-true}
+      # Clave de cada servicio para pedir su token (infra/.env, generadas en el servidor, nunca en git)
+      SERVICIOS_CLAVES: procesos=${CLAVE_SVC_PROCESOS:-},gabinete=${CLAVE_SVC_GABINETE:-},notificaciones=${CLAVE_SVC_NOTIFICACIONES:-},vigilancia=${CLAVE_SVC_VIGILANCIA:-},asistente-ia=${CLAVE_SVC_ASISTENTE:-}
     volumes:
       # Llave privada RSA que firma los tokens: solo este servicio la ve, y en solo lectura.
       - ./secretos/jwt-privada.pem:/run/secrets/jwt-privada.pem:ro
@@ -127,6 +132,8 @@ services:
       DB_USER: svc_gabinete
       DB_PASSWORD: ${SVC_PASSWORD}
       PROCESOS_URL: http://procesos:8080
+      IDENTIDAD_URL: http://identidad:8080
+      SERVICIO_CLAVE: ${CLAVE_SVC_GABINETE:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -148,6 +155,8 @@ services:
       RABBITMQ_USER: ${RABBITMQ_USER}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       GABINETE_URL: http://gabinete:8080
+      IDENTIDAD_URL: http://identidad:8080
+      SERVICIO_CLAVE: ${CLAVE_SVC_PROCESOS:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -167,7 +176,9 @@ services:
       DB_URL: postgresql://svc_notificaciones:${SVC_PASSWORD}@postgres:5432/${POSTGRES_DB}
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
       GABINETE_URL: http://gabinete:8080
-      URL_APP: ${URL_APP:-http://100.65.152.112:8090}
+      URL_APP: ${URL_PUBLICA:-http://100.65.152.112:8090}
+      IDENTIDAD_URL: http://identidad:8080
+      SERVICIO_CLAVE: ${CLAVE_SVC_NOTIFICACIONES:-}
       # Por defecto los correos van a Mailpit (no salen a internet). Para correo real, definir SMTP_* en .env.
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PUERTO: ${SMTP_PUERTO:-1025}
@@ -202,6 +213,8 @@ services:
       DB_URL: postgresql://svc_vigilancia:${SVC_PASSWORD}@postgres:5432/${POSTGRES_DB}
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
       PROCESOS_URL: http://procesos:8080
+      IDENTIDAD_URL: http://identidad:8080
+      SERVICIO_CLAVE: ${CLAVE_SVC_VIGILANCIA:-}
       # Consulta real al portal de la Rama Judicial: solo para los radicados con fuente PORTAL_HTTP
       # (los de la base de pruebas usan MANUAL o SIMULADA). Espaciada: mínimo 12 h por radicado y 10 s entre consultas.
       PORTAL_HABILITADO: ${PORTAL_HABILITADO:-true}
@@ -233,6 +246,8 @@ services:
       MAX_TOKENS: 1000                  # acota el tiempo en CPU (unos 3 a 5 minutos por borrador)
       PROCESOS_URL: http://procesos:8080
       GABINETE_URL: http://gabinete:8080
+      IDENTIDAD_URL: http://identidad:8080
+      SERVICIO_CLAVE: ${CLAVE_SVC_ASISTENTE:-}
     depends_on:
       - ollama
     healthcheck:
@@ -292,9 +307,10 @@ services:
       VIGILANCIA_URL: http://vigilancia:8000
       ASISTENTE_URL: http://asistente-ia:8000
       IDENTIDAD_URL: http://identidad:8080
-      CORS_ORIGINS: http://localhost:4200
+      CORS_ORIGINS: http://localhost:4200${URL_PUBLICA:+,}${URL_PUBLICA:-}
+    # F9: solo desde la propia VM (diagnóstico); desde la VPN se entra por el frontend (y por HTTPS).
     ports:
-      - "8091:8080"
+      - "127.0.0.1:8091:8080"
     depends_on:
       - gabinete
       - procesos
@@ -311,12 +327,16 @@ services:
     image: abogados/frontend:0.1.0
     container_name: abogados-frontend
     restart: unless-stopped
+    environment:
+      # Dirección HTTPS de tailscale serve (p. ej. https://docker-server.<tailnet>.ts.net). Vacía = sin redirección.
+      URL_PUBLICA: ${URL_PUBLICA:-}
     ports:
-      - "8090:80"
+      - "8090:80"              # HTTP por la VPN; redirige a URL_PUBLICA cuando existe
+      - "127.0.0.1:8093:81"    # entrada de tailscale serve (HTTPS), solo local
     depends_on:
       - gateway
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:81/ >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3

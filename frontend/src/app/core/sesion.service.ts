@@ -15,8 +15,8 @@ export class SesionService implements OnDestroy {
   private zona = inject(NgZone);
 
   readonly abogados = signal<Abogado[]>([]);
-  /** Documento de la persona: para el personal es su cédula (gabinete.personal.id_persona). */
-  readonly idPersona = computed(() => this.auth.esPersonal() ? this.auth.idUsuario() : null);
+  /** Documento de la persona (personal o cliente del portal): sus avisos se guardan con ese número. */
+  readonly idPersona = computed(() => this.auth.idUsuario());
   readonly persona = computed(() => {
     const s = this.auth.sesion();
     const nombres = s?.nombre.split(' ') ?? [];
@@ -32,7 +32,7 @@ export class SesionService implements OnDestroy {
     try { localStorage.removeItem('gj.idPersona'); } catch { /* resto del selector "Ver como" (antes de F5) */ }
     effect(() => {
       const id = this.idPersona();
-      if (id) {
+      if (id && this.auth.esPersonal()) {
         this.api.abogados(true).subscribe({ next: a => this.abogados.set(a), error: () => this.abogados.set([]) });
       }
       this.conectar(id);
@@ -53,6 +53,12 @@ export class SesionService implements OnDestroy {
     if (!id || !token || typeof EventSource === 'undefined') return;
     // EventSource no permite cabeceras: el token va en la URL solo para esta ruta (el gateway lo quita).
     this.stream = new EventSource(`${this.api.urlAvisosEnVivo(id)}&access_token=${encodeURIComponent(token)}`);
+    // El token dura 15 min: si la conexión se cae y el servidor la rechaza, se abre otra con un token nuevo.
+    this.stream.onerror = () => {
+      if (this.stream?.readyState === EventSource.CLOSED) {
+        setTimeout(() => this.auth.tokenVigente().subscribe(() => this.conectar(this.idPersona())), 5000);
+      }
+    };
     this.stream.addEventListener('aviso', e => this.zona.run(() => {
       const dato = JSON.parse((e as MessageEvent).data);
       this.noLeidos.update(n => n + 1);

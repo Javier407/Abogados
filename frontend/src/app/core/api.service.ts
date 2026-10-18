@@ -10,7 +10,7 @@ import {
   Actuacion, ActuacionSolicitud, Expediente, Parte, ParteRegistrada, ParteSolicitud, ProvidenciaSolicitud,
   Audiencia, Prueba, PruebaSolicitud, SugerenciaTermino,
   CambioCuenta, CargaAbogado, CarteraCliente, Cuenta, CuentaSolicitud, CumplimientoTerminos, Gasto, GastoSolicitud,
-  ResultadoRama
+  ResultadoRama, ProcesoPortal, DetallePortal, FinanzasPortal, ResumenPublicado
 } from './modelos';
 
 /**
@@ -180,6 +180,24 @@ export class ApiService {
   }
 
   // ---------- administración de cuentas (solo ADMIN) ----------
+  // ---------- portal del cliente (solo rol CLIENTE; el servidor filtra por el cliente del token) ----------
+  portalProcesos(): Observable<ProcesoPortal[]> {
+    return this.http.get<ProcesoPortal[]>(`${API}/portal/procesos`);
+  }
+  portalProceso(id: number): Observable<DetallePortal> {
+    return this.http.get<DetallePortal>(`${API}/portal/procesos/${id}`);
+  }
+  portalFinanzas(): Observable<FinanzasPortal> {
+    return this.http.get<FinanzasPortal>(`${API}/portal/finanzas`);
+  }
+  /** Último resumen publicado para el cliente (null si aún no hay). */
+  resumenCliente(idProceso: number): Observable<ResumenPublicado | null> {
+    return this.http.get<ResumenPublicado | null>(`${API}/procesos/${idProceso}/resumen-cliente`);
+  }
+  publicarResumen(idProceso: number, texto: string): Observable<ResumenPublicado> {
+    return this.http.post<ResumenPublicado>(`${API}/procesos/${idProceso}/resumen-cliente`, { texto });
+  }
+
   cuentas(): Observable<Cuenta[]> {
     return this.http.get<Cuenta[]>(`${API}/usuarios`);
   }

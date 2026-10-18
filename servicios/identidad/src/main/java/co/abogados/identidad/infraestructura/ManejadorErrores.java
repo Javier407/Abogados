@@ -16,6 +16,7 @@ import co.abogados.identidad.dominio.CredencialesInvalidasException;
 import co.abogados.identidad.dominio.CuentaBloqueadaException;
 import co.abogados.identidad.dominio.RecursoNoEncontradoException;
 import co.abogados.identidad.dominio.ReglaNegocioException;
+import co.abogados.identidad.dominio.SesionInvalidaException;
 
 /** Errores de la API de identidad con el cuerpo { "error": mensaje } (y "campos" si falla la validación). */
 @RestControllerAdvice
@@ -23,6 +24,11 @@ public class ManejadorErrores {
 
 	@ExceptionHandler(CredencialesInvalidasException.class)
 	public ResponseEntity<Map<String, Object>> credenciales(CredencialesInvalidasException e) {
+		return error(HttpStatus.UNAUTHORIZED, e.getMessage());
+	}
+
+	@ExceptionHandler(SesionInvalidaException.class)
+	public ResponseEntity<Map<String, Object>> sesion(SesionInvalidaException e) {
 		return error(HttpStatus.UNAUTHORIZED, e.getMessage());
 	}
 

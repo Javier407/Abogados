@@ -20,7 +20,7 @@
 
   <!-- ================= Barra lateral ================= -->
   <aside class="side">
-    <a class="brand" routerLink="/" title="Rodríguez & Asociados"><app-logo /></a>
+    <a class="brand" [routerLink]="auth.inicio()" title="Rodríguez & Asociados"><app-logo /></a>
 
     <nav aria-label="Menú principal">
       @if (auth.esPersonal()) {
@@ -43,6 +43,17 @@
         @if (auth.tiene('ADMIN')) {
           <a routerLink="/usuarios" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-llave"/></svg>Usuarios</a>
         }
+        <a routerLink="/avisos" routerLinkActive="activo" class="nav-btn">
+          <span class="icono-con-contador">
+            <svg><use href="#i-bell"/></svg>
+            @if (sesion.noLeidos() > 0) { <span class="contador" aria-label="avisos sin leer">{{ sesion.noLeidos() }}</span> }
+          </span>
+          Avisos
+        </a>
+      }
+      @if (auth.esCliente()) {
+        <a routerLink="/portal" routerLinkActive="activo" [routerLinkActiveOptions]="{exact: true}" class="nav-btn"><svg><use href="#i-folder"/></svg>Mis procesos</a>
+        <a routerLink="/portal/pagos" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-money"/></svg>Mis pagos</a>
         <a routerLink="/avisos" routerLinkActive="activo" class="nav-btn">
           <span class="icono-con-contador">
             <svg><use href="#i-bell"/></svg>

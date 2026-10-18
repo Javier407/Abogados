@@ -37,7 +37,8 @@ public class UsuariosRecurso {
 			@NotBlank(message = "El nombre es obligatorio") @Size(max = 120) String nombre,
 			@NotBlank(message = "El correo es obligatorio") @Size(max = 120) String email,
 			@NotEmpty(message = "Asigne al menos un rol") Set<String> roles,
-			@NotBlank(message = "Escriba la contraseña temporal") @Size(max = 72) String claveTemporal) {
+			@NotBlank(message = "Escriba la contraseña temporal") @Size(max = 72) String claveTemporal,
+			@Positive Integer idCliente) {
 	}
 
 	public record CambioSolicitud(
@@ -45,7 +46,8 @@ public class UsuariosRecurso {
 			@NotBlank(message = "El nombre es obligatorio") @Size(max = 120) String nombre,
 			@NotBlank(message = "El correo es obligatorio") @Size(max = 120) String email,
 			@NotEmpty(message = "Asigne al menos un rol") Set<String> roles,
-			boolean activo) {
+			boolean activo,
+			@Positive Integer idCliente) {
 	}
 
 	public record ClaveSolicitud(@NotBlank(message = "Escriba la contraseña temporal") @Size(max = 72) String claveTemporal) {
@@ -74,7 +76,7 @@ public class UsuariosRecurso {
 			@RequestHeader("X-Usuario-Roles") String roles, @Valid @RequestBody CuentaSolicitud s) {
 		exigirAdmin(roles);
 		Cuenta creada = servicio.crear(new CuentasServicio.NuevaCuenta(s.idUsuario(), s.usuario(), s.nombre(), s.email(),
-				s.roles(), s.claveTemporal()), admin);
+				s.roles(), s.claveTemporal(), s.idCliente()), admin);
 		return ResponseEntity.created(URI.create("/usuarios/" + creada.idUsuario())).body(creada);
 	}
 
@@ -83,7 +85,7 @@ public class UsuariosRecurso {
 			@RequestHeader("X-Usuario-Roles") String roles, @Valid @RequestBody CambioSolicitud s) {
 		exigirAdmin(roles);
 		return servicio.actualizar(id, new CuentasServicio.CambioCuenta(s.usuario(), s.nombre(), s.email(), s.roles(),
-				s.activo()), admin);
+				s.activo(), s.idCliente()), admin);
 	}
 
 	@PostMapping("/usuarios/{id}/clave")

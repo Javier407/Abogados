@@ -10,6 +10,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | **F3. Vigilancia** | Enterarse de los autos sin entrar al portal | `vigilancia` con la interfaz `FuenteRamaJudicial`; consulta programada; evento `actuacion.detectada`; notificaciones por Telegram | Un auto nuevo en un radicado vigilado llega por Telegram y queda registrado en el proceso |
 | **F4. Asistente y administración** | Apoyo a la redacción y gestión de la firma | `asistente-ia` con Hermes (borradores y resúmenes); módulo de peritos; tarifas, honorarios pactados y pagos | Generar un borrador de contestación a partir de un proceso y registrar un pago de honorarios |
 | **F5. Seguridad y calidad** | Listo para uso real | `identidad` con JWT y roles; contraseñas con BCrypt; CI con GitHub Actions (build y pruebas por servicio); nueva evaluación ISO/IEC 25010 | Ningún servicio responde sin token; el pipeline pasa en verde; Seguridad ≥ 7 en la evaluación |
+| **F9. Portal del cliente y endurecimiento** | Que el cliente vea lo suyo sin llamar a la firma, y que la app aguante datos reales | Portal (mis procesos, novedades, resumen publicado, pagos) y avisos al cliente; HTTPS con `tailscale serve`; token de 15 min con refresh token rotatorio y revocable; contraseña temporal exigida por la API; cada servicio verifica el token; outbox en `procesos` y `vigilancia` | Un cliente ve solo sus procesos y pagos; al publicar el abogado un resumen con RabbitMQ caído, el aviso le llega cuando RabbitMQ vuelve; un token revocado deja de servir; ningún servicio responde sin token aunque se le llame desde la red interna |
 | **F8. Administración y finanzas** | Que la firma se administre desde la app y los socios tengan información | Cuentas y roles desde la app (clave temporal que se cambia al entrar); anulación de pagos con motivo; liquidación de la cuota litis; gastos procesales; cartera; reportes de carga, términos y resultados con CSV | Crear una cuenta y que deba cambiar la clave al entrar; anular un pago y que quede en el historial sin contar; liquidar una cuota litis; registrar un gasto reembolsable y verlo en la cartera; reportes visibles solo para la dirección |
 | **F7. Agenda y pruebas** | Que no se olvide una audiencia ni una entrega, y que los términos de cada auto no dependan de la memoria | Audiencias con hora y lugar en el calendario y aviso el día hábil anterior (`audiencia.proxima`); pruebas con perito y término de entrega; términos sugeridos al llegar una providencia | Una audiencia programada sale en el calendario y se avisa el día hábil anterior; una prueba pericial con perito y fecha de entrega crea su término; un auto que admite la demanda en un verbal sugiere contestar en 20 días y el término se crea con un clic |
 | **F6. Expediente** | Que cada proceso tenga su historia completa y los datos estén respaldados | Partes con aviso de conflicto de intereses; actuaciones con línea de tiempo; providencia y sentencia manuales; recursos contra una providencia; otras instancias del radicado; copias de seguridad diarias | Desde la app: agregar la contraparte (con aviso si es cliente), registrar una actuación y una providencia y verlas en la línea de tiempo; existe un respaldo diario que se restaura sin errores |
@@ -27,6 +28,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F6 | Terminada: en el servidor, contraparte con el NIT de un cliente → aviso de conflicto; "Constructora Altamira S.A.S." detectada contra el cliente "Constructora Altamira SAS"; memorial del dependiente y auto manual en la línea de tiempo; respaldo diario restaurado en una base temporal (31 procesos, 30 clientes, 19 términos, 16 usuarios) | 2026-10-17 |
 | F7 | Terminada: en el proceso 2 (verbal, cliente demandado) un auto "admite la demanda" sugirió contestar en 20 días y el término se creó con un clic (vence 17/11/2026); una audiencia del lunes se avisó el domingo por la app, el correo y Telegram; una prueba pericial con entrega el 2/11 (festivo) creó su término al 30/10 y quedó cumplido al practicarla | 2026-10-18 |
 | F8 | Terminada: en el servidor (23 comprobaciones), cuenta nueva con clave temporal que exige el cambio al entrar; el administrador no puede quitarse su rol; pago anulado que queda en el historial y deja de contar; cuota litis del 25 % sobre 40.000.000 liquidada en 10.000.000; gasto reembolsable registrado por un abogado y visible en la cartera; reportes 403 para abogados | 2026-10-18 |
+| F9 | Terminada (HTTPS listo, falta activarlo en Tailscale): en el servidor (39 comprobaciones), Carolina Méndez ve solo su proceso y sus pagos (otro proceso responde 404); con RabbitMQ detenido el abogado publicó un resumen, el evento esperó en el outbox y el aviso le llegó al volver RabbitMQ; un refresh token reutilizado cerró la sesión y su token de acceso dejó de servir en 20 s; los 6 servicios responden 401 sin token desde la red interna aunque se envíen cabeceras falsas; con clave temporal la API niega todo menos cambiarla | 2026-10-18 |
 
 ## F1: qué quedó y qué falta
 
@@ -221,3 +223,33 @@ Pendiente o decidido para después:
 - **El cambio obligatorio de la clave temporal lo exige la interfaz**, no la API: con la clave temporal todavía se puede llamar a la API directamente hasta cambiarla. Para cerrarlo, `identidad` podría emitir un token limitado a `/auth/clave`.
 - La cuenta no se enlaza todavía con la ficha del abogado en gabinete: se usa el mismo documento por convención.
 - Facturación electrónica (DIAN) y PDF de los reportes.
+
+## F9: qué quedó y qué falta
+
+Hecho:
+
+1. **Portal del cliente** (rol CLIENTE; cuenta enlazada con su ficha en **Usuarios**):
+   - **Mis procesos:** etapa, estado, abogado responsable, próxima audiencia y fecha de la última novedad.
+   - **Detalle:** el resumen en lenguaje sencillo que publicó su abogado, las próximas audiencias y las novedades (actuaciones de la firma y decisiones del juzgado). No ve los términos (agenda interna) ni procesos de otros clientes (responde "no existe").
+   - **Mis pagos:** acuerdos de honorarios con lo pagado y el saldo, pagos (sin los anulados) y gastos por reembolsar.
+   - El cliente del token sale del token (`idCliente`), nunca de la petición.
+2. **Resumen para el cliente:** el abogado lo genera con el asistente (o lo escribe), lo corrige y lo publica desde el expediente. Queda guardado (`procesos.resumenes_cliente`) y se avisa al cliente.
+3. **Avisos al cliente:** cuando se publica un resumen (`portal.resumen_publicado`) y el día hábil antes de una audiencia, en la app y al correo de su cuenta, en palabras simples y con enlace al portal.
+4. **Sesiones (prioridad 2 de la evaluación):**
+   - Token de acceso de 15 minutos con `jti`; refresh token de 12 h en cookie HttpOnly, SameSite=Strict, solo para `/api/auth` (Secure con HTTPS). La sesión dura máximo 7 días.
+   - Cada renovación gasta el refresh token y entrega otro. Si uno gastado vuelve a llegar (copiado), se cierra la sesión completa.
+   - Cerrar sesión, cambiar la contraseña, desactivar la cuenta, cambiarle los roles o restablecer su clave cortan las sesiones abiertas: el gateway rechaza esos tokens en máximo 15 s (lista de revocados).
+   - Del refresh token solo se guarda el SHA-256. `renovar` y `salir` exigen `X-Requested-With` (CSRF).
+   - La interfaz renueva sola un minuto antes de vencer; al recargar o abrir otra pestaña recupera la sesión con la cookie.
+5. **Contraseña temporal exigida por la API** (pendiente de F8): el token lleva `clave_temporal` y el gateway y los servicios solo permiten ver el perfil y cambiarla.
+6. **Cada servicio verifica el token (prioridad 3):** los 6 servicios validan firma, emisor y vencimiento con la llave pública de identidad, y toman la identidad del token (las cabeceras `X-Usuario-*` que lleguen se descartan). Para llamarse entre ellos usan un token de servicio (rol SERVICIO, solo lectura) que identidad entrega a cambio de una clave por servicio (`infra/.env`). El gateway rechaza los tokens de servicio que lleguen de fuera.
+7. **Outbox (prioridad 6):** `procesos` escribe sus eventos en `procesos.outbox` en la misma transacción; `vigilancia`, las actuaciones detectadas en `vigilancia.outbox`. Un envío con confirmación del broker los publica cada 2 s. Ver `contratos/eventos.md`.
+8. **HTTPS (prioridad 1):** listo para `tailscale serve`: el frontend tiene una entrada local (127.0.0.1:8093) para el certificado de Tailscale, redirige http→https cuando se define `URL_PUBLICA` y envía HSTS. El gateway ya no se publica en la VPN (solo 127.0.0.1:8091).
+9. Migración `007-f9-portal-y-sesiones.sql`. Pruebas nuevas: sesiones (9), cuentas de cliente (2), filtro del token (5 por servicio Java y 4 por servicio Python), portal y outbox en procesos (6), avisos al cliente (5), gateway (3) y frontend (5).
+
+Pendiente o decidido para después:
+
+- **Activar HTTPS** requiere encender "HTTPS Certificates" en la consola de Tailscale (lo hace Javier). Mientras tanto la app sigue por HTTP dentro de la VPN con `COOKIE_SEGURA=false`.
+- El cliente no puede cambiar por dónde recibe los avisos (siempre app y correo de su cuenta).
+- Las copias de seguridad siguen en la misma VM.
+- Facturación electrónica, expediente digital (archivos) y los borradores de demanda y recurso.

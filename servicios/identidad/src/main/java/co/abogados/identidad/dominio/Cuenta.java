@@ -6,6 +6,7 @@ import java.util.Set;
 /**
  * Cuenta vista por el administrador (sin el hash de la contraseña).
  * idUsuario es el documento: para el personal coincide con gabinete.personal.id_persona.
+ * idCliente: solo en las cuentas de cliente, su ficha en gabinete.
  */
 public record Cuenta(
 		long idUsuario,
@@ -16,7 +17,8 @@ public record Cuenta(
 		Set<String> roles,
 		Instant bloqueadoHasta,
 		Instant ultimoIngreso,
-		boolean debeCambiarClave) {
+		boolean debeCambiarClave,
+		Integer idCliente) {
 
 	/** Roles que existen en identidad.roles. */
 	public static final Set<String> ROLES = Set.of("ADMIN", "SOCIO", "ABOGADO", "DEPENDIENTE", "ADMINISTRATIVO", "CLIENTE");
@@ -25,8 +27,18 @@ public record Cuenta(
 		roles = roles == null ? Set.of() : Set.copyOf(roles);
 	}
 
-	/** Valida los datos editables de una cuenta (los mismos al crearla y al cambiarla). */
+	public Cuenta(long idUsuario, String usuario, String nombre, String email, boolean activo, Set<String> roles,
+			Instant bloqueadoHasta, Instant ultimoIngreso, boolean debeCambiarClave) {
+		this(idUsuario, usuario, nombre, email, activo, roles, bloqueadoHasta, ultimoIngreso, debeCambiarClave, null);
+	}
+
+	/** Valida los datos editables de una cuenta del personal. */
 	public static void validar(String usuario, String nombre, String email, Set<String> roles) {
+		validar(usuario, nombre, email, roles, null);
+	}
+
+	/** Valida los datos editables de una cuenta (los mismos al crearla y al cambiarla). */
+	public static void validar(String usuario, String nombre, String email, Set<String> roles, Integer idCliente) {
 		if (usuario == null || !usuario.matches("[a-z0-9._-]{3,30}")) {
 			throw new ReglaNegocioException("El usuario debe tener de 3 a 30 letras minúsculas, números, punto, guion o guion bajo");
 		}
@@ -46,6 +58,12 @@ public record Cuenta(
 		}
 		if (roles.contains("CLIENTE") && roles.size() > 1) {
 			throw new ReglaNegocioException("Un cliente no puede tener también roles del personal");
+		}
+		if (roles.contains("CLIENTE") && (idCliente == null || idCliente <= 0)) {
+			throw new ReglaNegocioException("Elija el cliente al que pertenece la cuenta");
+		}
+		if (!roles.contains("CLIENTE") && idCliente != null) {
+			throw new ReglaNegocioException("Solo las cuentas de cliente se enlazan con un cliente");
 		}
 	}
 

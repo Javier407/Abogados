@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from .aplicacion import ProcesoNoEncontrado, ServicioAsistente
+from .seguridad import MiddlewareToken, TokenServicio, VerificadorTokens
 from .dominio import SolicitudInvalida, TipoBorrador
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -24,23 +25,28 @@ class PedidoBorrador(BaseModel):
     instrucciones: str = Field("", max_length=800)
 
 
-def crear_app(servicio: ServicioAsistente | None = None) -> FastAPI:
+def crear_app(servicio: ServicioAsistente | None = None, verificador: VerificadorTokens | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def ciclo_de_vida(app: FastAPI):
         if servicio is None:
             from .infraestructura import ClienteGabinete, ClienteProcesos, ModeloOllama
             e = os.environ.get
+            token = TokenServicio.desde_entorno("asistente-ia")
             app.state.servicio = ServicioAsistente(
                 ModeloOllama(e("OLLAMA_URL", "http://localhost:11434"), e("MODELO", "qwen2.5:3b"),
                              max_tokens=int(e("MAX_TOKENS", "1500"))),
-                ClienteProcesos(e("PROCESOS_URL", "http://localhost:8082")),
-                ClienteGabinete(e("GABINETE_URL", "http://localhost:8081")))
+                ClienteProcesos(e("PROCESOS_URL", "http://localhost:8082"), token),
+                ClienteGabinete(e("GABINETE_URL", "http://localhost:8081"), token))
         else:
             app.state.servicio = servicio
         yield
 
     app = FastAPI(title="Servicio asistente-ia", version="0.1.0", lifespan=ciclo_de_vida)
+    # F9: cada petición trae un token válido (también verificado aquí, no solo en el gateway). En las pruebas
+    # con dobles no se verifica, salvo que se pase un verificador.
+    if servicio is None or verificador is not None:
+        app.add_middleware(MiddlewareToken, verificador=verificador or VerificadorTokens.desde_entorno())
 
     def srv(request: Request) -> ServicioAsistente:
         return request.app.state.servicio

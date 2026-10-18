@@ -7,9 +7,10 @@ import { autenticacion } from './auth.interceptor';
 import { AuthService } from './auth.service';
 
 const SESION = {
-  token: 'eyJ.abc.def', expira: new Date(Date.now() + 3_600_000).toISOString(), idUsuario: 79123456,
+  token: 'eyJ.abc.def', expira: new Date(Date.now() + 900_000).toISOString(), idUsuario: 79123456,
   usuario: 'arodriguez', nombre: 'Andrés Felipe Rodríguez Mejía', roles: ['SOCIO']
 };
+const RENOVADA = { ...SESION, token: 'eyJ.nuevo.token', expira: new Date(Date.now() + 900_000).toISOString() };
 
 describe('Autenticación en el frontend', () => {
   let http: HttpClient;
@@ -46,17 +47,48 @@ describe('Autenticación en el frontend', () => {
     expect(api.expectOne('https://otro-sitio.test/datos').request.headers.has('Authorization')).toBe(false);
   });
 
-  it('un 401 cierra la sesión', () => {
+  it('un 401 renueva el token con la cookie y repite la llamada', () => {
+    iniciar();
+    let respuesta: unknown;
+    http.get('/api/procesos').subscribe(r => (respuesta = r));
+    api.expectOne('/api/procesos').flush({ error: 'Token revocado' }, { status: 401, statusText: 'Unauthorized' });
+    const renovar = api.expectOne('/api/auth/renovar');
+    expect(renovar.request.headers.get('X-Requested-With')).toBe('XMLHttpRequest');
+    expect(renovar.request.headers.has('Authorization')).toBe(false);
+    renovar.flush(RENOVADA);
+    const repetida = api.expectOne('/api/procesos');
+    expect(repetida.request.headers.get('Authorization')).toBe('Bearer eyJ.nuevo.token');
+    repetida.flush([]);
+    expect(respuesta).toEqual([]);
+  });
+
+  it('si la sesión ya no existe en el servidor, vuelve al inicio de sesión', () => {
     iniciar();
     http.get('/api/procesos').subscribe({ error: () => {} });
     api.expectOne('/api/procesos').flush({ error: 'Inicie sesión' }, { status: 401, statusText: 'Unauthorized' });
+    api.expectOne('/api/auth/renovar').flush({ error: 'La sesión venció' }, { status: 401, statusText: 'Unauthorized' });
     expect(auth.conectado()).toBe(false);
     expect(sessionStorage.getItem('gj.sesion')).toBeNull();
   });
 
-  it('un token vencido no se usa', () => {
+  it('un token vencido se renueva antes de llamar', () => {
     iniciar({ ...SESION, expira: new Date(Date.now() - 1000).toISOString() });
     expect(auth.token()).toBeNull();
+    http.get('/api/procesos').subscribe();
+    api.expectOne('/api/auth/renovar').flush(RENOVADA);
+    expect(api.expectOne('/api/procesos').request.headers.get('Authorization')).toBe('Bearer eyJ.nuevo.token');
+  });
+
+  it('cerrar la sesión la cierra también en el servidor', () => {
+    iniciar();
+    auth.cerrar();
+    expect(api.expectOne('/api/auth/salir').request.headers.get('X-Requested-With')).toBe('XMLHttpRequest');
     expect(auth.conectado()).toBe(false);
+  });
+
+  it('el cliente va a su portal', () => {
+    iniciar({ ...SESION, roles: ['CLIENTE'] });
+    expect(auth.esPersonal()).toBe(false);
+    expect(auth.inicio()).toBe('/portal');
   });
 });

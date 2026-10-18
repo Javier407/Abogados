@@ -466,6 +466,51 @@ paths:
         - { name: hasta, in: query, required: false, schema: { type: string, format: date } }
       responses: { '200': { description: Resultados por rama } }
 
+  # ---------------------------------------------------------------- portal del cliente (F9)
+  /procesos/{idProceso}/resumen-cliente:
+    get:
+      summary: Último resumen publicado para el cliente (204 si aún no hay)
+      parameters:
+        - { in: path, name: idProceso, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: "{ idResumen, idProceso, texto, publicadoPor, publicadoEn }" }
+        "204": { description: Sin resumen publicado }
+    post:
+      summary: El abogado publica en el portal un resumen revisado por él (ADMIN, SOCIO, ABOGADO)
+      description: Publica el evento portal.resumen_publicado (por el outbox) y notificaciones avisa al cliente.
+      parameters:
+        - { in: path, name: idProceso, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [texto]
+              properties:
+                texto: { type: string, minLength: 20, maxLength: 4000 }
+      responses:
+        "201": { description: Publicado }
+        "404": { description: No existe el proceso }
+        "422": { description: Texto muy corto o muy largo }
+  /portal/procesos:
+    get:
+      summary: Procesos del cliente del token (solo rol CLIENTE; el gateway lo expone como /api/portal/procesos)
+      description: Etapa, estado, nombre del abogado responsable, próxima audiencia y fecha de la última novedad.
+      responses:
+        "200": { description: Lista de ProcesoCliente }
+        "403": { description: No es una cuenta del portal }
+  /portal/procesos/{idProceso}:
+    get:
+      summary: Un proceso visto por el cliente
+      description: |
+        Novedades (actuaciones de la firma y providencias del juzgado), próximas audiencias y el último resumen
+        publicado. No incluye los términos (agenda interna de la firma). Un proceso de otro cliente responde 404.
+      parameters:
+        - { in: path, name: idProceso, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: "{ proceso, novedades, audiencias, resumen }" }
+        "404": { description: No existe (o no es de este cliente) }
 components:
   responses:
     Error:

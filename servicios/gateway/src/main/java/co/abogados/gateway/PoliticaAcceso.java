@@ -20,7 +20,8 @@ import reactor.core.publisher.Mono;
  * Qué roles pueden usar cada ruta de la API. Se aplica la PRIMERA regla que coincide (método y ruta);
  * si ninguna coincide, se niega. Los roles vienen del token (claim "roles", con prefijo ROL_).
  *
- * El cliente (rol CLIENTE) por ahora solo ve su propio perfil: el portal de clientes es trabajo futuro.
+ * El cliente (rol CLIENTE) usa el portal (/api/portal/**): cada servicio filtra por el idCliente de su token.
+ * Con una contraseña temporal (claim clave_temporal) solo se puede ver el perfil y cambiarla.
  */
 @Component
 public class PoliticaAcceso implements ReactiveAuthorizationManager<AuthorizationContext> {
@@ -52,6 +53,8 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			// identidad: el propio perfil y la propia contraseña
 			r(GET, "/api/auth/yo", TODOS),
 			r(HttpMethod.POST, "/api/auth/clave", TODOS),
+			// portal del cliente: solo lectura y solo lo suyo
+			r(GET, "/api/portal/**", Set.of("CLIENTE")),
 			r(null, "/api/usuarios/**", Set.of("ADMIN")),        // administración de cuentas
 			// gabinete
 			r(GET, "/api/clientes/**", INTERNOS),
@@ -81,7 +84,7 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			r(GET, "/api/reportes/**", DIRECCION),
 			// vigilancia, avisos y asistente
 			r(null, "/api/vigilancia/**", JURIDICO_Y_DEPENDIENTES),
-			r(null, "/api/notificaciones/**", INTERNOS),   // cada quien solo los suyos: lo valida notificaciones
+			r(null, "/api/notificaciones/**", TODOS),      // cada quien solo los suyos: lo valida notificaciones
 			r(null, "/api/asistente/**", JURIDICO));
 
 	@Override
@@ -90,8 +93,17 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 		PathContainer ruta = contexto.getExchange().getRequest().getPath().pathWithinApplication();
 		return autenticacion
 				.filter(Authentication::isAuthenticated)
-				.map(a -> new AuthorizationDecision(permitido(metodo, ruta, roles(a))))
+				.map(a -> new AuthorizationDecision(!claveTemporal(a) ? permitido(metodo, ruta, roles(a))
+						: CON_CLAVE_TEMPORAL.stream().anyMatch(p -> p.matches(ruta))))
 				.defaultIfEmpty(new AuthorizationDecision(false));
+	}
+
+	/** Lo único que permite un token emitido con contraseña temporal. */
+	static final List<PathPattern> CON_CLAVE_TEMPORAL = List.of(PARSER.parse("/api/auth/yo"), PARSER.parse("/api/auth/clave"));
+
+	static boolean claveTemporal(Authentication a) {
+		return a instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken t
+				&& Boolean.TRUE.equals(t.getToken().getClaimAsBoolean("clave_temporal"));
 	}
 
 	static boolean permitido(HttpMethod metodo, PathContainer ruta, Set<String> roles) {

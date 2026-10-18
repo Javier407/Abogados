@@ -52,11 +52,12 @@ class ModeloOllama:
 
 
 class ClienteProcesos:
-    def __init__(self, url: str):
+    def __init__(self, url: str, token=None):
         self.url = url.rstrip("/")
+        self.token = token   # TokenServicio: estas llamadas llevan el token del servicio (F9)
 
     async def _get(self, ruta: str, params: dict | None = None):
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with httpx.AsyncClient(timeout=10, headers=await self.token.cabeceras() if self.token else {}) as http:
             r = await http.get(f"{self.url}{ruta}", params=params)
             if r.status_code == 404:
                 return None
@@ -74,11 +75,12 @@ class ClienteProcesos:
 
 
 class ClienteGabinete:
-    def __init__(self, url: str):
+    def __init__(self, url: str, token=None):
         self.url = url.rstrip("/")
+        self.token = token   # TokenServicio: estas llamadas llevan el token del servicio (F9)
 
     async def _get(self, ruta: str):
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with httpx.AsyncClient(timeout=10, headers=await self.token.cabeceras() if self.token else {}) as http:
             r = await http.get(f"{self.url}{ruta}")
             if r.status_code == 404:
                 return None

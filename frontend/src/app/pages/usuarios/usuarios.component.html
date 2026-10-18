@@ -44,6 +44,16 @@
                 }
               </div>
             </div>
+            @if (nueva.roles.includes('CLIENTE')) {
+              <div class="form-group">
+                <label class="form-label" for="cCliente">Cliente del portal <span class="requerido">*</span></label>
+                <select id="cCliente" class="form-input" name="idCliente" [(ngModel)]="nueva.idCliente" required>
+                  <option [ngValue]="null">Elija el cliente…</option>
+                  @for (cl of clientes; track cl.idCliente) { <option [ngValue]="cl.idCliente">{{ cl.nombre }} · {{ cl.numeroDocumento }}</option> }
+                </select>
+                <span class="form-ayuda">La persona solo verá los procesos y pagos de este cliente.</span>
+              </div>
+            }
             <div class="form-group">
               <label class="form-label" for="cClave">Contraseña temporal <span class="requerido">*</span></label>
               <input id="cClave" class="form-input" type="password" name="claveTemporal" [(ngModel)]="nueva.claveTemporal" required
@@ -91,6 +101,16 @@
             </div>
             @if (esYo(c)) { <span class="form-ayuda">No puede quitarse a sí mismo el rol de administrador ni desactivar su cuenta.</span> }
           </div>
+            @if (cambio.roles.includes('CLIENTE')) {
+              <div class="form-group">
+                <label class="form-label" for="eCliente">Cliente del portal <span class="requerido">*</span></label>
+                <select id="eCliente" class="form-input" name="idCliente" [(ngModel)]="cambio.idCliente" required>
+                  <option [ngValue]="null">Elija el cliente…</option>
+                  @for (cl of clientes; track cl.idCliente) { <option [ngValue]="cl.idCliente">{{ cl.nombre }} · {{ cl.numeroDocumento }}</option> }
+                </select>
+                <span class="form-ayuda">La persona solo verá los procesos y pagos de este cliente.</span>
+              </div>
+            }
         </div>
         <div class="form-actions">
           <button class="btn btn-primary" type="button" (click)="guardarCambios()" [disabled]="guardando">Guardar cambios</button>

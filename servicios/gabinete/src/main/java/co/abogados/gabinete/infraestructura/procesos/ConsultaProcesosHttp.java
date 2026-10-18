@@ -15,6 +15,7 @@ import org.springframework.web.client.RestClientException;
 
 import co.abogados.gabinete.dominio.excepciones.ServicioNoDisponibleException;
 import co.abogados.gabinete.dominio.puertos.ConsultaProcesos;
+import co.abogados.gabinete.infraestructura.seguridad.TokenServicio;
 
 /** Pregunta al servicio procesos por la red interna de Docker. */
 @Component
@@ -22,11 +23,11 @@ public class ConsultaProcesosHttp implements ConsultaProcesos {
 
 	private final RestClient http;
 
-	public ConsultaProcesosHttp(RestClient.Builder builder, @Value("${procesos.url}") String url) {
+	public ConsultaProcesosHttp(RestClient.Builder builder, @Value("${procesos.url}") String url, TokenServicio token) {
 		SimpleClientHttpRequestFactory tiempos = new SimpleClientHttpRequestFactory();
 		tiempos.setConnectTimeout(Duration.ofSeconds(2));
 		tiempos.setReadTimeout(Duration.ofSeconds(5));
-		this.http = builder.baseUrl(url).requestFactory(tiempos).build();
+		this.http = builder.baseUrl(url).requestFactory(tiempos).requestInterceptor(token.interceptor()).build();
 	}
 
 	@Override

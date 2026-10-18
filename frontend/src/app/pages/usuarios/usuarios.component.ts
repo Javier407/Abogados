@@ -4,7 +4,7 @@ import { FormsModule, NgForm } from '@angular/forms';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
-import { CambioCuenta, Cuenta, CuentaSolicitud, ROLES_CUENTA, etiqueta } from '../../core/modelos';
+import { CambioCuenta, Cliente, Cuenta, CuentaSolicitud, ROLES_CUENTA, etiqueta } from '../../core/modelos';
 
 /**
  * Cuentas del sistema (solo ADMIN). La contraseña temporal la escribe el administrador y se la comunica a la
@@ -34,9 +34,12 @@ export class UsuariosComponent implements OnInit {
   mensaje = '';
   error = '';
   guardando = false;
+  /** Para enlazar las cuentas del portal con su ficha de cliente. */
+  clientes: Cliente[] = [];
 
   ngOnInit(): void {
     this.cargar();
+    this.api.clientes().subscribe({ next: c => this.clientes = c, error: () => this.clientes = [] });
   }
 
   get visibles(): Cuenta[] {
@@ -60,6 +63,10 @@ export class UsuariosComponent implements OnInit {
   alternarRol(lista: string[], rol: string): void {
     const i = lista.indexOf(rol);
     if (i >= 0) lista.splice(i, 1); else lista.push(rol);
+    // Solo las cuentas de cliente llevan cliente; un cliente no tiene roles del personal.
+    for (const m of [this.nueva, this.cambio]) {
+      if (m.roles === lista && !lista.includes('CLIENTE')) m.idCliente = null;
+    }
   }
 
   crear(form: NgForm): void {
@@ -73,7 +80,8 @@ export class UsuariosComponent implements OnInit {
 
   editar(c: Cuenta): void {
     this.editando = c;
-    this.cambio = { usuario: c.usuario, nombre: c.nombre, email: c.email, roles: [...c.roles], activo: c.activo };
+    this.cambio = { usuario: c.usuario, nombre: c.nombre, email: c.email, roles: [...c.roles], activo: c.activo,
+      idCliente: c.idCliente ?? null };
     this.claveTemporal = '';
     this.mensaje = this.error = '';
   }
@@ -113,6 +121,6 @@ export class UsuariosComponent implements OnInit {
   }
 
   private vacia(): CuentaSolicitud {
-    return { idUsuario: null, usuario: '', nombre: '', email: '', roles: [], claveTemporal: '' };
+    return { idUsuario: null, usuario: '', nombre: '', email: '', roles: [], claveTemporal: '', idCliente: null };
   }
 }

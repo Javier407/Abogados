@@ -8,6 +8,8 @@ spring:
     hikari:
       maximum-pool-size: 5
   rabbitmq:
+    # Cada evento del outbox espera la confirmación del broker antes de marcarse enviado (F9).
+    publisher-confirm-type: simple
     host: ${RABBITMQ_HOST:localhost}
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASSWORD:guest}
@@ -41,3 +43,12 @@ spring.rabbitmq.listener.simple:
     max-attempts: 4
     initial-interval: 2s
     multiplier: 3
+
+# F9: cada servicio verifica el token (llave pública de identidad) y llama a los demás con su propio token.
+identidad:
+  url: ${IDENTIDAD_URL:http://localhost:8005}
+jwt:
+  jwks-uri: ${IDENTIDAD_URL:http://localhost:8005}/.well-known/jwks.json
+  emisor: gestion-juridica
+servicio:
+  clave: ${SERVICIO_CLAVE:}

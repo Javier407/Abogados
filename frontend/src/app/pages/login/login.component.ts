@@ -66,7 +66,7 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.ruta.snapshot.queryParamMap.get('vencida')) this.aviso = 'Su sesión terminó. Inicie sesión de nuevo.';
-    if (this.auth.token()) this.router.navigateByUrl('/');
+    if (this.auth.token()) this.router.navigateByUrl(this.auth.inicio());
   }
 
   entrar(form: NgForm): void {
@@ -78,9 +78,9 @@ export class LoginComponent implements OnInit {
         this.clave = '';
         const volver = this.ruta.snapshot.queryParamMap.get('volver');
         // Solo rutas internas: un ?volver= hacia otro sitio no debe sacar al usuario de la app.
-        const destino = volver && volver.startsWith('/') && !volver.startsWith('//') ? volver : '/';
+        const destino = volver && volver.startsWith('/') && !volver.startsWith('//') ? volver : this.auth.inicio();
         if (s.debeCambiarClave) { this.router.navigate(['/cuenta'], { queryParams: { obligatorio: 1 } }); return; }
-        this.router.navigateByUrl(s.roles.includes('CLIENTE') && s.roles.length === 1 ? '/cuenta' : destino);
+        this.router.navigateByUrl(destino);
       },
       error: e => {
         this.entrando = false;

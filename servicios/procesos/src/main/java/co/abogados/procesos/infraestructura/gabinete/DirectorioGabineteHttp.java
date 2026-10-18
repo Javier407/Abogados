@@ -13,18 +13,19 @@ import org.springframework.web.client.RestClientException;
 
 import co.abogados.procesos.dominio.excepciones.ServicioNoDisponibleException;
 import co.abogados.procesos.dominio.puertos.DirectorioGabinete;
+import co.abogados.procesos.infraestructura.seguridad.TokenServicio;
 
-/** Consulta clientes y abogados al servicio gabinete por su API REST (red interna de Docker). */
+/** Consulta clientes y abogados al servicio gabinete por su API REST (red interna de Docker), con el token del servicio. */
 @Component
 public class DirectorioGabineteHttp implements DirectorioGabinete {
 
 	private final RestClient http;
 
-	public DirectorioGabineteHttp(RestClient.Builder builder, @Value("${gabinete.url}") String url) {
+	public DirectorioGabineteHttp(RestClient.Builder builder, @Value("${gabinete.url}") String url, TokenServicio token) {
 		SimpleClientHttpRequestFactory tiempos = new SimpleClientHttpRequestFactory();
 		tiempos.setConnectTimeout(Duration.ofSeconds(2));
 		tiempos.setReadTimeout(Duration.ofSeconds(5));
-		this.http = builder.baseUrl(url).requestFactory(tiempos).build();
+		this.http = builder.baseUrl(url).requestFactory(tiempos).requestInterceptor(token.interceptor()).build();
 	}
 
 	@Override

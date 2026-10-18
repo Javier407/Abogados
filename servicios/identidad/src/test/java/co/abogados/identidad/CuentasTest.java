@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 
 import co.abogados.identidad.aplicacion.AutenticacionServicio;
 import co.abogados.identidad.aplicacion.CuentasServicio;
+import co.abogados.identidad.aplicacion.SesionesServicio;
 import co.abogados.identidad.aplicacion.CuentasServicio.CambioCuenta;
 import co.abogados.identidad.aplicacion.CuentasServicio.NuevaCuenta;
 import co.abogados.identidad.dominio.ConflictoException;
@@ -34,13 +35,22 @@ class CuentasTest {
 
 	CuentasEnMemoria cuentas;
 	CuentasServicio servicio;
+	AutenticacionTest.UsuariosEnMemoria usuarios;
+	SesionesEnMemoria sesiones;
+	AutenticacionTest.MutableReloj reloj;
+	SesionesServicio servicioSesiones;
 
 	@BeforeEach
 	void preparar() {
 		cuentas = new CuentasEnMemoria();
-		cuentas.crear(ADMIN, "arodriguez", "Andrés Rodríguez", "arodriguez@firma.co", "h", Set.of("ADMIN", "SOCIO"));
-		cuentas.crear(52345678L, "cgomez", "Catalina Gómez", "cgomez@firma.co", "h", Set.of("SOCIO"));
-		servicio = new CuentasServicio(cuentas, AutenticacionTest.CIFRADOR);
+		cuentas.crear(ADMIN, "arodriguez", "Andrés Rodríguez", "arodriguez@firma.co", "h", Set.of("ADMIN", "SOCIO"), null);
+		cuentas.crear(52345678L, "cgomez", "Catalina Gómez", "cgomez@firma.co", "h", Set.of("SOCIO"), null);
+		usuarios = new AutenticacionTest.UsuariosEnMemoria();
+		sesiones = new SesionesEnMemoria();
+		reloj = new AutenticacionTest.MutableReloj(AutenticacionTest.AHORA);
+		servicioSesiones = new SesionesServicio(sesiones, usuarios, new EmisorJwtRsa("", Duration.ofMinutes(15)), reloj,
+				Duration.ofHours(12), Duration.ofDays(7));
+		servicio = new CuentasServicio(cuentas, AutenticacionTest.CIFRADOR, servicioSesiones);
 	}
 
 	NuevaCuenta nueva(String usuario, String clave) {
@@ -86,7 +96,7 @@ class CuentasTest {
 		servicio.actualizar(ADMIN, new CambioCuenta("arodriguez", "Andrés", "arodriguez@firma.co", Set.of("SOCIO"), true),
 				52345678L);
 		// ...pero ya nadie puede dejar a la firma sin administrador
-		cuentas.crear(3L, "otroadmin", "Otro", "otro@firma.co", "h", Set.of("ABOGADO"));
+		cuentas.crear(3L, "otroadmin", "Otro", "otro@firma.co", "h", Set.of("ABOGADO"), null);
 		assertThatThrownBy(() -> servicio.actualizar(52345678L, new CambioCuenta("cgomez", "Catalina", "cgomez@firma.co",
 				Set.of("SOCIO"), true), 3L)).hasMessageContaining("al menos un administrador");
 	}
@@ -103,16 +113,44 @@ class CuentasTest {
 
 	@Test
 	void alEntrarConClaveTemporalLaSesionPideCambiarlaHastaQueSeCambie() {
-		AutenticacionTest.UsuariosEnMemoria usuarios = new AutenticacionTest.UsuariosEnMemoria();
 		usuarios.datos.put(ADMIN, new Usuario(ADMIN, "arodriguez", "Andrés", "arodriguez@firma.co",
 				AutenticacionTest.HASH_PRUEBA, true, Set.of("ADMIN"), 0, null));
 		usuarios.debenCambiar.add(ADMIN);
 		AutenticacionServicio auth = new AutenticacionServicio(usuarios, AutenticacionTest.CIFRADOR,
-				new EmisorJwtRsa("", Duration.ofHours(8)), new AutenticacionTest.MutableReloj(AutenticacionTest.AHORA));
+				new SesionesServicio(new SesionesEnMemoria(), usuarios, new EmisorJwtRsa("", Duration.ofHours(8)), reloj,
+						Duration.ofHours(12), Duration.ofDays(7)), reloj);
 
 		assertThat(auth.iniciarSesion("arodriguez", "Prueba2026*", "1.2.3.4").debeCambiarClave()).isTrue();
 		auth.cambiarClave(ADMIN, "Prueba2026*", "Expediente2026");
 		assertThat(auth.iniciarSesion("arodriguez", "Expediente2026", "1.2.3.4").debeCambiarClave()).isFalse();
+	}
+
+	@Test
+	void unaCuentaDeClienteSeEnlazaConSuFicha() {
+		assertThatThrownBy(() -> servicio.crear(new NuevaCuenta(1032456781L, "cmendez", "Carolina", "c@correo.co",
+				Set.of("CLIENTE"), "Temporal2026x", null), ADMIN)).hasMessageContaining("Elija el cliente");
+		assertThatThrownBy(() -> servicio.crear(new NuevaCuenta(1032456781L, "cmendez", "Carolina", "c@correo.co",
+				Set.of("ABOGADO"), "Temporal2026x", 6), ADMIN)).hasMessageContaining("Solo las cuentas de cliente");
+
+		Cuenta c = servicio.crear(new NuevaCuenta(1032456781L, "cmendez", "Carolina", "c@correo.co", Set.of("CLIENTE"),
+				"Temporal2026x", 6), ADMIN);
+
+		assertThat(c.idCliente()).isEqualTo(6);
+		assertThat(servicio.deCliente(6)).extracting(Cuenta::usuario).containsExactly("cmendez");
+	}
+
+	@Test
+	void desactivarOCambiarRolesCortaLasSesionesAbiertas() {
+		usuarios.datos.put(52345678L, new Usuario(52345678L, "cgomez", "Catalina", "cgomez@firma.co",
+				AutenticacionTest.HASH_PRUEBA, true, Set.of("SOCIO"), 0, null));
+		String refresco = servicioSesiones.abrir(usuarios.datos.get(52345678L), "1.2.3.4").refresco();
+
+		servicio.actualizar(52345678L, new CambioCuenta("cgomez", "Catalina Gómez", "cgomez@firma.co",
+				Set.of("ABOGADO"), true), ADMIN);
+
+		assertThat(servicioSesiones.revocados()).hasSize(1);
+		assertThatThrownBy(() -> servicioSesiones.renovar(refresco, "1.2.3.4"))
+				.isInstanceOf(co.abogados.identidad.dominio.SesionInvalidaException.class);
 	}
 
 	// ----------------------------------------------------------------- doble
@@ -126,25 +164,32 @@ class CuentasTest {
 		public Optional<Cuenta> buscar(long id) {
 			Cuenta c = datos.get(id);
 			return c == null ? Optional.empty() : Optional.of(new Cuenta(c.idUsuario(), c.usuario(), c.nombre(), c.email(),
-					c.activo(), c.roles(), bloqueadas.contains(id) ? Instant.MAX : null, null, c.debeCambiarClave()));
+					c.activo(), c.roles(), bloqueadas.contains(id) ? Instant.MAX : null, null, c.debeCambiarClave(),
+					c.idCliente()));
 		}
 		public boolean existe(long id, String usuario, String email, Long excluir) {
 			return datos.values().stream().filter(c -> excluir == null || c.idUsuario() != excluir)
 					.anyMatch(c -> c.idUsuario() == id || c.usuario().equals(usuario) || c.email().equals(email));
 		}
-		public void crear(long id, String usuario, String nombre, String email, String hash, Set<String> roles) {
-			datos.put(id, new Cuenta(id, usuario, nombre, email, true, roles, null, null, true));
+		public void crear(long id, String usuario, String nombre, String email, String hash, Set<String> roles,
+				Integer cliente) {
+			datos.put(id, new Cuenta(id, usuario, nombre, email, true, roles, null, null, true, cliente));
 			hashes.put(id, hash);
 		}
-		public void actualizar(long id, String usuario, String nombre, String email, boolean activo, Set<String> roles) {
+		public void actualizar(long id, String usuario, String nombre, String email, boolean activo, Set<String> roles,
+				Integer cliente) {
 			Cuenta c = datos.get(id);
-			datos.put(id, new Cuenta(id, usuario, nombre, email, activo, roles, null, null, c.debeCambiarClave()));
+			datos.put(id, new Cuenta(id, usuario, nombre, email, activo, roles, null, null, c.debeCambiarClave(), cliente));
+		}
+		public List<Cuenta> deCliente(int idCliente) {
+			return datos.values().stream().filter(c -> c.activo() && Integer.valueOf(idCliente).equals(c.idCliente())).toList();
 		}
 		public void restablecerClave(long id, String hash) {
 			hashes.put(id, hash);
 			bloqueadas.remove(id);
 			Cuenta c = datos.get(id);
-			datos.put(id, new Cuenta(id, c.usuario(), c.nombre(), c.email(), c.activo(), c.roles(), null, null, true));
+			datos.put(id, new Cuenta(id, c.usuario(), c.nombre(), c.email(), c.activo(), c.roles(), null, null, true,
+					c.idCliente()));
 		}
 		public void desbloquear(long id) { bloqueadas.remove(id); }
 		public int administradoresActivos() {

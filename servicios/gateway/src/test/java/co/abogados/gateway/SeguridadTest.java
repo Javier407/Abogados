@@ -71,10 +71,14 @@ class SeguridadTest {
 	}
 
 	@Test
-	void elClienteSoloVeSuPerfilYLoNoListadoSeNiega() {
+	void elClienteSoloVeSuPerfilSuPortalYSusAvisos() {
 		assertThat(permitido("GET", "/api/auth/yo", "CLIENTE")).isTrue();
 		assertThat(permitido("GET", "/api/procesos", "CLIENTE")).isFalse();
-		assertThat(permitido("GET", "/api/notificaciones", "CLIENTE")).isFalse();
+		assertThat(permitido("GET", "/api/portal/procesos", "CLIENTE")).isTrue();
+		assertThat(permitido("GET", "/api/portal/finanzas", "CLIENTE")).isTrue();
+		assertThat(permitido("POST", "/api/portal/procesos", "CLIENTE")).isFalse();
+		assertThat(permitido("GET", "/api/portal/procesos", "ABOGADO")).isFalse();
+		assertThat(permitido("GET", "/api/notificaciones", "CLIENTE")).isTrue();
 		assertThat(permitido("GET", "/api/ruta-nueva-sin-regla", "ADMIN")).isFalse();
 	}
 
@@ -111,6 +115,35 @@ class SeguridadTest {
 	}
 
 	@Test
+	void conClaveTemporalSoloSePuedeCambiarLaClave() {
+		var temporal = mockJwt().jwt(j -> j.claim("clave_temporal", true))
+				.authorities(new SimpleGrantedAuthority("ROL_ADMIN"));
+		web.mutateWith(temporal).get().uri("/api/usuarios").exchange().expectStatus().isForbidden();
+		web.mutateWith(temporal).post().uri("/api/auth/clave").exchange()
+				.expectStatus().value(s -> assertThat(s).isNotIn(401, 403));
+	}
+
+	@Test
+	void renovarYSalirNoPidenToken() {
+		web.post().uri("/api/auth/renovar").exchange().expectStatus().value(s -> assertThat(s).isNotIn(401, 403));
+		web.post().uri("/api/auth/salir").exchange().expectStatus().value(s -> assertThat(s).isNotIn(401, 403));
+	}
+
+	@Test
+	void unTokenRevocadoOUnTokenDeServicioNoSirvenDesdeFuera() {
+		ListaRevocados lista = new ListaRevocados(org.springframework.web.reactive.function.client.WebClient.builder(),
+				"http://127.0.0.1:9");
+		lista.reemplazar(Set.of("jti-cortado"));
+		Jwt cortado = Jwt.withTokenValue("t").header("alg", "RS256").subject("79123456").jti("jti-cortado").build();
+		Jwt vigente = Jwt.withTokenValue("t").header("alg", "RS256").subject("79123456").jti("otro").build();
+		Jwt servicio = Jwt.withTokenValue("t").header("alg", "RS256").subject("servicio:procesos").jti("s").build();
+
+		assertThat(lista.validate(cortado).hasErrors()).isTrue();
+		assertThat(lista.validate(vigente).hasErrors()).isFalse();
+		assertThat(lista.validate(servicio).hasErrors()).isTrue();
+	}
+
+	@Test
 	void elLoginNoPideToken() {
 		web.post().uri("/api/auth/login").exchange()
 				.expectStatus().value(s -> assertThat(s).isNotIn(401, 403));
@@ -142,6 +175,7 @@ class SeguridadTest {
 		var conToken = IdentidadEnCabeceras.conIdentidad(falsificado, token).getRequest().getHeaders();
 		assertThat(conToken.get("X-Usuario-Id")).containsExactly("1023987456");
 		assertThat(conToken.get("X-Usuario-Roles")).containsExactly("ABOGADO");
+		assertThat(conToken.getFirst("Authorization")).isEqualTo("Bearer t");   // el servicio verifica el token también
 
 		var sinToken = IdentidadEnCabeceras.sinIdentidad(falsificado).getRequest().getHeaders();
 		assertThat(sinToken.containsKey("X-Usuario-Id")).isFalse();

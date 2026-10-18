@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from .aplicacion import ServicioVigilancia
+from .seguridad import MiddlewareToken, TokenServicio, VerificadorTokens
 from .dominio import Fuente, RadicadoVigilado, validar_radicado
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -65,7 +66,7 @@ async def _tarea_periodica(servicio: ServicioVigilancia, minutos: float) -> None
         await asyncio.sleep(minutos * 60)
 
 
-def crear_app(servicio: ServicioVigilancia | None = None) -> FastAPI:
+def crear_app(servicio: ServicioVigilancia | None = None, verificador: VerificadorTokens | None = None) -> FastAPI:
     """Sin argumentos conecta PostgreSQL, RabbitMQ y las fuentes; en las pruebas se pasa un servicio con dobles."""
 
     @asynccontextmanager
@@ -78,7 +79,7 @@ def crear_app(servicio: ServicioVigilancia | None = None) -> FastAPI:
         from psycopg_pool import AsyncConnectionPool
 
         from .infraestructura import (ClienteProcesos, FuentePortalHttp, FuenteSimulada, Mensajeria,
-                                      RepositorioPostgres)
+                                      PublicadorOutbox, RelayOutbox, RepositorioPostgres)
 
         e = os.environ.get
         # check: se comprueba cada conexión antes de usarla; si PostgreSQL se reinició, se abre otra.
@@ -92,11 +93,14 @@ def crear_app(servicio: ServicioVigilancia | None = None) -> FastAPI:
                 e("PORTAL_URL", "https://consultaprocesos.ramajudicial.gov.co:448/api/v2"))
         mensajeria = Mensajeria(e("RABBITMQ_URL", "amqp://guest:guest@localhost/"),
                                 e("EVENTOS_EXCHANGE", "gabinete.eventos"))
-        srv = ServicioVigilancia(repo, fuentes, mensajeria, ClienteProcesos(e("PROCESOS_URL", "http://localhost:8082")),
+        # Las actuaciones detectadas van al outbox (F9); RelayOutbox las envía a RabbitMQ.
+        srv = ServicioVigilancia(repo, fuentes, PublicadorOutbox(pool), ClienteProcesos(e("PROCESOS_URL", "http://localhost:8082"),
+                                                                      TokenServicio.desde_entorno("vigilancia")),
                                  pausa_portal_seg=float(e("PAUSA_PORTAL_SEG", "10")))
         app.state.servicio = srv
         tareas = [asyncio.create_task(mensajeria.iniciar(srv.proceso_creado)),
-                  asyncio.create_task(_tarea_periodica(srv, float(e("CICLO_MINUTOS", "10"))))]
+                  asyncio.create_task(_tarea_periodica(srv, float(e("CICLO_MINUTOS", "10")))),
+                  asyncio.create_task(RelayOutbox(pool, mensajeria).ejecutar())]
         try:
             yield
         finally:
@@ -106,6 +110,10 @@ def crear_app(servicio: ServicioVigilancia | None = None) -> FastAPI:
             await pool.close()
 
     app = FastAPI(title="Servicio vigilancia", version="0.1.0", lifespan=ciclo_de_vida)
+    # F9: cada petición trae un token válido (también verificado aquí, no solo en el gateway). En las pruebas
+    # con dobles no se verifica, salvo que se pase un verificador.
+    if servicio is None or verificador is not None:
+        app.add_middleware(MiddlewareToken, verificador=verificador or VerificadorTokens.desde_entorno())
 
     def srv(request: Request) -> ServicioVigilancia:
         return request.app.state.servicio

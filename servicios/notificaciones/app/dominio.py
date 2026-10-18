@@ -12,6 +12,7 @@ from enum import Enum
 EVENTOS_TERMINO = ("termino.por_vencer", "termino.vencido")
 EVENTO_ACTUACION = "actuacion.detectada"
 EVENTO_AUDIENCIA = "audiencia.proxima"
+EVENTO_RESUMEN = "portal.resumen_publicado"
 DIAS_SEMANA = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 LARGO_MENSAJE = 1000
 
@@ -170,6 +171,31 @@ class AvisoAudiencia:
 
 
 @dataclass(frozen=True)
+class AvisoResumen:
+    """Evento portal.resumen_publicado: el abogado publicó un resumen para el cliente en el portal."""
+    id_resumen: int
+    id_proceso: int
+    radicado: str
+    id_cliente: int
+
+    @staticmethod
+    def desde_mensaje(cuerpo: dict) -> "AvisoResumen":
+        try:
+            return AvisoResumen(int(cuerpo["id_resumen"]), int(cuerpo["id_proceso"]), str(cuerpo["radicado"]),
+                                int(cuerpo["id_cliente"]))
+        except (KeyError, TypeError, ValueError) as e:
+            raise EventoInvalido(f"Mensaje portal.resumen_publicado incompleto o mal formado: {e}") from e
+
+
+@dataclass(frozen=True)
+class CuentaCliente:
+    """Cuenta del portal de un cliente (identidad): a quién avisarle."""
+    id_usuario: int
+    nombre: str
+    email: str | None
+
+
+@dataclass(frozen=True)
 class Contenido:
     """Lo que se le avisa a una persona, sin importar el canal. La clave lleva {canal} para completar."""
     evento: str
@@ -251,9 +277,37 @@ def enlace_de(n: NotificacionNueva, url_app: str) -> tuple[str, str]:
     if not url_app:
         return "", ""
     base = url_app.rstrip("/")
+    if n.referencia.get("portal") and n.referencia.get("id_proceso"):
+        return f"{base}/portal/procesos/{n.referencia['id_proceso']}", "Ver su proceso"
     if n.evento in (EVENTO_ACTUACION, EVENTO_AUDIENCIA) and n.referencia.get("id_proceso"):
         return f"{base}/procesos/{n.referencia['id_proceso']}", "Ver el expediente"
     return f"{base}/terminos", "Ver la agenda de términos"
+
+
+# ------------------------------------------------------------------ avisos al cliente (F9)
+# Lenguaje sencillo y sin datos internos de la firma (términos, notas). El enlace lleva al portal.
+
+def contenido_resumen_cliente(a: AvisoResumen, cuenta: CuentaCliente) -> Contenido:
+    mensaje = (f"Su abogado publicó una actualización de su proceso {radicado_legible(a.radicado)}. "
+               "Puede leerla en el portal de clientes.")
+    return Contenido(EVENTO_RESUMEN, cuenta.id_usuario, "Novedad en su proceso", mensaje,
+                     {"id_proceso": a.id_proceso, "portal": True},
+                     f"{EVENTO_RESUMEN}:{a.id_resumen}:{cuenta.id_usuario}:{{canal}}")
+
+
+def contenido_audiencia_cliente(a: AvisoAudiencia, cuenta: CuentaCliente, hoy: date) -> Contenido:
+    dias = (a.fecha - hoy).days
+    fecha = a.fecha.strftime("%d/%m/%Y")
+    cuando = "mañana" if dias == 1 else f"el {DIAS_SEMANA[a.fecha.weekday()]} {fecha}"
+    mensaje = f"Su proceso {radicado_legible(a.radicado)} tiene audiencia {cuando}"
+    if a.hora:
+        mensaje += f" a las {a.hora}"
+    if a.lugar:
+        mensaje += f" en {a.lugar}"
+    mensaje += ". Su abogado le indicará si debe asistir."
+    return Contenido(EVENTO_AUDIENCIA, cuenta.id_usuario, f"Audiencia {cuando} en su proceso", mensaje[:LARGO_MENSAJE],
+                     {"id_proceso": a.id_proceso, "id_actuacion": a.id_actuacion, "portal": True},
+                     f"{EVENTO_AUDIENCIA}:{a.id_actuacion}:cliente:{cuenta.id_usuario}:{{canal}}:{a.fecha.isoformat()}")
 
 
 def texto_telegram(n: NotificacionNueva, url_app: str) -> str:
@@ -269,7 +323,9 @@ def correo_de(n: NotificacionNueva, url_app: str) -> tuple[str, str, str]:
     texto = f"{n.titulo}\n\n{n.mensaje}\n"
     if enlace:
         texto += f"\n{texto_enlace}: {enlace}\n"
-    texto += "\nAviso automático de Gestión Jurídica. Los términos se cuentan en días hábiles judiciales."
+    pie = ("Aviso automático del portal de clientes de Gestión Jurídica." if n.referencia.get("portal")
+           else "Aviso automático de Gestión Jurídica. Los términos se cuentan en días hábiles judiciales.")
+    texto += "\n" + pie
     color = "#c0392b" if "vencid" in n.titulo.lower() or "hoy" in n.titulo.lower() else "#1e3a5f"
     boton = (f'<p><a href="{html.escape(enlace)}" style="background:#1e3a5f;color:#fff;padding:10px 16px;'
              f'border-radius:4px;text-decoration:none">{texto_enlace}</a></p>') if enlace else ""
@@ -277,6 +333,6 @@ def correo_de(n: NotificacionNueva, url_app: str) -> tuple[str, str, str]:
   <h2 style="color:{color};margin:0 0 12px">{html.escape(n.titulo)}</h2>
   <p style="font-size:15px;line-height:1.5">{html.escape(n.mensaje)}</p>
   {boton}
-  <p style="font-size:12px;color:#6b7a8d">Aviso automático de Gestión Jurídica. Los términos se cuentan en días hábiles judiciales.</p>
+  <p style="font-size:12px;color:#6b7a8d">{html.escape(pie)}</p>
 </div>"""
     return asunto, texto, cuerpo_html

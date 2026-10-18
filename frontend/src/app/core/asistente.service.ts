@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
@@ -15,10 +16,12 @@ export class AsistenteService {
 
   async redactar(idProceso: number, tipo: TipoBorrador, instrucciones: string,
                  alRecibir: (e: EventoBorrador) => void, cancelar?: AbortSignal): Promise<void> {
+    // fetch no pasa por el interceptor: se pide un token vigente (se renueva si está por vencer).
+    const token = await firstValueFrom(this.auth.tokenVigente());
     const r = await fetch(this.api.urlBorradores(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream',
-        Authorization: `Bearer ${this.auth.token() ?? ''}` },
+        Authorization: `Bearer ${token ?? ''}` },
       body: JSON.stringify({ idProceso, tipo, instrucciones }),
       signal: cancelar
     });

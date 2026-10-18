@@ -24,3 +24,12 @@ procesos:
 management:
   endpoints.web.exposure.include: health,info
   endpoint.health.probes.enabled: true
+
+# F9: cada servicio verifica el token (llave pública de identidad) y llama a los demás con su propio token.
+identidad:
+  url: ${IDENTIDAD_URL:http://localhost:8005}
+jwt:
+  jwks-uri: ${IDENTIDAD_URL:http://localhost:8005}/.well-known/jwks.json
+  emisor: gestion-juridica
+servicio:
+  clave: ${SERVICIO_CLAVE:}

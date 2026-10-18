@@ -1,7 +1,32 @@
 # Sirve la aplicación Angular y reenvía /api al gateway (mismo origen: no hace falta CORS).
+# Plantilla: la imagen oficial de nginx reemplaza ${URL_PUBLICA} al arrancar (variable de entorno).
+#
+# HTTPS (F9): el certificado lo pone "tailscale serve" en la VM, que recibe https://<vm>.ts.net y lo reenvía al
+# puerto 81 de este contenedor (publicado solo en 127.0.0.1). El puerto 80 (http://IP:8090) redirige a esa
+# dirección cuando URL_PUBLICA está definida; si está vacía, sigue sirviendo la app por HTTP (sin HTTPS aún).
+map "$server_port|${URL_PUBLICA}" $a_https {
+  default      0;
+  "~^80\|https" 1;
+}
+# Por el puerto 81 la petición llegó cifrada (tailscale serve): el gateway debe saber que el origen es https.
+map $server_port $proto_original {
+  81      https;
+  default $scheme;
+}
+
 server {
   listen 80;
+  listen 81;
   server_name _;
+
+  # El gateway se resuelve en cada petición con el DNS de Docker (válido 10 s): si su contenedor se recrea y cambia
+  # de IP, nginx no sigue enviando al contenedor viejo (proxy_pass con un nombre fijo se resuelve solo al arrancar).
+  resolver 127.0.0.11 valid=10s ipv6=off;
+  set $gateway http://gateway:8080;
+
+  if ($a_https) {
+    return 301 ${URL_PUBLICA}$request_uri;
+  }
   root /usr/share/nginx/html;
   index index.html;
 
@@ -21,7 +46,7 @@ server {
   location /api/notificaciones/stream {
     access_log off;
     include /etc/nginx/proxy-api.inc;
-    proxy_pass http://gateway:8080;
+    proxy_pass $gateway;
     proxy_http_version 1.1;
     proxy_set_header Connection "";
     proxy_buffering off;
@@ -32,7 +57,7 @@ server {
   # Borradores del asistente: el modelo local escribe por partes y puede tardar varios minutos
   location /api/asistente/ {
     include /etc/nginx/proxy-api.inc;
-    proxy_pass http://gateway:8080;
+    proxy_pass $gateway;
     proxy_http_version 1.1;
     proxy_set_header Connection "";
     proxy_buffering off;
@@ -41,7 +66,7 @@ server {
 
   location /api/ {
     include /etc/nginx/proxy-api.inc;
-    proxy_pass http://gateway:8080;
+    proxy_pass $gateway;
     proxy_read_timeout 30s;
   }
 

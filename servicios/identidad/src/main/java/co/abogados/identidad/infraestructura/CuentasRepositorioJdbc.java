@@ -19,14 +19,14 @@ public class CuentasRepositorioJdbc implements CuentasRepositorio {
 
 	private static final String SELECT = """
 			SELECT u.id_usuario, u.usuario, u.nombre, u.email, u.activo, u.bloqueado_hasta, u.ultimo_ingreso,
-			       u.debe_cambiar_clave, coalesce(string_agg(r.codigo, ',' ORDER BY r.id_rol), '') AS roles
+			       u.debe_cambiar_clave, u.id_cliente, coalesce(string_agg(r.codigo, ',' ORDER BY r.id_rol), '') AS roles
 			FROM identidad.usuarios u
 			LEFT JOIN identidad.usuario_rol ur ON ur.id_usuario = u.id_usuario
 			LEFT JOIN identidad.roles r ON r.id_rol = ur.id_rol
 			""";
 	private static final String AGRUPAR = """
 			GROUP BY u.id_usuario, u.usuario, u.nombre, u.email, u.activo, u.bloqueado_hasta, u.ultimo_ingreso,
-			         u.debe_cambiar_clave
+			         u.debe_cambiar_clave, u.id_cliente
 			""";
 
 	private final JdbcClient jdbc;
@@ -47,6 +47,12 @@ public class CuentasRepositorioJdbc implements CuentasRepositorio {
 	}
 
 	@Override
+	public List<Cuenta> deCliente(int idCliente) {
+		return jdbc.sql(SELECT + "WHERE u.id_cliente = :c AND u.activo\n" + AGRUPAR).param("c", idCliente)
+				.query(CuentasRepositorioJdbc::leer).list();
+	}
+
+	@Override
 	public boolean existe(long idUsuario, String usuario, String email, Long excluir) {
 		return jdbc.sql("""
 				SELECT count(*) FROM identidad.usuarios
@@ -61,11 +67,13 @@ public class CuentasRepositorioJdbc implements CuentasRepositorio {
 	}
 
 	@Override
-	public void crear(long idUsuario, String usuario, String nombre, String email, String hashClave, Set<String> roles) {
+	public void crear(long idUsuario, String usuario, String nombre, String email, String hashClave, Set<String> roles,
+			Integer idCliente) {
 		jdbc.sql("""
-				INSERT INTO identidad.usuarios (id_usuario, usuario, nombre, email, password_hash, debe_cambiar_clave)
-				VALUES (:id, :usuario, :nombre, :email, :hash, true)
+				INSERT INTO identidad.usuarios (id_usuario, usuario, nombre, email, password_hash, debe_cambiar_clave, id_cliente)
+				VALUES (:id, :usuario, :nombre, :email, :hash, true, :cliente)
 				""")
+				.param("cliente", idCliente)
 				.param("id", idUsuario)
 				.param("usuario", usuario)
 				.param("nombre", nombre)
@@ -76,11 +84,14 @@ public class CuentasRepositorioJdbc implements CuentasRepositorio {
 	}
 
 	@Override
-	public void actualizar(long idUsuario, String usuario, String nombre, String email, boolean activo, Set<String> roles) {
+	public void actualizar(long idUsuario, String usuario, String nombre, String email, boolean activo, Set<String> roles,
+			Integer idCliente) {
 		jdbc.sql("""
-				UPDATE identidad.usuarios SET usuario = :usuario, nombre = :nombre, email = :email, activo = :activo
+				UPDATE identidad.usuarios
+				SET usuario = :usuario, nombre = :nombre, email = :email, activo = :activo, id_cliente = :cliente
 				WHERE id_usuario = :id
 				""")
+				.param("cliente", idCliente)
 				.param("id", idUsuario)
 				.param("usuario", usuario)
 				.param("nombre", nombre)
@@ -139,7 +150,7 @@ public class CuentasRepositorioJdbc implements CuentasRepositorio {
 		return new Cuenta(rs.getLong("id_usuario"), rs.getString("usuario"), rs.getString("nombre"), rs.getString("email"),
 				rs.getBoolean("activo"), roles.isEmpty() ? Set.of() : new HashSet<>(List.of(roles.split(","))),
 				bloqueado == null ? null : bloqueado.toInstant(), ingreso == null ? null : ingreso.toInstant(),
-				rs.getBoolean("debe_cambiar_clave"));
+				rs.getBoolean("debe_cambiar_clave"), (Integer) rs.getObject("id_cliente"));
 	}
 
 }

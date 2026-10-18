@@ -20,7 +20,16 @@ server:
 
 jwt:
   llave-privada: ${JWT_LLAVE_PRIVADA:}
-  vigencia: PT8H
+  vigencia: PT15M               # token de acceso corto; la sesión sigue con el refresh token (F9)
+
+sesiones:
+  refresco: PT12H               # vida de cada refresh token (se renueva al usarlo)
+  maximo: P7D                   # duración máxima de una sesión aunque se renueve
+  cookie-segura: ${COOKIE_SEGURA:true}   # cookie solo por HTTPS; false únicamente para probar por HTTP
+
+# Claves de los servicios internos para pedir su token ("procesos=...,gabinete=..."). Vienen de infra/.env.
+servicios:
+  claves: ${SERVICIOS_CLAVES:}
 
 management:
   endpoints.web.exposure.include: health

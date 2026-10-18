@@ -221,3 +221,16 @@ label.resumen-chip { display: inline-flex; align-items: center; gap: 8px; cursor
   .filtros .form-input { min-width: 100%; }
   .page-header h1 { font-size: 24px; }
 }
+
+/* ---------- Portal del cliente (F9) ---------- */
+.radicado { margin: 0 0 2px; color: var(--mahogany); font-size: 13px; }
+.portal-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
+.portal-proceso { display: block; text-decoration: none; color: inherit; margin-bottom: 0; transition: transform .15s; }
+.portal-proceso:hover { transform: translateY(-2px); }
+.portal-proceso h2 { font-family: var(--display); font-size: 19px; color: var(--blue); margin: 6px 0 2px; }
+.portal-cabeza { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.portal-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 14px 0 0; }
+.portal-datos dt { font-size: 11.5px; color: var(--muted); }
+.portal-datos dd { margin: 2px 0 0; font-weight: 500; }
+.portal-audiencia { margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-size: 13px; }
+.portal-resumen { white-space: pre-line; line-height: 1.6; font-size: 15px; margin: 0 0 8px; }

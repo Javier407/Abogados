@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .aplicacion import ServicioNotificaciones
+from .seguridad import MiddlewareToken, TokenServicio, VerificadorTokens
 from .infraestructura import AvisosEnVivoMemoria
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -36,7 +37,7 @@ def persona_autorizada(request: Request, idPersona: int = Query(..., gt=0)) -> i
 
 
 def crear_app(servicio: ServicioNotificaciones | None = None,
-              en_vivo: AvisosEnVivoMemoria | None = None) -> FastAPI:
+              en_vivo: AvisosEnVivoMemoria | None = None, verificador: VerificadorTokens | None = None) -> FastAPI:
     """Sin argumentos conecta PostgreSQL, SMTP y RabbitMQ; en las pruebas se pasan dobles."""
 
     @asynccontextmanager
@@ -50,8 +51,8 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
         from psycopg_pool import AsyncConnectionPool
 
         from .config import Config
-        from .infraestructura import (ClienteProcesos, CorreoSmtp, DirectorioGabinete, Mensajeria, RepositorioPostgres,
-                                      TelegramBot)
+        from .infraestructura import (ClienteIdentidad, ClienteProcesos, CorreoSmtp, DirectorioGabinete, Mensajeria,
+                                      RepositorioPostgres, TelegramBot)
 
         cfg = Config.desde_entorno()
         # check: se comprueba cada conexión antes de usarla; si PostgreSQL se reinició, se abre otra.
@@ -67,9 +68,11 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
             await telegram.iniciar()
         else:
             log.info("Sin TELEGRAM_TOKEN: el canal de Telegram queda apagado")
+        token = TokenServicio.desde_entorno("notificaciones")
         app.state.servicio = ServicioNotificaciones(
-            RepositorioPostgres(pool), CorreoSmtp(cfg), DirectorioGabinete(cfg.gabinete_url), vivo, mensajeria,
-            url_app=cfg.url_app, telegram=telegram, procesos=ClienteProcesos(cfg.procesos_url))
+            RepositorioPostgres(pool), CorreoSmtp(cfg), DirectorioGabinete(cfg.gabinete_url, token), vivo, mensajeria,
+            url_app=cfg.url_app, telegram=telegram, procesos=ClienteProcesos(cfg.procesos_url, token),
+            cuentas=ClienteIdentidad(cfg.identidad_url, token))
         tareas = [asyncio.create_task(mensajeria.iniciar(app.state.servicio.procesar))]
         if telegram is not None:
             tareas.append(asyncio.create_task(telegram.escuchar(app.state.servicio.vincular_telegram)))
@@ -82,6 +85,10 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
             await pool.close()
 
     app = FastAPI(title="Servicio notificaciones", version="0.1.0", lifespan=ciclo_de_vida)
+    # F9: cada petición trae un token válido (también verificado aquí, no solo en el gateway). En las pruebas
+    # con dobles no se verifica, salvo que se pase un verificador.
+    if servicio is None or verificador is not None:
+        app.add_middleware(MiddlewareToken, verificador=verificador or VerificadorTokens.desde_entorno())
 
     def srv(request: Request) -> ServicioNotificaciones:
         return request.app.state.servicio

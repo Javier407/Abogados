@@ -24,6 +24,7 @@ class Config:
     correo_remitente: str
     telegram_token: str = field(repr=False)   # secretos: nunca en logs ni repr
     procesos_url: str
+    identidad_url: str = "http://localhost:8005"
 
     @staticmethod
     def desde_entorno() -> "Config":
@@ -42,4 +43,5 @@ class Config:
             correo_remitente=e("CORREO_REMITENTE", "Gestion Juridica <avisos@gestion-juridica.local>"),
             telegram_token=e("TELEGRAM_TOKEN", "").strip(),
             procesos_url=e("PROCESOS_URL", "http://localhost:8082"),
+            identidad_url=e("IDENTIDAD_URL", "http://localhost:8005"),
         )

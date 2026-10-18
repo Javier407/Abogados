@@ -5,10 +5,16 @@ info:
   description: |
     Inicio de sesión y tokens (F5, ADR 0004). A través del gateway las rutas llevan el prefijo /api.
 
-    - POST /auth/login es la única ruta pública de toda la API.
-    - El token es un JWT RS256 (8 h) con los claims iss=gestion-juridica, sub=documento, usuario, nombre y roles.
-    - /auth/yo y /auth/clave usan la identidad que el gateway toma del token (cabecera X-Usuario-Id, que el
-      gateway siempre reescribe).
+    - POST /auth/login, /auth/renovar y /auth/salir son las únicas rutas sin token de acceso (las dos últimas
+      usan la cookie de la sesión).
+    - El token de acceso es un JWT RS256 de 15 minutos (F9) con los claims iss=gestion-juridica, sub=documento,
+      jti, usuario, nombre, roles, idCliente (solo cuentas del portal) y clave_temporal (debe cambiar la contraseña:
+      el gateway y los servicios solo le permiten /auth/yo y /auth/clave).
+    - El refresh token (F9) va en la cookie gj_refresco: HttpOnly, SameSite=Strict, Path=/api/auth y Secure con
+      HTTPS. Dura 12 h, se gasta al renovar (rotación) y la sesión dura como máximo 7 días. Si un refresh token ya
+      gastado se vuelve a presentar, se revoca la sesión completa, incluidos sus tokens de acceso vigentes.
+    - /auth/yo y /auth/clave usan la identidad del token (cabecera X-Usuario-Id, que el filtro del servicio
+      reescribe con el token verificado).
 
     Errores: `{ "error": "mensaje" }` (y `campos` si falla la validación de la petición).
 servers:
@@ -46,6 +52,31 @@ paths:
           description: Más de 100 intentos (configurable) desde la misma IP en 10 minutos
           headers:
             Retry-After: { schema: { type: integer } }
+  /auth/renovar:
+    post:
+      summary: Token de acceso nuevo a cambio del refresh token de la cookie (que se gasta y se reemplaza)
+      security: []
+      parameters:
+        - { in: header, name: X-Requested-With, required: true, schema: { type: string },
+            description: "Protección CSRF: otra página no puede enviarla sin permiso de CORS" }
+        - { in: cookie, name: gj_refresco, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Sesión renovada (Set-Cookie con el refresh token nuevo)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Sesion" }
+        "401": { description: La sesión no existe, venció, fue cerrada o el refresh token ya se había usado (se borra la cookie) }
+        "403": { description: Falta X-Requested-With }
+  /auth/salir:
+    post:
+      summary: Cierra la sesión en el servidor (refresh token y tokens de acceso vigentes dejan de servir)
+      security: []
+      parameters:
+        - { in: header, name: X-Requested-With, required: true, schema: { type: string } }
+        - { in: cookie, name: gj_refresco, required: false, schema: { type: string } }
+      responses:
+        "204": { description: Sesión cerrada (Set-Cookie con Max-Age=0); cerrar dos veces no es error }
   /auth/yo:
     get:
       summary: Perfil de la persona conectada
@@ -71,7 +102,7 @@ paths:
                 actual: { type: string }
                 nueva: { type: string, maxLength: 72 }
       responses:
-        "204": { description: Contraseña cambiada }
+        "204": { description: "Contraseña cambiada. Las demás sesiones abiertas de la persona se cierran (la de esta cookie sigue)" }
         "401": { description: La contraseña actual no coincide }
         "422": { description: La nueva no cumple la política }
   /.well-known/jwks.json:
@@ -80,6 +111,38 @@ paths:
       security: []
       responses:
         "200": { description: JWK Set con la llave RSA pública }
+
+  # ---------------------------------------------------------------- solo red interna (F9; el gateway no las enruta)
+  /interno/token:
+    post:
+      summary: Token de servicio (rol SERVICIO, solo lectura, 15 min) a cambio de la clave del servicio
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                servicio: { type: string, enum: [procesos, gabinete, notificaciones, vigilancia, asistente-ia] }
+                clave: { type: string, description: "infra/.env (CLAVE_SVC_*), nunca en git" }
+      responses:
+        "200": { description: "{ token, expira }" }
+        "401": { description: Servicio o clave incorrectos }
+  /interno/revocados:
+    get:
+      summary: jti de los tokens de acceso revocados que aún no vencen (el gateway la descarga cada 15 s)
+      security: []
+      responses:
+        "200": { description: Lista de jti }
+  /interno/clientes/{idCliente}/cuentas:
+    get:
+      summary: Cuentas activas del portal de un cliente (para avisarle). Solo con token de servicio
+      parameters:
+        - { in: path, name: idCliente, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: "[{ idUsuario, nombre, email }]" }
+        "403": { description: No es un token de servicio }
 
   # ---------------------------------------------------------------- administración de cuentas (F8, solo ADMIN)
   /usuarios:
@@ -146,7 +209,8 @@ components:
         roles:
           type: array
           items: { type: string, enum: [ADMIN, SOCIO, ABOGADO, DEPENDIENTE, ADMINISTRATIVO, CLIENTE] }
-        debeCambiarClave: { type: boolean, description: "Clave temporal (F8): la interfaz lleva a Mi cuenta hasta cambiarla" }
+        debeCambiarClave: { type: boolean, description: "Clave temporal (F8): el token solo sirve para cambiarla (F9)" }
+        idCliente: { type: integer, nullable: true, description: "Cuentas del portal: la ficha del cliente en gabinete (F9)" }
     Perfil:
       type: object
       properties:

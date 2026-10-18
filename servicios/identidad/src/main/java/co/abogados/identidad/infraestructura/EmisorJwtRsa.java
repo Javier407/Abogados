@@ -33,7 +33,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
-import co.abogados.identidad.dominio.Sesion;
+import co.abogados.identidad.dominio.TokenAcceso;
 import co.abogados.identidad.dominio.Usuario;
 import co.abogados.identidad.dominio.puertos.EmisorTokens;
 
@@ -41,6 +41,9 @@ import co.abogados.identidad.dominio.puertos.EmisorTokens;
  * Firma los tokens con RS256. Solo este servicio tiene la llave privada; el gateway los verifica con la
  * llave pública que publica /.well-known/jwks.json. La llave privada se lee de un archivo PEM (PKCS#8)
  * montado desde infra/secretos; si no existe (pruebas, desarrollo) se genera una temporal y se avisa.
+ *
+ * Claims: sub (documento o "servicio:<nombre>"), roles, usuario, nombre, jti (para revocarlo), idCliente (cuentas
+ * del portal) y clave_temporal (debe cambiar la contraseña antes de usar la app).
  */
 @Component
 public class EmisorJwtRsa implements EmisorTokens {
@@ -52,31 +55,54 @@ public class EmisorJwtRsa implements EmisorTokens {
 	private final Duration vigencia;
 
 	public EmisorJwtRsa(@Value("${jwt.llave-privada:}") String rutaLlave,
-			@Value("${jwt.vigencia:PT8H}") Duration vigencia) {
+			@Value("${jwt.vigencia:PT15M}") Duration vigencia) {
 		this.llave = cargar(rutaLlave);
 		this.vigencia = vigencia;
 	}
 
 	@Override
-	public Sesion emitir(Usuario u, Instant ahora) {
-		Instant expira = ahora.plus(vigencia);
-		JWTClaimsSet claims = new JWTClaimsSet.Builder()
-				.issuer(EMISOR)
-				.subject(String.valueOf(u.idUsuario()))
+	public TokenAcceso acceso(Usuario u, boolean claveTemporal, Instant ahora) {
+		JWTClaimsSet.Builder claims = base(String.valueOf(u.idUsuario()), List.copyOf(u.roles()), ahora)
 				.claim("usuario", u.usuario())
-				.claim("nombre", u.nombre())
-				.claim("roles", List.copyOf(u.roles()))
+				.claim("nombre", u.nombre());
+		if (u.idCliente() != null) {
+			claims.claim("idCliente", u.idCliente());
+		}
+		if (claveTemporal) {
+			claims.claim("clave_temporal", true);
+		}
+		return firmar(claims, ahora);
+	}
+
+	@Override
+	public TokenAcceso servicio(String nombre, Instant ahora) {
+		return firmar(base("servicio:" + nombre, List.of("SERVICIO"), ahora), ahora);
+	}
+
+	private JWTClaimsSet.Builder base(String sujeto, List<String> roles, Instant ahora) {
+		return new JWTClaimsSet.Builder()
+				.issuer(EMISOR)
+				.subject(sujeto)
+				.claim("roles", roles)
 				.issueTime(Date.from(ahora))
-				.expirationTime(Date.from(expira))
-				.jwtID(UUID.randomUUID().toString())
-				.build();
-		SignedJWT jwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(llave.getKeyID()).build(), claims);
+				.expirationTime(Date.from(ahora.plus(vigencia)));
+	}
+
+	private TokenAcceso firmar(JWTClaimsSet.Builder claims, Instant ahora) {
+		UUID jti = UUID.randomUUID();
+		SignedJWT jwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(llave.getKeyID()).build(),
+				claims.jwtID(jti.toString()).build());
 		try {
 			jwt.sign(new RSASSASigner(llave));
 		} catch (JOSEException e) {
 			throw new IllegalStateException("No se pudo firmar el token", e);
 		}
-		return new Sesion(jwt.serialize(), expira, u.idUsuario(), u.usuario(), u.nombre(), u.roles());
+		return new TokenAcceso(jwt.serialize(), jti, ahora.plus(vigencia));
+	}
+
+	/** Llave pública: este mismo servicio verifica con ella los tokens que recibe. */
+	public RSAKey publica() {
+		return llave.toPublicJWK();
 	}
 
 	/** Conjunto de llaves públicas (JWKS) para verificar los tokens. Nunca incluye la parte privada. */

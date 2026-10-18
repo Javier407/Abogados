@@ -2,7 +2,7 @@
 
 Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-dominio.md`) con lo que el código hace hoy. Sirve para decidir las fases siguientes.
 
-> Escrito al cerrar F5, **actualizado con F6, F7 y F8**. F8 agregó administración de cuentas, anulación de pagos, liquidación, gastos, cartera y reportes. F7 trajo audiencias en la agenda con aviso, pruebas con perito y términos sugeridos.
+> Escrito al cerrar F5, **actualizado con F6 a F9**. F9 agregó el portal del cliente con sus avisos, sesiones renovables y revocables, verificación del token en cada servicio, outbox y HTTPS listo para activar. F8 agregó administración de cuentas, anulación de pagos, liquidación, gastos, cartera y reportes. F7 trajo audiencias en la agenda con aviso, pruebas con perito y términos sugeridos.
 > Actualización de F6 (rama `feature/f6-expediente`, 2026-10-17): partes y conflicto de intereses, actuaciones, providencia manual, sentencia, recursos, otras instancias y copias de seguridad.
 
 **Estados:**
@@ -16,13 +16,13 @@ Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-domin
 |---|---|---|---|
 | 1 | Captación y vinculación del cliente | 🟡 | Clientes, acuerdos de honorarios, conflicto de intereses y poder (F6). Falta la consulta inicial. |
 | 2 | Gestión del proceso judicial | 🟡 | Con F6 el expediente tiene partes, actuaciones, providencias, sentencia, recursos y línea de tiempo. Faltan audiencias en la agenda, pruebas y el expediente digital. |
-| 3 | Vigilancia y alertas | ✅ | Rama Judicial (real o simulada), correo, avisos en la app y Telegram. |
+| 3 | Vigilancia y alertas | ✅ | Rama Judicial (real o simulada), correo, avisos en la app y Telegram; avisos al cliente y entrega garantizada (F9). |
 | 4 | Redacción asistida (IA) | 🟡 | Contestación y resumen para el cliente. Faltan la demanda, los recursos y el resumen de autos. |
 | 5 | Finanzas | 🟡 | Tarifas, acuerdos, pagos con anulación, liquidación de la parte variable, gastos y cartera (F8). Falta la facturación electrónica. |
 | 6 | Administración de la firma | 🟡 | Abogados, peritos, seguridad y cuentas de usuario desde la app (F8). Sedes, áreas y cargos siguen siendo solo de lectura. |
-| 7 | Portal del cliente | ❌ | El rol CLIENTE solo ve "Mi cuenta". |
+| 7 | Portal del cliente | ✅ | Desde F9: sus procesos, novedades, resumen publicado por el abogado, pagos y avisos. |
 | 8 | Reportes e indicadores | ✅ | Panel general y, desde F8, carga por abogado, cumplimiento de términos, resultados por rama y cartera, con exportación a CSV. |
-| 9 | Plataforma (no funcional) | 🟡 | CI, JWT, auditoría, healthchecks y copias de seguridad diarias (F6). Faltan HTTPS, refresh token, outbox y copias fuera del servidor. |
+| 9 | Plataforma (no funcional) | 🟡 | CI, JWT, auditoría, copias diarias, refresh token, JWT en cada servicio y outbox (F9). HTTPS listo pero falta activarlo en Tailscale; faltan copias fuera del servidor y monitoreo. |
 
 ## 1. Captación y vinculación del cliente
 
@@ -61,8 +61,8 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Vigilar radicados (simulada; portal real solo en los marcados) | ✅ | `vigilancia` → `FuenteRamaJudicial`, consulta programada, `pages/vigilancia` |
 | Avisar términos por vencer o vencidos | ✅ | `procesos` publica `termino.*` y `notificaciones` envía correo, aviso en la app y Telegram. |
 | Avisar actuaciones nuevas | ✅ | `actuacion.detectada` → `procesos` + `notificaciones` |
-| Avisar también al cliente | ❌ | Pregunta abierta 2 de `01-dominio.md`. Depende del portal del cliente (sección 7). |
-| Entrega garantizada de eventos | ❌ | Sin *outbox*: si RabbitMQ está caído, el evento se pierde (plan de mejora ISO, punto 6). |
+| Avisar también al cliente | ✅ F9 | Resumen publicado y audiencia del día hábil siguiente, en palabras simples (no se le reenvían los autos sin revisión del abogado). |
+| Entrega garantizada de eventos | ✅ F9 | `procesos.outbox` y `vigilancia.outbox` con confirmación del broker. |
 
 ## 4. Redacción asistida (IA local)
 
@@ -97,14 +97,14 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Usuarios, roles y restablecer contraseña | ✅ F8 | `identidad` `/usuarios` (solo ADMIN) y pantalla Usuarios; clave temporal que se debe cambiar al entrar | Enlazar la cuenta con la ficha del abogado al crearla. |
 | Seguridad: login, roles, bloqueo y auditoría | ✅ | `identidad`, `gateway` (`PoliticaAcceso`, `Auditoria`) | — |
 
-## 7. Portal del cliente ❌
+## 7. Portal del cliente ✅ (F9)
 
-| Proceso | Dónde iría |
-|---|---|
-| El cliente ve sus procesos, su estado y sus próximas fechas | Rutas `/api/portal/**` en el gateway, solo para el rol CLIENTE, filtradas por `idCliente` del token. Hay que enlazar el cliente con su usuario. |
-| El cliente ve sus pagos y su saldo | Lo mismo, consultando `gabinete`. |
-| Resumen en lenguaje sencillo | Reutiliza `RESUMEN_CLIENTE`, siempre revisado por el abogado antes de publicarse. |
-| Avisos al cliente | `notificaciones` con preferencias por cliente. |
+| Proceso | Estado | Código actual |
+|---|---|---|
+| El cliente ve sus procesos, su estado y sus próximas fechas | ✅ | `procesos` → `PortalServicio`, `/portal/procesos` (filtra por `idCliente` del token, enlazado en `identidad.usuarios.id_cliente`); pantallas `pages/portal` |
+| El cliente ve sus pagos y su saldo | ✅ | `gabinete` → `PortalFinanzasServicio`, `/portal/finanzas` |
+| Resumen en lenguaje sencillo | ✅ | El abogado lo genera con `RESUMEN_CLIENTE` o lo escribe, lo revisa y lo publica (`/procesos/{id}/resumen-cliente`) |
+| Avisos al cliente | ✅ | `notificaciones`: `portal.resumen_publicado` y `audiencia.proxima`, a las cuentas del cliente (`identidad /interno/clientes/{id}/cuentas`). Falta que el cliente elija sus canales. |
 
 ## 8. Reportes e indicadores
 
@@ -122,10 +122,10 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 |---|---|---|
 | CI en cada push | ✅ | `.github/workflows/ci.yml` |
 | JWT, roles, bloqueo y auditoría | ✅ | F5 |
-| HTTPS / `tailscale serve` | ❌ | Prioridad 1 del plan de mejora antes de salir de la VPN. |
-| Refresh token y revocación | ❌ | Prioridad 2. |
-| Validar el JWT en cada servicio | ❌ | Prioridad 3. |
-| Outbox de eventos | ❌ | Prioridad 6. |
+| HTTPS / `tailscale serve` | 🟡 F9 | Entrada local 8093, redirección y HSTS listos; falta activar "HTTPS Certificates" en la consola de Tailscale. |
+| Refresh token y revocación | ✅ F9 | Token de 15 min, refresh token rotatorio en cookie HttpOnly, lista de revocados en el gateway. |
+| Validar el JWT en cada servicio | ✅ F9 | `FiltroToken` (Java) y `MiddlewareToken` (Python); tokens de servicio entre ellos. |
+| Outbox de eventos | ✅ F9 | `procesos` y `vigilancia`. |
 | Copias de seguridad de PostgreSQL | 🟡 F6 | `pg_dump` diario con 14 días de historia y prueba de restauración (`infra/respaldo/respaldar.sh`). Falta copiarlas **fuera de la VM**. |
 | Monitoreo y logs centralizados | ❌ | Solo `docker compose logs`. |
 | IP real del cliente (Tailscale SNAT) | ❌ | Brecha 7 de la evaluación ISO. |
@@ -139,4 +139,5 @@ Ordenadas por valor para la firma y por dependencias:
 | **F6. Expediente** ✅ | Partes (con conflicto de intereses), actuaciones con línea de tiempo, providencia manual, sentencia con sentido, recursos. Copias de seguridad diarias. | Completa el corazón del dominio: hoy un proceso no tiene historia propia, solo términos y autos detectados. Antes de meter datos reales hacen falta copias de seguridad. |
 | **F7. Agenda y pruebas** ✅ | Audiencias en el calendario con aviso, pruebas con perito, términos sugeridos al llegar un auto (reglas validadas por un abogado). | Usa las actuaciones de F6. Es lo que más evita olvidos después de los términos. |
 | **F8. Administración y finanzas** ✅ | Usuarios y roles desde la app, anulación de pagos, gastos, cuota litis, reportes. | Quita el trabajo por SQL y da información a los socios. |
-| **F9. Portal del cliente y endurecimiento** | Portal, avisos al cliente, HTTPS, refresh token, outbox. | El portal expone datos fuera del equipo: requiere primero las prioridades 1 a 3 de seguridad. |
+| **F9. Portal del cliente y endurecimiento** ✅ | Portal, avisos al cliente, HTTPS, refresh token, JWT en cada servicio, outbox. | El portal expone datos fuera del equipo: requiere primero las prioridades 1 a 3 de seguridad. |
+| **F10 (propuesta). Documentos y redacción** | Expediente digital con archivos y control de acceso, borradores de demanda y recurso, resumen del auto en el aviso, consulta inicial, copias fuera de la VM. | Lo que más trabajo ahorra ahora que el núcleo está completo. |

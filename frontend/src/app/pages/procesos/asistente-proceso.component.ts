@@ -1,15 +1,19 @@
 import { Component, NgZone, OnDestroy, OnInit, inject, input } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
-import { ApiService } from '../../core/api.service';
+import { ApiService, mensajeDeError } from '../../core/api.service';
 import { AsistenteService } from '../../core/asistente.service';
-import { EstadoAsistente, TipoBorrador } from '../../core/modelos';
+import { EstadoAsistente, ResumenPublicado, TipoBorrador } from '../../core/modelos';
 
-/** Borradores con el modelo local: contestación de la demanda o resumen del proceso para el cliente. */
+/**
+ * Borradores con el modelo local: contestación de la demanda o resumen del proceso para el cliente.
+ * El resumen, una vez revisado por el abogado, se publica en el portal del cliente y se le avisa (F9).
+ */
 @Component({
   selector: 'app-asistente-proceso',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, DatePipe],
   template: `
     <div class="card">
       <div class="card-header"><h2>Asistente de redacción</h2></div>
@@ -43,7 +47,17 @@ import { EstadoAsistente, TipoBorrador } from '../../core/modelos';
         </div>
 
         @if (aviso) { <div class="alerta alerta-error" style="margin-top: 12px">{{ aviso }}</div> }
-        @if (texto || redactando) {
+        @if (tipo === 'RESUMEN_CLIENTE') {
+          <p class="form-ayuda">
+            @if (publicado) { Último resumen publicado en el portal: {{ publicado.publicadoEn | date:'dd/MM/yyyy HH:mm' }}. }
+            @else { Aún no se ha publicado un resumen en el portal del cliente. }
+            @if (!texto && !redactando) {
+              <button class="btn btn-secondary btn-sm" type="button" (click)="escribir()">Escribirlo sin el asistente</button>
+            }
+          </p>
+        }
+        @if (mensaje) { <div class="alerta alerta-exito" style="margin-top: 12px">{{ mensaje }}</div> }
+        @if (texto || redactando || editando) {
           <textarea class="form-input borrador" [(ngModel)]="texto" [readonly]="redactando" rows="22"
             aria-label="Borrador generado"></textarea>
           <div class="form-actions">
@@ -53,6 +67,10 @@ import { EstadoAsistente, TipoBorrador } from '../../core/modelos';
             <button class="btn btn-secondary btn-sm" type="button" (click)="descargar()" [disabled]="redactando || !texto">
               Descargar .txt
             </button>
+            @if (tipo === 'RESUMEN_CLIENTE') {
+              <button class="btn btn-primary btn-sm" type="button" (click)="publicar()"
+                      [disabled]="redactando || publicando || texto.trim().length < 20">Publicar en el portal del cliente</button>
+            }
             @if (resumen) { <span class="form-ayuda">{{ resumen }}</span> }
           </div>
         }
@@ -77,11 +95,33 @@ export class AsistenteProcesoComponent implements OnInit, OnDestroy {
   redactando = false;
   copiado = false;
   segundos = 0;
+  editando = false;
+  publicando = false;
+  mensaje = '';
+  publicado: ResumenPublicado | null = null;
   private cancelar: AbortController | null = null;
   private reloj: ReturnType<typeof setInterval> | null = null;
 
   ngOnInit(): void {
     this.api.estadoAsistente().subscribe({ next: e => this.estado = e, error: () => this.estado = null });
+    this.api.resumenCliente(this.idProceso()).subscribe({ next: r => this.publicado = r, error: () => {} });
+  }
+
+  /** Redactar el resumen a mano (parte del último publicado, si hay). */
+  escribir(): void {
+    this.editando = true;
+    this.texto = this.publicado?.texto ?? '';
+  }
+
+  /** El abogado revisó el texto: queda visible para el cliente y se le avisa por la app y el correo. */
+  publicar(): void {
+    if (!confirm('El cliente verá este texto en su portal y recibirá un aviso. ¿Publicarlo?')) return;
+    this.publicando = true;
+    this.mensaje = this.aviso = '';
+    this.api.publicarResumen(this.idProceso(), this.texto.trim()).subscribe({
+      next: r => { this.publicado = r; this.publicando = false; this.mensaje = 'Publicado en el portal. Se avisó al cliente.'; },
+      error: e => { this.publicando = false; this.aviso = mensajeDeError(e); }
+    });
   }
 
   async generar(): Promise<void> {

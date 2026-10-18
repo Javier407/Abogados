@@ -21,6 +21,7 @@ import { DIRECCION, INTERNOS, JURIDICO, JURIDICO_Y_DEPENDIENTES, VEN_HONORARIOS 
 
 const personal = conRol(...INTERNOS);
 const juridico = conRol(...JURIDICO);
+const cliente = conRol('CLIENTE');
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent, title: 'Iniciar sesión' },
@@ -41,7 +42,11 @@ export const routes: Routes = [
       { path: 'terminos', component: TerminosComponent, title: 'Términos', canActivate: [personal] },
       { path: 'calendario', component: CalendarioComponent, title: 'Calendario judicial', canActivate: [personal] },
       { path: 'vigilancia', component: VigilanciaComponent, title: 'Vigilancia', canActivate: [conRol(...JURIDICO_Y_DEPENDIENTES)] },
-      { path: 'avisos', component: AvisosComponent, title: 'Avisos', canActivate: [personal] },
+      { path: 'avisos', component: AvisosComponent, title: 'Avisos' },
+      // Portal del cliente (F9): sus procesos, novedades y pagos. Se cargan aparte (el personal no los descarga).
+      { path: 'portal', loadComponent: () => import('./pages/portal/portal-procesos.component').then(m => m.PortalProcesosComponent), title: 'Mis procesos', canActivate: [cliente] },
+      { path: 'portal/procesos/:id', loadComponent: () => import('./pages/portal/portal-proceso.component').then(m => m.PortalProcesoComponent), title: 'Mi proceso', canActivate: [cliente] },
+      { path: 'portal/pagos', loadComponent: () => import('./pages/portal/portal-pagos.component').then(m => m.PortalPagosComponent), title: 'Mis pagos', canActivate: [cliente] },
       { path: 'honorarios', component: HonorariosComponent, title: 'Honorarios y pagos', canActivate: [conRol(...VEN_HONORARIOS)] },
       { path: 'pagos', redirectTo: 'honorarios' },
       { path: 'usuarios', component: UsuariosComponent, title: 'Usuarios', canActivate: [conRol('ADMIN')] },

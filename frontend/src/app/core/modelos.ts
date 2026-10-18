@@ -168,7 +168,7 @@ export interface Aviso {
   evento: string;
   titulo: string;
   mensaje: string;
-  referencia: { id_proceso?: number; id_termino?: number };
+  referencia: { id_proceso?: number; id_termino?: number; portal?: boolean };
   leida: boolean;
   creada: string;
 }
@@ -440,6 +440,8 @@ export interface Cuenta {
   bloqueadoHasta?: string | null;
   ultimoIngreso?: string | null;
   debeCambiarClave: boolean;
+  /** Solo las cuentas de cliente: su ficha en gabinete. */
+  idCliente?: number | null;
 }
 export interface CuentaSolicitud {
   idUsuario: number | null;
@@ -448,8 +450,49 @@ export interface CuentaSolicitud {
   email: string;
   roles: string[];
   claveTemporal: string;
+  idCliente?: number | null;
 }
-export interface CambioCuenta { usuario: string; nombre: string; email: string; roles: string[]; activo: boolean; }
+export interface CambioCuenta {
+  usuario: string; nombre: string; email: string; roles: string[]; activo: boolean; idCliente?: number | null;
+}
+
+// ---------- portal del cliente (F9) ----------
+export interface AudienciaPortal { fecha: string; hora: string | null; lugar: string | null; descripcion: string; }
+export interface ProcesoPortal {
+  idProceso: number;
+  radicado: string;
+  tipoProceso: string;
+  rama: string;
+  despacho: string | null;
+  asunto: string;
+  rolCliente: string;
+  etapa: string;
+  estado: string;
+  fechaRadicacion: string | null;
+  abogado: string | null;
+  proximaAudiencia: AudienciaPortal | null;
+  ultimaNovedad: string | null;
+}
+export interface NovedadPortal { fecha: string; origen: string; titulo: string; detalle: string | null; }
+export interface ResumenPublicado { idResumen: number; idProceso: number; texto: string; publicadoPor: number; publicadoEn: string; }
+export interface DetallePortal {
+  proceso: ProcesoPortal;
+  novedades: NovedadPortal[];
+  audiencias: AudienciaPortal[];
+  resumen: ResumenPublicado | null;
+}
+export interface PagoPortal { fecha: string; valor: number; medio: string; referencia: string | null; }
+export interface AcuerdoPortal {
+  idHonorario: number; idProceso: number; formaCobro: string; valorFijo: number | null; porcentaje: number | null;
+  total: number | null; pagado: number; saldo: number | null; estado: string; pagos: PagoPortal[];
+}
+export interface GastoPortal { idProceso: number; fecha: string; concepto: string; valor: number; }
+export interface FinanzasPortal {
+  acuerdos: AcuerdoPortal[];
+  gastosPorReembolsar: GastoPortal[];
+  saldoHonorarios: number;
+  totalGastosPorReembolsar: number;
+}
 
 export interface Gasto {
   idGasto: number;

@@ -73,8 +73,10 @@ export class CuentaComponent {
         const eraObligatorio = !!this.auth.sesion()?.debeCambiarClave;
         this.mensaje = 'Contraseña cambiada.';
         form.resetForm();
-        this.auth.marcarClaveCambiada();
-        if (eraObligatorio) this.router.navigateByUrl(this.auth.esPersonal() ? '/' : '/cuenta');
+        // Token nuevo sin la marca de clave temporal (las demás sesiones abiertas ya se cerraron).
+        this.auth.marcarClaveCambiada().subscribe(() => {
+          if (eraObligatorio) this.router.navigateByUrl(this.auth.inicio());
+        });
       },
       error: e => this.error = mensajeDeError(e)
     });

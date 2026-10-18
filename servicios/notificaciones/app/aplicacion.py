@@ -7,9 +7,11 @@ from datetime import date, datetime
 from typing import Callable, Protocol
 from zoneinfo import ZoneInfo
 
-from .dominio import (EVENTO_ACTUACION, EVENTO_AUDIENCIA, EVENTOS_TERMINO, AvisoActuacion, AvisoAudiencia,
-                      AvisoTermino, Canal, Contenido, EventoInvalido, NotificacionNueva, Preferencia, canales,
-                      contenido_actuacion, contenido_audiencia, contenido_termino, correo_de, texto_telegram)
+from .dominio import (EVENTO_ACTUACION, EVENTO_AUDIENCIA, EVENTO_RESUMEN, EVENTOS_TERMINO, AvisoActuacion,
+                      AvisoAudiencia, AvisoResumen, AvisoTermino, Canal, Contenido, CuentaCliente, EventoInvalido,
+                      NotificacionNueva, Preferencia, canales, contenido_actuacion, contenido_audiencia,
+                      contenido_audiencia_cliente, contenido_resumen_cliente, contenido_termino, correo_de,
+                      texto_telegram)
 
 log = logging.getLogger(__name__)
 BOGOTA = ZoneInfo("America/Bogota")
@@ -47,6 +49,12 @@ class Directorio(Protocol):
 
 class Procesos(Protocol):
     async def responsable(self, id_proceso: int) -> int | None: ...
+    async def cliente(self, id_proceso: int) -> int | None: ...
+
+
+class CuentasCliente(Protocol):
+    """Cuentas del portal de un cliente (servicio identidad)."""
+    async def de_cliente(self, id_cliente: int) -> list[CuentaCliente]: ...
 
 
 class AvisosEnVivo(Protocol):
@@ -71,7 +79,8 @@ class ServicioNotificaciones:
     def __init__(self, repo: Repositorio, correo: EnviadorCorreo, directorio: Directorio,
                  en_vivo: AvisosEnVivo, publicador: Publicador, url_app: str = "",
                  hoy: Callable[[], date] = lambda: datetime.now(BOGOTA).date(),
-                 telegram: EnviadorTelegram | None = None, procesos: Procesos | None = None):
+                 telegram: EnviadorTelegram | None = None, procesos: Procesos | None = None,
+                 cuentas: CuentasCliente | None = None):
         self.repo = repo
         self.correo = correo
         self.directorio = directorio
@@ -81,6 +90,7 @@ class ServicioNotificaciones:
         self.hoy = hoy
         self.telegram = telegram or TelegramApagado()
         self.procesos = procesos
+        self.cuentas = cuentas
 
     async def procesar(self, evento: str, cuerpo: dict) -> int:
         """Guarda y envía los avisos de un evento. Devuelve cuántos avisos nuevos se crearon."""
@@ -96,21 +106,48 @@ class ServicioNotificaciones:
                 return 0
             contenido = contenido_actuacion(actuacion, responsable)
         elif evento == EVENTO_AUDIENCIA:
-            contenido = contenido_audiencia(AvisoAudiencia.desde_mensaje(cuerpo), self.hoy())
+            audiencia = AvisoAudiencia.desde_mensaje(cuerpo)
+            creadas = await self._avisar(contenido_audiencia(audiencia, self.hoy()))
+            return creadas + await self._avisar_cliente_audiencia(audiencia)
+        elif evento == EVENTO_RESUMEN:
+            resumen = AvisoResumen.desde_mensaje(cuerpo)
+            creadas = 0
+            for cuenta in await self._cuentas(resumen.id_cliente):
+                creadas += await self._avisar(contenido_resumen_cliente(resumen, cuenta), correo_cliente=cuenta.email)
+            return creadas
         else:
             raise EventoInvalido(f"Evento no soportado: {evento}")
         return await self._avisar(contenido)
+
+    async def _cuentas(self, id_cliente: int) -> list[CuentaCliente]:
+        """Cuentas del portal del cliente. Si identidad no responde, el evento se reintenta (no se pierde)."""
+        if self.cuentas is None:
+            return []
+        return await self.cuentas.de_cliente(id_cliente)
+
+    async def _avisar_cliente_audiencia(self, a: AvisoAudiencia) -> int:
+        """El cliente también se entera de la audiencia (en palabras simples), si tiene cuenta en el portal."""
+        if self.cuentas is None or self.procesos is None:
+            return 0
+        id_cliente = await self.procesos.cliente(a.id_proceso)
+        if id_cliente is None:
+            return 0
+        creadas = 0
+        for cuenta in await self._cuentas(id_cliente):
+            creadas += await self._avisar(contenido_audiencia_cliente(a, cuenta, self.hoy()), correo_cliente=cuenta.email)
+        return creadas
 
     async def _responsable(self, id_proceso: int) -> int | None:
         if self.procesos is None:
             raise RuntimeError("Falta el cliente del servicio procesos")
         return await self.procesos.responsable(id_proceso)   # si procesos no responde, el evento se reintenta
 
-    async def _avisar(self, c: Contenido) -> int:
+    async def _avisar(self, c: Contenido, correo_cliente: str | None = None) -> int:
+        """correo_cliente: para los clientes, el correo de su cuenta (no tienen ficha de abogado en gabinete)."""
         preferencias = await self.repo.preferencias(c.id_persona)
         respaldo = None
         if not any(p.canal == Canal.EMAIL for p in preferencias):
-            respaldo = await self._correo_de_ficha(c.id_persona)
+            respaldo = correo_cliente if correo_cliente is not None else await self._correo_de_ficha(c.id_persona)
 
         creadas = 0
         for n in canales(c, preferencias, respaldo, self.telegram.activo):

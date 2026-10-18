@@ -106,7 +106,7 @@ docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/consu
 - Usuarios de prueba de la aplicación (tabla `identidad.usuarios`): contraseña `Prueba2026*`.
 - Para recargar desde cero: `docker compose down -v && docker compose up -d` (borra el volumen).
 
-## Microservicios (fases 1 a 6)
+## Microservicios (fases 1 a 9)
 
 ```
 navegador ──► frontend (nginx :8090) ──/api──► gateway (:8091, valida el JWT y el rol) ─┬─► identidad (login, JWKS)
@@ -143,7 +143,7 @@ docker compose up -d --build      # compila, prueba y arranca los 11 contenedore
 docker compose exec ollama ollama pull qwen2.5:3b   # una sola vez: descarga el modelo (~2 GB)
 ```
 
-Luego abrir http://localhost:8090 (en el servidor: http://100.65.152.112:8090). El gateway queda en el puerto 8091 y el buzón de pruebas Mailpit, donde llegan los correos de aviso, en el 8092.
+Luego abrir http://localhost:8090 (en el servidor: http://100.65.152.112:8090, o por HTTPS si está activado; ver abajo). El buzón de pruebas Mailpit, donde llegan los correos de aviso, queda en el 8092. El gateway (8091) solo escucha en la propia máquina.
 
 **Inicio de sesión:** cada persona entra con su usuario (por ejemplo `arodriguez`, socio; `scastro`, dependiente). En la base de pruebas todos tienen la contraseña `Prueba2026*`, que se puede cambiar en **Mi cuenta** (mínimo 10 caracteres con letras y números). Las cuentas se crean y administran en **Usuarios** (solo ADMIN): la contraseña temporal que escribe el administrador se debe cambiar al entrar. El menú muestra solo lo que permite el rol, y los avisos son los de la persona conectada.
 
@@ -155,6 +155,25 @@ openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out infra/secretos
 ```
 
 Mailpit pide usuario y clave si se define `MAILPIT_UI_AUTH=usuario:clave` en `infra/.env`.
+
+**Claves de los servicios (F9).** Cada servicio verifica el token de cada petición y, para llamar a otro, pide su propio token a identidad con una clave. Se generan en el servidor sin mostrarlas:
+
+```bash
+cd infra && umask 077
+for s in PROCESOS GABINETE NOTIFICACIONES VIGILANCIA ASISTENTE; do
+  grep -q "^CLAVE_SVC_$s=" .env || echo "CLAVE_SVC_$s=$(openssl rand -hex 32)" >> .env
+done
+```
+
+**HTTPS (F9)** con `tailscale serve` (el certificado lo emite Tailscale; nada se abre a internet):
+
+1. En la consola de Tailscale (DNS) activar **MagicDNS** y **HTTPS Certificates**.
+2. En la VM: `sudo tailscale serve --bg --https=443 http://127.0.0.1:8093` (el puerto 8093 es la entrada HTTPS del frontend, solo local).
+3. En `infra/.env`: `URL_PUBLICA=https://<nombre-de-la-vm>.<tailnet>.ts.net` y `COOKIE_SEGURA=true`; luego `docker compose up -d`.
+
+Desde ahí http://IP:8090 redirige a HTTPS, el navegador recibe HSTS y la cookie de la sesión solo viaja cifrada. Mientras no haya HTTPS, `COOKIE_SEGURA=false` (si no, el navegador no guarda la cookie y la sesión dura 15 minutos).
+
+**Portal del cliente (F9).** Una cuenta con rol CLIENTE se enlaza con su ficha de cliente (en **Usuarios**). Entra a **Mis procesos** (etapa, abogado, próxima audiencia, novedades y el resumen que publicó su abogado) y **Mis pagos**; recibe avisos cuando su abogado publica un resumen y el día hábil antes de una audiencia. En la base de pruebas: `cmendez` (Carolina Méndez) y `andina` (Inversiones Andina).
 
 **Copias de seguridad:** el contenedor `respaldo` hace un `pg_dump` cada día a las 02:30 (y al arrancar, si la última copia tiene más de un día) en `infra/respaldos/`, fuera de git, y guarda 14 días. Para probar que la última copia se restaura bien (en una base temporal que luego borra):
 

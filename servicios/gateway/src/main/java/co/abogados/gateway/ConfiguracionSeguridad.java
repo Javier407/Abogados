@@ -31,7 +31,9 @@ import reactor.core.publisher.Mono;
  * Seguridad del gateway: ninguna ruta de la API responde sin un token válido, salvo el inicio de sesión.
  * - Token RS256 firmado por el servicio identidad; se verifica con su JWKS y se exige el emisor.
  * - Permisos por rol según PoliticaAcceso (lo que no está en la tabla se niega).
- * - Sin sesiones ni cookies: el token viaja en la cabecera Authorization, por eso no hace falta CSRF.
+ * - El token viaja en la cabecera Authorization. La única cookie es el refresh token (HttpOnly, SameSite=Strict,
+ *   solo para /api/auth); renovar y salir son públicas aquí porque identidad las valida con esa cookie.
+ * - Tokens revocados (sesión cerrada en el servidor) y tokens de servicio se rechazan (ListaRevocados).
  * - Solo el stream de avisos acepta el token en la URL (?access_token=), porque EventSource no permite
  *   cabeceras; el gateway lo quita antes de reenviar para que no quede en los logs de los servicios.
  */
@@ -50,7 +52,7 @@ public class ConfiguracionSeguridad {
 				.logout(ServerHttpSecurity.LogoutSpec::disable)
 				.authorizeExchange(a -> a
 						.pathMatchers(HttpMethod.OPTIONS).permitAll()                 // preflight de CORS
-						.pathMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+						.pathMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/renovar", "/api/auth/salir").permitAll()
 						.pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
 						.pathMatchers("/api/**").access(politica)
 						.anyExchange().denyAll())
@@ -70,11 +72,12 @@ public class ConfiguracionSeguridad {
 	}
 
 	@Bean
-	ReactiveJwtDecoder decodificador(@Value("${jwt.jwks-uri}") String jwksUri, @Value("${jwt.emisor}") String emisor) {
+	ReactiveJwtDecoder decodificador(@Value("${jwt.jwks-uri}") String jwksUri, @Value("${jwt.emisor}") String emisor,
+			ListaRevocados revocados) {
 		NimbusReactiveJwtDecoder d = NimbusReactiveJwtDecoder.withJwkSetUri(jwksUri)
 				.jwsAlgorithm(SignatureAlgorithm.RS256).build();
 		OAuth2TokenValidator<Jwt> validador = new DelegatingOAuth2TokenValidator<>(
-				JwtValidators.createDefaultWithIssuer(emisor));
+				JwtValidators.createDefaultWithIssuer(emisor), revocados);
 		d.setJwtValidator(validador);
 		return d;
 	}

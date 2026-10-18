@@ -16,7 +16,7 @@ from psycopg.types.json import Jsonb
 from psycopg_pool import AsyncConnectionPool
 
 from .config import Config
-from .dominio import Canal, EventoInvalido, NotificacionNueva, Preferencia
+from .dominio import CuentaCliente, Canal, EventoInvalido, NotificacionNueva, Preferencia
 
 log = logging.getLogger(__name__)
 # httpx registra cada URL a nivel INFO y la URL de la API de Telegram lleva el token: se silencia aquí,
@@ -150,11 +150,12 @@ class CorreoSmtp:
 # ------------------------------------------------------------------ servicio gabinete
 
 class DirectorioGabinete:
-    def __init__(self, url: str):
+    def __init__(self, url: str, token=None):
         self.url = url.rstrip("/")
+        self.token = token   # TokenServicio: estas llamadas llevan el token del servicio (F9)
 
     async def correo_abogado(self, id_persona: int) -> str | None:
-        async with httpx.AsyncClient(timeout=5) as http:
+        async with httpx.AsyncClient(timeout=5, headers=await self.token.cabeceras() if self.token else {}) as http:
             r = await http.get(f"{self.url}/abogados/{id_persona}")
             if r.status_code == 404:
                 return None
@@ -165,16 +166,41 @@ class DirectorioGabinete:
 # ------------------------------------------------------------------ servicio procesos
 
 class ClienteProcesos:
-    def __init__(self, url: str):
+    def __init__(self, url: str, token=None):
         self.url = url.rstrip("/")
+        self.token = token   # TokenServicio: estas llamadas llevan el token del servicio (F9)
+
+    async def cliente(self, id_proceso: int) -> int | None:
+        async with httpx.AsyncClient(timeout=5, headers=await self.token.cabeceras() if self.token else {}) as http:
+            r = await http.get(f"{self.url}/procesos/{id_proceso}")
+            if r.status_code == 404:
+                return None
+            r.raise_for_status()
+            return r.json().get("idCliente")
 
     async def responsable(self, id_proceso: int) -> int | None:
-        async with httpx.AsyncClient(timeout=5) as http:
+        async with httpx.AsyncClient(timeout=5, headers=await self.token.cabeceras() if self.token else {}) as http:
             r = await http.get(f"{self.url}/procesos/{id_proceso}")
             if r.status_code == 404:
                 return None
             r.raise_for_status()
             return r.json().get("idResponsable")
+
+
+# ------------------------------------------------------------------ servicio identidad
+
+class ClienteIdentidad:
+    """Cuentas del portal de un cliente (ruta interna de identidad, con el token del servicio)."""
+
+    def __init__(self, url: str, token=None):
+        self.url = url.rstrip("/")
+        self.token = token
+
+    async def de_cliente(self, id_cliente: int) -> list[CuentaCliente]:
+        async with httpx.AsyncClient(timeout=5, headers=await self.token.cabeceras() if self.token else {}) as http:
+            r = await http.get(f"{self.url}/interno/clientes/{id_cliente}/cuentas")
+            r.raise_for_status()
+            return [CuentaCliente(int(c["idUsuario"]), c.get("nombre") or "", c.get("email")) for c in r.json()]
 
 
 # ------------------------------------------------------------------ Telegram
@@ -293,21 +319,36 @@ class Mensajeria:
     """
 
     COLA = "notificaciones.avisos"
-    CLAVES = ("termino.por_vencer", "termino.vencido", "actuacion.detectada", "audiencia.proxima")
+    CLAVES = ("termino.por_vencer", "termino.vencido", "actuacion.detectada", "audiencia.proxima",
+              "portal.resumen_publicado")
 
     def __init__(self, cfg: Config):
         self.cfg = cfg
-        self.conexion: aio_pika.abc.AbstractRobustConnection | None = None
+        self.conexion: aio_pika.abc.AbstractConnection | None = None
         self.exchange: aio_pika.abc.AbstractExchange | None = None
 
     async def iniciar(self, procesar) -> None:
+        """
+        Conecta, consume y, si la conexión se cae (p. ej. RabbitMQ se reinició), vuelve a conectar y a consumir.
+        No se usa connect_robust: tras un reinicio de RabbitMQ su reconexión podía quedarse detenida y la cola se
+        quedaba sin consumidor (F9). Los mensajes esperan en la cola durable mientras tanto.
+        """
         while True:
             try:
-                self.conexion = await aio_pika.connect_robust(self.cfg.rabbitmq_url)
-                break
+                cerrada = asyncio.Event()
+                await self._conectar(procesar)
+                self.conexion.close_callbacks.add(lambda *_: cerrada.set())
+                await cerrada.wait()
+                log.warning("Se perdió la conexión con RabbitMQ; reconectando en 5 s")
+            except asyncio.CancelledError:
+                raise
             except Exception as e:   # noqa: BLE001
                 log.warning("RabbitMQ no disponible (%s); reintento en 5 s", e)
-                await asyncio.sleep(5)
+            self.exchange = None
+            await asyncio.sleep(5)
+
+    async def _conectar(self, procesar) -> None:
+        self.conexion = await aio_pika.connect(self.cfg.rabbitmq_url)
         canal = await self.conexion.channel()
         await canal.set_qos(prefetch_count=10)
         self.exchange = await canal.declare_exchange(self.cfg.exchange, aio_pika.ExchangeType.TOPIC, durable=True)

@@ -54,7 +54,8 @@ class AutenticacionTest {
 				Set.of("ADMINISTRATIVO"), 0, null));
 		emisor = new EmisorJwtRsa("", Duration.ofHours(8));
 		reloj = new MutableReloj(AHORA);
-		servicio = new AutenticacionServicio(repo, CIFRADOR, emisor, reloj);
+		servicio = new AutenticacionServicio(repo, CIFRADOR, new co.abogados.identidad.aplicacion.SesionesServicio(
+				new SesionesEnMemoria(), repo, emisor, reloj, Duration.ofHours(12), Duration.ofDays(7)), reloj);
 	}
 
 	@Test
@@ -166,13 +167,14 @@ class AutenticacionTest {
 		public Optional<Usuario> porId(long id) { return Optional.ofNullable(datos.get(id)); }
 		public void guardarFallo(long id, int n, Instant hasta) {
 			Usuario u = datos.get(id);
-			datos.put(id, new Usuario(id, u.usuario(), u.nombre(), u.email(), u.hashClave(), u.activo(), u.roles(), n, hasta));
+			datos.put(id, new Usuario(id, u.usuario(), u.nombre(), u.email(), u.hashClave(), u.activo(), u.roles(), n, hasta,
+					u.idCliente()));
 		}
 		public void guardarIngreso(long id, Instant ahora) { guardarFallo(id, 0, null); }
 		public void cambiarClave(long id, String hash, Instant ahora) {
 			Usuario u = datos.get(id);
 			datos.put(id, new Usuario(id, u.usuario(), u.nombre(), u.email(), hash, u.activo(), u.roles(),
-					u.intentosFallidos(), u.bloqueadoHasta()));
+					u.intentosFallidos(), u.bloqueadoHasta(), u.idCliente()));
 			debenCambiar.remove(id);
 		}
 		final java.util.Set<Long> debenCambiar = new java.util.HashSet<>();

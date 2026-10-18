@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { ApiService, mensajeDeError } from '../../core/api.service';
 import { Aviso, EstadoTelegram, VinculoTelegram } from '../../core/modelos';
 import { SesionService } from '../../core/sesion.service';
+import { AuthService } from '../../core/auth.service';
 
 /** Avisos dentro de la app de la persona elegida en "Ver como". */
 @Component({
@@ -16,6 +17,7 @@ import { SesionService } from '../../core/sesion.service';
 export class AvisosComponent {
   private api = inject(ApiService);
   readonly sesion = inject(SesionService);
+  readonly auth = inject(AuthService);
 
   avisos: Aviso[] = [];
   telegram: EstadoTelegram | null = null;
@@ -62,6 +64,12 @@ export class AvisosComponent {
       next: () => this.cargarTelegram(this.sesion.idPersona()),
       error: e => this.error = mensajeDeError(e)
     });
+  }
+
+  /** El cliente va a su portal; el personal, al expediente. */
+  enlace(a: Aviso): (string | number)[] {
+    const id = a.referencia?.id_proceso ?? "";
+    return a.referencia?.portal ? ["/portal/procesos", id] : ["/procesos", id];
   }
 
   leer(a: Aviso): void {

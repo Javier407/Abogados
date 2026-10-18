@@ -20,14 +20,14 @@ public class UsuarioRepositorioJdbc implements UsuarioRepositorio {
 
 	private static final String SELECT = """
 			SELECT u.id_usuario, u.usuario, u.nombre, u.email, u.password_hash, u.activo, u.intentos_fallidos,
-			       u.bloqueado_hasta, coalesce(string_agg(r.codigo, ','), '') AS roles
+			       u.bloqueado_hasta, u.id_cliente, coalesce(string_agg(r.codigo, ','), '') AS roles
 			FROM identidad.usuarios u
 			LEFT JOIN identidad.usuario_rol ur ON ur.id_usuario = u.id_usuario
 			LEFT JOIN identidad.roles r ON r.id_rol = ur.id_rol
 			""";
 	private static final String AGRUPAR = """
 			GROUP BY u.id_usuario, u.usuario, u.nombre, u.email, u.password_hash, u.activo, u.intentos_fallidos,
-			         u.bloqueado_hasta
+			         u.bloqueado_hasta, u.id_cliente
 			""";
 
 	private final JdbcClient jdbc;
@@ -105,7 +105,8 @@ public class UsuarioRepositorioJdbc implements UsuarioRepositorio {
 		Timestamp bloqueado = rs.getTimestamp("bloqueado_hasta");
 		return new Usuario(rs.getLong("id_usuario"), rs.getString("usuario"), rs.getString("nombre"),
 				rs.getString("email"), rs.getString("password_hash"), rs.getBoolean("activo"), conjunto,
-				rs.getInt("intentos_fallidos"), bloqueado == null ? null : bloqueado.toInstant());
+				rs.getInt("intentos_fallidos"), bloqueado == null ? null : bloqueado.toInstant(),
+				(Integer) rs.getObject("id_cliente"));
 	}
 
 }

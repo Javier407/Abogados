@@ -22,6 +22,8 @@ import co.abogados.identidad.dominio.puertos.CuentasRepositorio;
  * desbloquear. La contraseña temporal la escribe el administrador (nunca se genera ni se muestra aquí) y la
  * persona debe cambiarla al entrar. Siempre queda al menos un administrador activo, y nadie puede quitarse
  * a sí mismo el rol de administrador ni desactivar su propia cuenta.
+ * Desactivar una cuenta, cambiarle los roles o restablecer su contraseña corta sus sesiones abiertas (F9).
+ * Las cuentas de cliente se enlazan con su ficha en gabinete (idCliente) para el portal.
  */
 @Service
 @Transactional
@@ -30,18 +32,36 @@ public class CuentasServicio {
 	private static final Logger log = LoggerFactory.getLogger(CuentasServicio.class);
 
 	public record NuevaCuenta(long idUsuario, String usuario, String nombre, String email, Set<String> roles,
-			String claveTemporal) {
+			String claveTemporal, Integer idCliente) {
+
+		public NuevaCuenta(long idUsuario, String usuario, String nombre, String email, Set<String> roles,
+				String claveTemporal) {
+			this(idUsuario, usuario, nombre, email, roles, claveTemporal, null);
+		}
 	}
 
-	public record CambioCuenta(String usuario, String nombre, String email, Set<String> roles, boolean activo) {
+	public record CambioCuenta(String usuario, String nombre, String email, Set<String> roles, boolean activo,
+			Integer idCliente) {
+
+		public CambioCuenta(String usuario, String nombre, String email, Set<String> roles, boolean activo) {
+			this(usuario, nombre, email, roles, activo, null);
+		}
 	}
 
 	private final CuentasRepositorio cuentas;
 	private final Cifrador cifrador;
+	private final SesionesServicio sesiones;
 
-	public CuentasServicio(CuentasRepositorio cuentas, Cifrador cifrador) {
+	public CuentasServicio(CuentasRepositorio cuentas, Cifrador cifrador, SesionesServicio sesiones) {
 		this.cuentas = cuentas;
 		this.cifrador = cifrador;
+		this.sesiones = sesiones;
+	}
+
+	/** Cuentas activas de un cliente (las usa notificaciones para avisarle). */
+	@Transactional(readOnly = true)
+	public List<Cuenta> deCliente(int idCliente) {
+		return cuentas.deCliente(idCliente);
 	}
 
 	@Transactional(readOnly = true)
@@ -55,12 +75,13 @@ public class CuentasServicio {
 		}
 		String usuario = minusculas(n.usuario());
 		String email = minusculas(n.email());
-		Cuenta.validar(usuario, n.nombre(), email, n.roles());
+		Cuenta.validar(usuario, n.nombre(), email, n.roles(), n.idCliente());
 		if (cuentas.existe(n.idUsuario(), usuario, email, null)) {
 			throw new ConflictoException("Ya existe una cuenta con ese documento, usuario o correo");
 		}
 		PoliticaClave.validar(n.claveTemporal(), comoUsuario(n.idUsuario(), usuario));
-		cuentas.crear(n.idUsuario(), usuario, n.nombre().strip(), email, cifrador.cifrar(n.claveTemporal()), n.roles());
+		cuentas.crear(n.idUsuario(), usuario, n.nombre().strip(), email, cifrador.cifrar(n.claveTemporal()), n.roles(),
+				n.idCliente());
 		log.info("Cuenta {} ({}) creada por {} con roles {}", usuario, n.idUsuario(), administrador, n.roles());
 		return buscar(n.idUsuario());
 	}
@@ -69,7 +90,7 @@ public class CuentasServicio {
 		Cuenta actual = buscar(idUsuario);
 		String usuario = minusculas(c.usuario());
 		String email = minusculas(c.email());
-		Cuenta.validar(usuario, c.nombre(), email, c.roles());
+		Cuenta.validar(usuario, c.nombre(), email, c.roles(), c.idCliente());
 		if (cuentas.existe(-1, usuario, email, idUsuario)) {
 			throw new ConflictoException("Otra cuenta ya usa ese usuario o correo");
 		}
@@ -81,7 +102,12 @@ public class CuentasServicio {
 		if (dejaDeSerAdmin && cuentas.administradoresActivos() <= 1) {
 			throw new ReglaNegocioException("Debe quedar al menos un administrador activo");
 		}
-		cuentas.actualizar(idUsuario, usuario, c.nombre().strip(), email, c.activo(), c.roles());
+		cuentas.actualizar(idUsuario, usuario, c.nombre().strip(), email, c.activo(), c.roles(), c.idCliente());
+		boolean cambiaAcceso = !c.activo() || !actual.roles().equals(c.roles())
+				|| !java.util.Objects.equals(actual.idCliente(), c.idCliente());
+		if (cambiaAcceso) {
+			sesiones.cerrarTodas(idUsuario, c.activo() ? "ROLES_CAMBIADOS" : "CUENTA_DESACTIVADA", null);
+		}
 		log.info("Cuenta {} actualizada por {}: roles {}, activa {}", idUsuario, administrador, c.roles(), c.activo());
 		return buscar(idUsuario);
 	}
@@ -90,6 +116,7 @@ public class CuentasServicio {
 		Cuenta actual = buscar(idUsuario);
 		PoliticaClave.validar(claveTemporal, comoUsuario(idUsuario, actual.usuario()));
 		cuentas.restablecerClave(idUsuario, cifrador.cifrar(claveTemporal));
+		sesiones.cerrarTodas(idUsuario, "CLAVE_RESTABLECIDA", null);
 		log.info("Contraseña de la cuenta {} restablecida por {}", idUsuario, administrador);
 		return buscar(idUsuario);
 	}

@@ -2,7 +2,11 @@
 
   <div class="page-header">
     <h1>Avisos</h1>
-    <p>Términos por vencer y vencidos. Llegan también por correo; aquí aparecen en vivo.</p>
+    @if (auth.esCliente()) {
+      <p>Novedades de sus procesos y audiencias próximas. Llegan también a su correo; aquí aparecen en vivo.</p>
+    } @else {
+      <p>Términos por vencer y vencidos. Llegan también por correo; aquí aparecen en vivo.</p>
+    }
   </div>
 
   @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
@@ -25,7 +29,7 @@
             <p class="form-ayuda">O envíe al bot el mensaje <code>/start {{ vinculo.codigo }}</code>. El código sirve una vez y por 24 horas.</p>
             <button class="btn btn-secondary btn-sm" type="button" (click)="cargarTelegram(sesion.idPersona())">Ya lo hice</button>
           } @else {
-            <p>Reciba los avisos de términos y de actuaciones nuevas en su Telegram.</p>
+            <p>{{ auth.esCliente() ? 'Reciba estos avisos también en su Telegram.' : 'Reciba los avisos de términos y de actuaciones nuevas en su Telegram.' }}</p>
             <button class="btn btn-primary btn-sm" type="button" (click)="vincularTelegram()">Vincular Telegram</button>
           }
         </div>
@@ -54,7 +58,7 @@
             </div>
             <div class="acciones-celda">
               @if (a.referencia.id_proceso) {
-                <a class="btn btn-secondary btn-sm" [routerLink]="['/procesos', a.referencia.id_proceso, 'editar']" (click)="leer(a)">Ver proceso</a>
+                <a class="btn btn-secondary btn-sm" [routerLink]="enlace(a)" (click)="leer(a)">Ver proceso</a>
               }
               @if (!a.leida) {
                 <button class="btn btn-primary btn-sm" type="button" (click)="leer(a)">Leído</button>

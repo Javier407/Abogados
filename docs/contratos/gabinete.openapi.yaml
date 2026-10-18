@@ -257,6 +257,16 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses: { '204': { description: Eliminado } }
 
+  # ---------------------------------------------------------------- portal del cliente (F9)
+  /portal/finanzas:
+    get:
+      summary: Honorarios, pagos y gastos por reembolsar del cliente del token (solo rol CLIENTE)
+      description: |
+        Los pagos anulados no se muestran. El total de cada acuerdo es null mientras la parte variable no se
+        haya liquidado. Se expone como /api/portal/finanzas.
+      responses:
+        "200": { description: "{ acuerdos[], gastosPorReembolsar[], saldoHonorarios, totalGastosPorReembolsar }" }
+        "403": { description: No es una cuenta del portal }
 components:
   responses:
     Error:

@@ -181,14 +181,84 @@ class FuentePortalHttp:
         return ResultadoConsulta(True, actuaciones, " ".join(str(proceso.get("despacho") or "").split()) or None)
 
 
+# ------------------------------------------------------------------ outbox (F9)
+
+class PublicadorOutbox:
+    """
+    "Publicar" una actuación detectada es guardarla en vigilancia.outbox: queda en la base aunque RabbitMQ esté
+    caído. RelayOutbox la envía después. Si el servicio se cae justo después de guardarla y antes de marcar la
+    actuación como conocida, se detecta otra vez y sale dos veces: los consumidores ignoran la repetida (referencia).
+    """
+
+    def __init__(self, pool: AsyncConnectionPool):
+        self.pool = pool
+
+    async def actuacion_detectada(self, rv: RadicadoVigilado, a: Actuacion, fuente: Fuente) -> None:
+        cuerpo = {"radicado": rv.radicado, "id_proceso": rv.id_proceso, "referencia": a.referencia,
+                  "fecha": a.fecha.isoformat(), "tipo": a.tipo, "actuacion": a.actuacion, "anotacion": a.anotacion,
+                  "fuente": fuente.value, "ocurrido": datetime.now(timezone.utc).isoformat()}
+        async with self.pool.connection() as con:
+            await con.execute("INSERT INTO vigilancia.outbox (clave, cuerpo) VALUES (%s, %s)",
+                              ("actuacion.detectada", Jsonb(cuerpo)))
+
+
+class RelayOutbox:
+    """Envía los eventos pendientes del outbox, en orden, cada 2 segundos, con confirmación del broker."""
+
+    def __init__(self, pool: AsyncConnectionPool, mensajeria: "Mensajeria", cada_seg: float = 2.0):
+        self.pool = pool
+        self.mensajeria = mensajeria
+        self.cada_seg = cada_seg
+        self._caido = False
+
+    async def enviar_pendientes(self) -> int:
+        enviados = 0
+        async with self.pool.connection() as con:
+            async with con.transaction():
+                filas = await (await con.execute(
+                    """SELECT id_evento, clave, cuerpo::text FROM vigilancia.outbox WHERE enviado_en IS NULL
+                       ORDER BY id_evento LIMIT 50 FOR UPDATE SKIP LOCKED""")).fetchall()
+                for id_evento, clave, cuerpo in filas:
+                    try:
+                        await self.mensajeria.publicar(clave, cuerpo, f"vigilancia-{id_evento}")
+                    except Exception as e:   # noqa: BLE001 - queda pendiente y se reintenta
+                        await con.execute("""UPDATE vigilancia.outbox SET intentos = intentos + 1, ultimo_error = %s
+                                             WHERE id_evento = %s""", (str(e)[:300], id_evento))
+                        if not self._caido:
+                            log.warning("RabbitMQ no confirmó el evento %s (%s): queda pendiente", id_evento, e)
+                            self._caido = True
+                        break
+                    await con.execute("""UPDATE vigilancia.outbox SET enviado_en = now(), intentos = intentos + 1,
+                                         ultimo_error = NULL WHERE id_evento = %s""", (id_evento,))
+                    enviados += 1
+        if enviados:
+            self._caido = False
+            log.info("%s evento(s) enviados desde el outbox", enviados)
+        return enviados
+
+    async def ejecutar(self) -> None:
+        vueltas = 0
+        while True:
+            try:
+                await self.enviar_pendientes()
+                vueltas += 1
+                if vueltas % 1800 == 0:   # más o menos una vez por hora: borra lo enviado hace más de 7 días
+                    async with self.pool.connection() as con:
+                        await con.execute("DELETE FROM vigilancia.outbox WHERE enviado_en < now() - interval '7 days'")
+            except Exception:   # noqa: BLE001
+                log.exception("Error enviando el outbox")
+            await asyncio.sleep(self.cada_seg)
+
+
 # ------------------------------------------------------------------ servicio procesos
 
 class ClienteProcesos:
-    def __init__(self, url: str):
+    def __init__(self, url: str, token=None):
         self.url = url.rstrip("/")
+        self.token = token   # TokenServicio: estas llamadas llevan el token del servicio (F9)
 
     async def vigilados(self) -> list[tuple[str, int]]:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with httpx.AsyncClient(timeout=10, headers=await self.token.cabeceras() if self.token else {}) as http:
             r = await http.get(f"{self.url}/procesos")
             r.raise_for_status()
             return [(p["radicado"], p["idProceso"]) for p in r.json() if p.get("vigilado")]
@@ -208,13 +278,23 @@ class Mensajeria:
         self.exchange = None
 
     async def iniciar(self, proceso_creado) -> None:
+        """Conecta, consume y reconecta si la conexión se cae (sin connect_robust; ver notificaciones, F9)."""
         while True:
             try:
-                self.conexion = await aio_pika.connect_robust(self.url)
-                break
+                cerrada = asyncio.Event()
+                await self._conectar(proceso_creado)
+                self.conexion.close_callbacks.add(lambda *_: cerrada.set())
+                await cerrada.wait()
+                log.warning("Se perdió la conexión con RabbitMQ; reconectando en 5 s")
+            except asyncio.CancelledError:
+                raise
             except Exception as e:   # noqa: BLE001
                 log.warning("RabbitMQ no disponible (%s); reintento en 5 s", e)
-                await asyncio.sleep(5)
+            self.exchange = None
+            await asyncio.sleep(5)
+
+    async def _conectar(self, proceso_creado) -> None:
+        self.conexion = await aio_pika.connect(self.url)
         canal = await self.conexion.channel()
         self.exchange = await canal.declare_exchange(self.nombre_exchange, aio_pika.ExchangeType.TOPIC, durable=True)
         cola = await canal.declare_queue(self.COLA, durable=True)
@@ -237,16 +317,14 @@ class Mensajeria:
         await cola.consume(al_recibir)
         log.info("Escuchando proceso.creado en la cola %s", self.COLA)
 
-    async def actuacion_detectada(self, rv: RadicadoVigilado, a: Actuacion, fuente: Fuente) -> None:
+    async def publicar(self, clave: str, cuerpo: str, id_mensaje: str) -> None:
+        """Publica y espera la confirmación del broker (el canal se abre con publisher confirms)."""
         if self.exchange is None:
             raise RuntimeError("RabbitMQ no está conectado")
-        cuerpo = {"radicado": rv.radicado, "id_proceso": rv.id_proceso, "referencia": a.referencia,
-                  "fecha": a.fecha.isoformat(), "tipo": a.tipo, "actuacion": a.actuacion, "anotacion": a.anotacion,
-                  "fuente": fuente.value, "ocurrido": datetime.now(timezone.utc).isoformat()}
         await self.exchange.publish(
-            aio_pika.Message(json.dumps(cuerpo, ensure_ascii=False).encode(), content_type="application/json",
+            aio_pika.Message(cuerpo.encode(), content_type="application/json", message_id=id_mensaje,
                              delivery_mode=aio_pika.DeliveryMode.PERSISTENT),
-            routing_key="actuacion.detectada")
+            routing_key=clave, timeout=5)
 
     async def cerrar(self) -> None:
         if self.conexion is not None:

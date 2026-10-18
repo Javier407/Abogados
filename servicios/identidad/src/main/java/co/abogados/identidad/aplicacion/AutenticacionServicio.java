@@ -18,7 +18,6 @@ import co.abogados.identidad.dominio.ReglaNegocioException;
 import co.abogados.identidad.dominio.Sesion;
 import co.abogados.identidad.dominio.Usuario;
 import co.abogados.identidad.dominio.puertos.Cifrador;
-import co.abogados.identidad.dominio.puertos.EmisorTokens;
 import co.abogados.identidad.dominio.puertos.UsuarioRepositorio;
 
 /**
@@ -26,6 +25,7 @@ import co.abogados.identidad.dominio.puertos.UsuarioRepositorio;
  * - El mensaje de error no dice si falló el usuario o la contraseña (no revela qué cuentas existen).
  * - Si el usuario no existe se verifica igual un hash ficticio, para que el tiempo de respuesta no lo delate.
  * - 5 fallos seguidos bloquean la cuenta 15 minutos. Cada intento queda en la bitácora identidad.ingresos.
+ * - Al entrar se abre una sesión renovable (SesionesServicio); cambiar la contraseña corta las demás sesiones.
  */
 @Service
 public class AutenticacionServicio {
@@ -35,14 +35,14 @@ public class AutenticacionServicio {
 
 	private final UsuarioRepositorio usuarios;
 	private final Cifrador cifrador;
-	private final EmisorTokens tokens;
+	private final SesionesServicio sesiones;
 	private final Clock reloj;
 	private final String hashFicticio;
 
-	public AutenticacionServicio(UsuarioRepositorio usuarios, Cifrador cifrador, EmisorTokens tokens, Clock reloj) {
+	public AutenticacionServicio(UsuarioRepositorio usuarios, Cifrador cifrador, SesionesServicio sesiones, Clock reloj) {
 		this.usuarios = usuarios;
 		this.cifrador = cifrador;
-		this.tokens = tokens;
+		this.sesiones = sesiones;
 		this.reloj = reloj;
 		this.hashFicticio = cifrador.cifrar("clave-de-relleno-para-igualar-tiempos");
 	}
@@ -82,7 +82,7 @@ public class AutenticacionServicio {
 		}
 		usuarios.guardarIngreso(u.idUsuario(), ahora);
 		usuarios.registrarIntento(recortar(texto), u.idUsuario(), true, null, ip);
-		return tokens.emitir(u, ahora).conCambioDeClave(usuarios.debeCambiarClave(u.idUsuario()));
+		return sesiones.abrir(u, ip);
 	}
 
 	@Transactional(readOnly = true)
@@ -93,6 +93,12 @@ public class AutenticacionServicio {
 
 	@Transactional
 	public void cambiarClave(long idUsuario, String actual, String nueva) {
+		cambiarClave(idUsuario, actual, nueva, null);
+	}
+
+	/** Cambia la contraseña y corta las demás sesiones abiertas (la del refresh token refrescoActual sigue). */
+	@Transactional
+	public void cambiarClave(long idUsuario, String actual, String nueva, String refrescoActual) {
 		Usuario u = yo(idUsuario);
 		if (actual == null || !cifrador.coincide(actual, u.hashClave())) {
 			throw new CredencialesInvalidasException("La contraseña actual no es correcta");
@@ -102,6 +108,7 @@ public class AutenticacionServicio {
 			throw new ReglaNegocioException("La contraseña nueva debe ser distinta de la actual");
 		}
 		usuarios.cambiarClave(idUsuario, cifrador.cifrar(nueva), Instant.now(reloj));
+		sesiones.cerrarTodas(idUsuario, "CLAVE_CAMBIADA", refrescoActual);
 	}
 
 	private static String recortar(String texto) {

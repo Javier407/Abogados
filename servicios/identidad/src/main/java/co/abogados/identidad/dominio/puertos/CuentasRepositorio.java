@@ -16,10 +16,15 @@ public interface CuentasRepositorio {
 	/** Ya existe una cuenta con ese documento, usuario o correo (sin contar la cuenta excluir). */
 	boolean existe(long idUsuario, String usuario, String email, Long excluir);
 
-	/** Crea la cuenta; debe cambiar la contraseña al entrar por primera vez. */
-	void crear(long idUsuario, String usuario, String nombre, String email, String hashClave, Set<String> roles);
+	/** Crea la cuenta; debe cambiar la contraseña al entrar por primera vez. idCliente solo para clientes. */
+	void crear(long idUsuario, String usuario, String nombre, String email, String hashClave, Set<String> roles,
+			Integer idCliente);
 
-	void actualizar(long idUsuario, String usuario, String nombre, String email, boolean activo, Set<String> roles);
+	void actualizar(long idUsuario, String usuario, String nombre, String email, boolean activo, Set<String> roles,
+			Integer idCliente);
+
+	/** Cuentas activas enlazadas con un cliente (para avisarle). */
+	List<Cuenta> deCliente(int idCliente);
 
 	/** Pone una contraseña temporal: desbloquea la cuenta y obliga a cambiarla al entrar. */
 	void restablecerClave(long idUsuario, String hashClave);
