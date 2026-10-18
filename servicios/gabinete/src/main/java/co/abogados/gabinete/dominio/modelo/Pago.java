@@ -1,12 +1,17 @@
 package co.abogados.gabinete.dominio.modelo;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 
 import co.abogados.gabinete.dominio.excepciones.ReglaNegocioException;
 
+/**
+ * Pago del cliente a un acuerdo de honorarios. Un pago nunca se borra: si se registró mal se anula con un
+ * motivo (anuladoEn, anuladoPor, motivoAnulacion) y deja de contar para lo pagado y el saldo.
+ */
 public record Pago(Integer idPago, int idHonorario, LocalDate fecha, BigDecimal valor, MedioPago medio,
-		String referencia) {
+		String referencia, Instant anuladoEn, Long anuladoPor, String motivoAnulacion) {
 
 	public Pago {
 		if (fecha == null || medio == null) {
@@ -17,4 +22,13 @@ public record Pago(Integer idPago, int idHonorario, LocalDate fecha, BigDecimal 
 		}
 		referencia = Texto.limpio(referencia);
 	}
+
+	public Pago(Integer idPago, int idHonorario, LocalDate fecha, BigDecimal valor, MedioPago medio, String referencia) {
+		this(idPago, idHonorario, fecha, valor, medio, referencia, null, null, null);
+	}
+
+	public boolean anulado() {
+		return anuladoEn != null;
+	}
+
 }

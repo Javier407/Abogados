@@ -10,6 +10,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | **F3. Vigilancia** | Enterarse de los autos sin entrar al portal | `vigilancia` con la interfaz `FuenteRamaJudicial`; consulta programada; evento `actuacion.detectada`; notificaciones por Telegram | Un auto nuevo en un radicado vigilado llega por Telegram y queda registrado en el proceso |
 | **F4. Asistente y administración** | Apoyo a la redacción y gestión de la firma | `asistente-ia` con Hermes (borradores y resúmenes); módulo de peritos; tarifas, honorarios pactados y pagos | Generar un borrador de contestación a partir de un proceso y registrar un pago de honorarios |
 | **F5. Seguridad y calidad** | Listo para uso real | `identidad` con JWT y roles; contraseñas con BCrypt; CI con GitHub Actions (build y pruebas por servicio); nueva evaluación ISO/IEC 25010 | Ningún servicio responde sin token; el pipeline pasa en verde; Seguridad ≥ 7 en la evaluación |
+| **F8. Administración y finanzas** | Que la firma se administre desde la app y los socios tengan información | Cuentas y roles desde la app (clave temporal que se cambia al entrar); anulación de pagos con motivo; liquidación de la cuota litis; gastos procesales; cartera; reportes de carga, términos y resultados con CSV | Crear una cuenta y que deba cambiar la clave al entrar; anular un pago y que quede en el historial sin contar; liquidar una cuota litis; registrar un gasto reembolsable y verlo en la cartera; reportes visibles solo para la dirección |
 | **F7. Agenda y pruebas** | Que no se olvide una audiencia ni una entrega, y que los términos de cada auto no dependan de la memoria | Audiencias con hora y lugar en el calendario y aviso el día hábil anterior (`audiencia.proxima`); pruebas con perito y término de entrega; términos sugeridos al llegar una providencia | Una audiencia programada sale en el calendario y se avisa el día hábil anterior; una prueba pericial con perito y fecha de entrega crea su término; un auto que admite la demanda en un verbal sugiere contestar en 20 días y el término se crea con un clic |
 | **F6. Expediente** | Que cada proceso tenga su historia completa y los datos estén respaldados | Partes con aviso de conflicto de intereses; actuaciones con línea de tiempo; providencia y sentencia manuales; recursos contra una providencia; otras instancias del radicado; copias de seguridad diarias | Desde la app: agregar la contraparte (con aviso si es cliente), registrar una actuación y una providencia y verlas en la línea de tiempo; existe un respaldo diario que se restaura sin errores |
 
@@ -25,6 +26,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F5 | Terminada: en el servidor las 13 rutas de la API responden 401 sin token (también con cabeceras falsas o token `alg none`); 403 por rol; bloqueo al 5.º fallo; pipeline en verde; Seguridad 8/10 en la [evaluación](04-evaluacion-iso25010.md) | 2026-10-16 |
 | F6 | Terminada: en el servidor, contraparte con el NIT de un cliente → aviso de conflicto; "Constructora Altamira S.A.S." detectada contra el cliente "Constructora Altamira SAS"; memorial del dependiente y auto manual en la línea de tiempo; respaldo diario restaurado en una base temporal (31 procesos, 30 clientes, 19 términos, 16 usuarios) | 2026-10-17 |
 | F7 | Terminada: en el proceso 2 (verbal, cliente demandado) un auto "admite la demanda" sugirió contestar en 20 días y el término se creó con un clic (vence 17/11/2026); una audiencia del lunes se avisó el domingo por la app, el correo y Telegram; una prueba pericial con entrega el 2/11 (festivo) creó su término al 30/10 y quedó cumplido al practicarla | 2026-10-18 |
+| F8 | Terminada: en el servidor (23 comprobaciones), cuenta nueva con clave temporal que exige el cambio al entrar; el administrador no puede quitarse su rol; pago anulado que queda en el historial y deja de contar; cuota litis del 25 % sobre 40.000.000 liquidada en 10.000.000; gasto reembolsable registrado por un abogado y visible en la cartera; reportes 403 para abogados | 2026-10-18 |
 
 ## F1: qué quedó y qué falta
 
@@ -195,3 +197,27 @@ Pendiente o decidido para después:
 - Las reglas se editan por SQL; no hay pantalla de administración.
 - Una prueba no muestra su término en la lista de términos con un enlace de vuelta (se ve en "Términos del proceso" como "Entrega de prueba: …").
 - **Red del servidor:** durante el despliegue la VM y el host Windows tenían la misma IP local (`192.168.1.41`), y la conexión se cortaba cada pocos minutos. Ver `servidor/BITACORA-REINICIOS.md`.
+
+## F8: qué quedó y qué falta
+
+Hecho:
+
+1. **Cuentas desde la app** (`identidad` `/usuarios`, solo ADMIN; pantalla **Usuarios**): crear, cambiar datos y roles, activar o desactivar, restablecer la contraseña y desbloquear.
+   - La contraseña temporal la escribe el administrador (cumple la política) y la persona debe cambiarla al entrar (`debe_cambiar_clave`).
+   - Nadie puede quitarse a sí mismo el rol de administrador ni desactivar su cuenta, y siempre queda al menos un administrador activo.
+   - El servicio comprueba el rol ADMIN aunque el gateway ya lo exija.
+2. **Pagos anulables:** un pago no se borra. Se anula con motivo, fecha y autor; queda tachado en el historial y deja de contar. Si el acuerdo estaba cumplido, vuelve a vigente.
+3. **Liquidación** de cuota litis, porcentaje de la cuantía o mixto: porcentaje × valor obtenido (más el fijo en MIXTO), redondeado al peso. Desde ahí el acuerdo tiene un total: los pagos no lo superan y al completarlo queda cumplido.
+4. **Gastos procesales** (`/gastos`, tarjeta en el expediente):
+   - Lo pagó la firma o el cliente; si la firma lo adelantó y es reembolsable, entra a la cartera hasta que se marque reembolsado.
+   - Los abogados los registran; la administración marca reembolsos y borra.
+5. **Cartera** (`/honorarios/cartera`): saldo de honorarios, gastos por reembolsar y días desde el último pago, por cliente.
+6. **Reportes** (`/reportes/*`, solo ADMIN y SOCIO; pantalla **Reportes** con CSV para Excel): carga por abogado, cumplimiento de términos (a tiempo, tarde, vencidos) y resultados de las sentencias por rama.
+   - Los términos guardan desde ahora la fecha en que se cumplen (`cumplido_en`); los cumplidos antes de F8 aparecen "sin fecha".
+7. Migración `006-f8-administracion.sql`. Pruebas nuevas: 6 de cuentas, 9 de finanzas y 2 de reportes, más los permisos en el gateway.
+
+Pendiente o decidido para después:
+
+- **El cambio obligatorio de la clave temporal lo exige la interfaz**, no la API: con la clave temporal todavía se puede llamar a la API directamente hasta cambiarla. Para cerrarlo, `identidad` podría emitir un token limitado a `/auth/clave`.
+- La cuenta no se enlaza todavía con la ficha del abogado en gabinete: se usa el mismo documento por convención.
+- Facturación electrónica (DIAN) y PDF de los reportes.

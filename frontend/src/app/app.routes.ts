@@ -14,8 +14,10 @@ import { AvisosComponent } from './pages/avisos/avisos.component';
 import { VigilanciaComponent } from './pages/vigilancia/vigilancia.component';
 import { LoginComponent } from './pages/login/login.component';
 import { CuentaComponent } from './pages/cuenta/cuenta.component';
-import { conRol, conSesion } from './core/auth.guard';
-import { INTERNOS, JURIDICO, JURIDICO_Y_DEPENDIENTES, VEN_HONORARIOS } from './core/auth.service';
+import { claveAlDia, conRol, conSesion } from './core/auth.guard';
+import { UsuariosComponent } from './pages/usuarios/usuarios.component';
+import { ReportesComponent } from './pages/reportes/reportes.component';
+import { DIRECCION, INTERNOS, JURIDICO, JURIDICO_Y_DEPENDIENTES, VEN_HONORARIOS } from './core/auth.service';
 
 const personal = conRol(...INTERNOS);
 const juridico = conRol(...JURIDICO);
@@ -26,6 +28,7 @@ export const routes: Routes = [
     path: '',
     component: LayoutComponent,
     canActivate: [conSesion],
+    canActivateChild: [claveAlDia],
     children: [
       { path: 'cuenta', component: CuentaComponent, title: 'Mi cuenta' },
       { path: '', component: DashboardComponent, title: 'Panel', canActivate: [personal] },
@@ -41,6 +44,8 @@ export const routes: Routes = [
       { path: 'avisos', component: AvisosComponent, title: 'Avisos', canActivate: [personal] },
       { path: 'honorarios', component: HonorariosComponent, title: 'Honorarios y pagos', canActivate: [conRol(...VEN_HONORARIOS)] },
       { path: 'pagos', redirectTo: 'honorarios' },
+      { path: 'usuarios', component: UsuariosComponent, title: 'Usuarios', canActivate: [conRol('ADMIN')] },
+      { path: 'reportes', component: ReportesComponent, title: 'Reportes', canActivate: [conRol(...DIRECCION)] },
       { path: 'peritos', component: PeritosComponent, title: 'Peritos', canActivate: [personal] },
       { path: '**', redirectTo: '' }
     ]

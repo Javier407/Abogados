@@ -81,6 +81,53 @@ paths:
       responses:
         "200": { description: JWK Set con la llave RSA pública }
 
+  # ---------------------------------------------------------------- administración de cuentas (F8, solo ADMIN)
+  /usuarios:
+    get:
+      summary: Cuentas del sistema (sin contraseñas)
+      responses:
+        "200": { description: Cuentas }
+        "403": { description: No es administrador }
+    post:
+      summary: Crea una cuenta con contraseña temporal; la persona debe cambiarla al entrar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idUsuario, usuario, nombre, email, roles, claveTemporal]
+              properties:
+                idUsuario: { type: integer, format: int64, description: Documento }
+                usuario: { type: string, pattern: '^[a-z0-9._-]{3,30}$' }
+                nombre: { type: string, maxLength: 120 }
+                email: { type: string, format: email }
+                roles: { type: array, items: { type: string, enum: [ADMIN, SOCIO, ABOGADO, DEPENDIENTE, ADMINISTRATIVO, CLIENTE] } }
+                claveTemporal: { type: string, minLength: 10, maxLength: 72 }
+      responses:
+        "201": { description: Creada }
+        "409": { description: Ya existe una cuenta con ese documento, usuario o correo }
+        "422": { description: Datos o contraseña inválidos }
+  /usuarios/{id}:
+    put:
+      summary: Cambia datos, roles y estado. Nadie se quita su propio rol ADMIN; siempre queda un administrador activo
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer, format: int64 } }]
+      responses:
+        "200": { description: Actualizada }
+        "422": { description: Regla incumplida }
+  /usuarios/{id}/clave:
+    post:
+      summary: Restablece la contraseña (temporal), desbloquea y obliga a cambiarla
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer, format: int64 } }]
+      responses:
+        "200": { description: Restablecida }
+  /usuarios/{id}/desbloqueo:
+    post:
+      summary: Quita el bloqueo por intentos fallidos
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer, format: int64 } }]
+      responses:
+        "200": { description: Desbloqueada }
+
 components:
   securitySchemes:
     bearer:
@@ -99,6 +146,7 @@ components:
         roles:
           type: array
           items: { type: string, enum: [ADMIN, SOCIO, ABOGADO, DEPENDIENTE, ADMINISTRATIVO, CLIENTE] }
+        debeCambiarClave: { type: boolean, description: "Clave temporal (F8): la interfaz lleva a Mi cuenta hasta cambiarla" }
     Perfil:
       type: object
       properties:

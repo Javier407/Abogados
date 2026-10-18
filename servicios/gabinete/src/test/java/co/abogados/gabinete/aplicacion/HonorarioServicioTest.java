@@ -193,13 +193,24 @@ class HonorarioServicioTest {
 			acuerdos.put(id, acuerdos.get(id).conEstado(EstadoHonorario.valueOf(estado)));
 		}
 		public List<Pago> pagos(int id) { return pagos.stream().filter(p -> p.idHonorario() == id).toList(); }
+		final Map<Integer, BigDecimal> liquidados = new HashMap<>();
+
 		public BigDecimal totalPagado(int id) {
-			return pagos(id).stream().map(Pago::valor).reduce(BigDecimal.ZERO, BigDecimal::add);
+			return pagos(id).stream().filter(p -> !p.anulado()).map(Pago::valor).reduce(BigDecimal.ZERO, BigDecimal::add);
 		}
 		public int registrarPago(Pago p) {
-			pagos.add(p);
-			return pagos.size();
+			int id = pagos.size() + 1;
+			pagos.add(new Pago(id, p.idHonorario(), p.fecha(), p.valor(), p.medio(), p.referencia()));
+			return id;
 		}
+		public Optional<Pago> pago(int idPago) { return pagos.stream().filter(p -> p.idPago() == idPago).findFirst(); }
+		public void anularPago(int idPago, java.time.Instant cuando, Long quien, String motivo) {
+			Pago p = pago(idPago).orElseThrow();
+			pagos.set(pagos.indexOf(p), new Pago(p.idPago(), p.idHonorario(), p.fecha(), p.valor(), p.medio(), p.referencia(),
+					cuando, quien, motivo));
+		}
+		public Optional<BigDecimal> valorLiquidado(int id) { return Optional.ofNullable(liquidados.get(id)); }
+		public void liquidar(int id, BigDecimal base, BigDecimal valor, LocalDate fecha) { liquidados.put(id, valor); }
 	}
 
 }

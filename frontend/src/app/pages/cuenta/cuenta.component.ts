@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
+import { Router } from '@angular/router';
 
 import { mensajeDeError } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
@@ -18,6 +19,9 @@ import { AuthService } from '../../core/auth.service';
 
       @if (!auth.esPersonal()) {
         <div class="alerta alerta-exito">El portal para que los clientes consulten sus procesos estará disponible más adelante.</div>
+      }
+      @if (auth.sesion()?.debeCambiarClave) {
+        <div class="alerta alerta-error" role="alert">Su contraseña es temporal. Póngale una propia para seguir usando la aplicación.</div>
       }
       @if (mensaje) { <div class="alerta alerta-exito">{{ mensaje }}</div> }
       @if (error) { <div class="alerta alerta-error" role="alert">{{ error }}</div> }
@@ -53,6 +57,7 @@ import { AuthService } from '../../core/auth.service';
 })
 export class CuentaComponent {
   readonly auth = inject(AuthService);
+  private router = inject(Router);
   actual = '';
   nueva = '';
   repetir = '';
@@ -64,7 +69,13 @@ export class CuentaComponent {
     if (form.invalid) { this.error = 'Complete los tres campos (la nueva con al menos 10 caracteres).'; return; }
     if (this.nueva !== this.repetir) { this.error = 'Las contraseñas nuevas no coinciden.'; return; }
     this.auth.cambiarClave(this.actual, this.nueva).subscribe({
-      next: () => { this.mensaje = 'Contraseña cambiada.'; form.resetForm(); },
+      next: () => {
+        const eraObligatorio = !!this.auth.sesion()?.debeCambiarClave;
+        this.mensaje = 'Contraseña cambiada.';
+        form.resetForm();
+        this.auth.marcarClaveCambiada();
+        if (eraObligatorio) this.router.navigateByUrl(this.auth.esPersonal() ? '/' : '/cuenta');
+      },
       error: e => this.error = mensajeDeError(e)
     });
   }

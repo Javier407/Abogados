@@ -30,6 +30,8 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 	static final Set<String> JURIDICO = Set.of("ADMIN", "SOCIO", "ABOGADO");
 	static final Set<String> JURIDICO_Y_DEPENDIENTES = Set.of("ADMIN", "SOCIO", "ABOGADO", "DEPENDIENTE");
 	static final Set<String> DIRECCION = Set.of("ADMIN", "SOCIO");
+	static final Set<String> VEN_FINANZAS = Set.of("ADMIN", "SOCIO", "ABOGADO", "ADMINISTRATIVO");
+	static final Set<String> MANEJAN_FINANZAS = Set.of("ADMIN", "SOCIO", "ADMINISTRATIVO");
 
 	/** Método null = cualquiera. */
 	record Regla(HttpMethod metodo, PathPattern ruta, Set<String> roles) {
@@ -50,6 +52,7 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			// identidad: el propio perfil y la propia contraseña
 			r(GET, "/api/auth/yo", TODOS),
 			r(HttpMethod.POST, "/api/auth/clave", TODOS),
+			r(null, "/api/usuarios/**", Set.of("ADMIN")),        // administración de cuentas
 			// gabinete
 			r(GET, "/api/clientes/**", INTERNOS),
 			r(null, "/api/clientes/**", Set.of("ADMIN", "SOCIO", "ABOGADO", "ADMINISTRATIVO")),
@@ -58,8 +61,12 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			r(GET, "/api/gabinete/**", INTERNOS),
 			r(GET, "/api/peritos/**", INTERNOS),
 			r(null, "/api/peritos/**", JURIDICO),
-			r(GET, "/api/honorarios/**", Set.of("ADMIN", "SOCIO", "ABOGADO", "ADMINISTRATIVO")),
-			r(null, "/api/honorarios/**", Set.of("ADMIN", "SOCIO", "ADMINISTRATIVO")),
+			r(GET, "/api/honorarios/cartera", MANEJAN_FINANZAS),
+			r(GET, "/api/honorarios/**", VEN_FINANZAS),
+			r(null, "/api/honorarios/**", MANEJAN_FINANZAS),
+			r(GET, "/api/gastos/**", VEN_FINANZAS),
+			r(HttpMethod.POST, "/api/gastos", VEN_FINANZAS),               // quien incurre en el gasto lo registra
+			r(null, "/api/gastos/**", MANEJAN_FINANZAS),                   // reembolsos y borrado: administración
 			// procesos, términos, calendario y audiencias
 			r(GET, "/api/procesos/**", INTERNOS),
 			r(HttpMethod.POST, "/api/procesos/*/terminos", JURIDICO_Y_DEPENDIENTES),
@@ -71,6 +78,7 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			r(GET, "/api/calendario/**", INTERNOS),
 			r(GET, "/api/audiencias/**", INTERNOS),
 			r(HttpMethod.POST, "/api/audiencias/avisos", JURIDICO_Y_DEPENDIENTES),
+			r(GET, "/api/reportes/**", DIRECCION),
 			// vigilancia, avisos y asistente
 			r(null, "/api/vigilancia/**", JURIDICO_Y_DEPENDIENTES),
 			r(null, "/api/notificaciones/**", INTERNOS),   // cada quien solo los suyos: lo valida notificaciones

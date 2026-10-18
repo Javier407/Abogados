@@ -8,7 +8,9 @@ import {
   FuenteVigilancia, Proceso, ProcesoSolicitud, Providencia, RadicadoVigilado, Rama, ResultadoConsulta, Revision, Sede,
   Termino, TerminoSolicitud, TipoProceso, Vencimiento, VinculoTelegram,
   Actuacion, ActuacionSolicitud, Expediente, Parte, ParteRegistrada, ParteSolicitud, ProvidenciaSolicitud,
-  Audiencia, Prueba, PruebaSolicitud, SugerenciaTermino
+  Audiencia, Prueba, PruebaSolicitud, SugerenciaTermino,
+  CambioCuenta, CargaAbogado, CarteraCliente, Cuenta, CuentaSolicitud, CumplimientoTerminos, Gasto, GastoSolicitud,
+  ResultadoRama
 } from './modelos';
 
 /**
@@ -177,6 +179,49 @@ export class ApiService {
     return this.http.get<Audiencia[]>(`${API}/audiencias`, { params: filtros({ desde, hasta, idAsistente }) });
   }
 
+  // ---------- administración de cuentas (solo ADMIN) ----------
+  cuentas(): Observable<Cuenta[]> {
+    return this.http.get<Cuenta[]>(`${API}/usuarios`);
+  }
+  crearCuenta(c: CuentaSolicitud): Observable<Cuenta> {
+    return this.http.post<Cuenta>(`${API}/usuarios`, c);
+  }
+  actualizarCuenta(id: number, c: CambioCuenta): Observable<Cuenta> {
+    return this.http.put<Cuenta>(`${API}/usuarios/${id}`, c);
+  }
+  restablecerClave(id: number, claveTemporal: string): Observable<Cuenta> {
+    return this.http.post<Cuenta>(`${API}/usuarios/${id}/clave`, { claveTemporal });
+  }
+  desbloquearCuenta(id: number): Observable<Cuenta> {
+    return this.http.post<Cuenta>(`${API}/usuarios/${id}/desbloqueo`, {});
+  }
+
+  // ---------- gastos, cartera y reportes ----------
+  gastos(f: { idProceso?: number; idCliente?: number }): Observable<Gasto[]> {
+    return this.http.get<Gasto[]>(`${API}/gastos`, { params: filtros(f) });
+  }
+  registrarGasto(g: GastoSolicitud): Observable<Gasto> {
+    return this.http.post<Gasto>(`${API}/gastos`, g);
+  }
+  reembolsarGasto(id: number): Observable<Gasto> {
+    return this.http.post<Gasto>(`${API}/gastos/${id}/reembolso`, {});
+  }
+  eliminarGasto(id: number): Observable<void> {
+    return this.http.delete<void>(`${API}/gastos/${id}`);
+  }
+  cartera(): Observable<CarteraCliente[]> {
+    return this.http.get<CarteraCliente[]>(`${API}/honorarios/cartera`);
+  }
+  reporteCarga(): Observable<CargaAbogado[]> {
+    return this.http.get<CargaAbogado[]>(`${API}/reportes/carga`);
+  }
+  reporteTerminos(desde?: string, hasta?: string): Observable<CumplimientoTerminos[]> {
+    return this.http.get<CumplimientoTerminos[]>(`${API}/reportes/terminos`, { params: filtros({ desde, hasta }) });
+  }
+  reporteResultados(desde?: string, hasta?: string): Observable<ResultadoRama[]> {
+    return this.http.get<ResultadoRama[]>(`${API}/reportes/resultados`, { params: filtros({ desde, hasta }) });
+  }
+
   // ---------- vigilancia ----------
   radicadosVigilados(): Observable<RadicadoVigilado[]> {
     return this.http.get<RadicadoVigilado[]>(`${API}/vigilancia/radicados`);
@@ -227,6 +272,12 @@ export class ApiService {
     return this.http.put<Honorario>(`${API}/honorarios/${id}/estado`, { estado });
   }
   pagos(idHonorario: number): Observable<Pago[]> { return this.http.get<Pago[]>(`${API}/honorarios/${idHonorario}/pagos`); }
+  anularPago(idHonorario: number, idPago: number, motivo: string): Observable<Honorario> {
+    return this.http.post<Honorario>(`${API}/honorarios/${idHonorario}/pagos/${idPago}/anulacion`, { motivo });
+  }
+  liquidarHonorario(idHonorario: number, valorBase: number, fecha?: string): Observable<Honorario> {
+    return this.http.post<Honorario>(`${API}/honorarios/${idHonorario}/liquidacion`, { valorBase, fecha });
+  }
   registrarPago(idHonorario: number, p: Pago): Observable<Honorario> {
     return this.http.post<Honorario>(`${API}/honorarios/${idHonorario}/pagos`, p);
   }

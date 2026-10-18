@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
+import { AuthService, MANEJAN_FINANZAS } from '../../core/auth.service';
 import {
   FORMAS_COBRO, FormaCobro, Honorario, HonorarioSolicitud, MEDIOS_PAGO, Pago, Proceso, Tarifa, camposDeForma, etiqueta
 } from '../../core/modelos';
@@ -14,7 +15,8 @@ import {
   selector: 'app-honorarios',
   standalone: true,
   imports: [FormsModule, RouterLink, CurrencyPipe, DatePipe],
-  templateUrl: './honorarios.component.html'
+  templateUrl: './honorarios.component.html',
+  styleUrl: './honorarios.component.css'
 })
 export class HonorariosComponent implements OnInit {
   private api = inject(ApiService);
@@ -29,6 +31,10 @@ export class HonorariosComponent implements OnInit {
   filtroEstado = 'VIGENTE';
 
   seleccionado: Honorario | null = null;
+  readonly manejaFinanzas = inject(AuthService).tiene(...MANEJAN_FINANZAS);
+  anulando: number | null = null;
+  motivoAnulacion = '';
+  liquidacionBase: number | null = null;
   pagos: Pago[] = [];
   pago: Pago = this.pagoVacio();
 
@@ -135,6 +141,35 @@ export class HonorariosComponent implements OnInit {
         this.filtroEstado = 'VIGENTE';
         this.cargar();
         this.elegir(h, false);
+      },
+      error: e => this.error = mensajeDeError(e)
+    });
+  }
+
+  anular(p: Pago): void {
+    const h = this.seleccionado;
+    if (!h || !p.idPago) return;
+    if (this.motivoAnulacion.trim().length < 5) { this.error = 'Escriba el motivo de la anulación (mínimo 5 caracteres).'; return; }
+    this.api.anularPago(h.idHonorario, p.idPago, this.motivoAnulacion.trim()).subscribe({
+      next: act => {
+        this.mensaje = 'Pago anulado: queda en el historial pero ya no cuenta.' + (h.estado === 'CUMPLIDO' ? ' El acuerdo volvió a estar vigente.' : '');
+        this.anulando = null;
+        this.cargar();
+        this.elegir(act, false);
+      },
+      error: e => this.error = mensajeDeError(e)
+    });
+  }
+
+  liquidar(form: NgForm): void {
+    const h = this.seleccionado;
+    if (!h || form.invalid || this.liquidacionBase == null) { this.error = 'Indique el valor obtenido.'; return; }
+    this.api.liquidarHonorario(h.idHonorario, this.liquidacionBase).subscribe({
+      next: act => {
+        this.mensaje = `Liquidado: ${act.valorLiquidado?.toLocaleString('es-CO')} pesos.` + (act.estado === 'CUMPLIDO' ? ' Ya estaba pagado: el acuerdo quedó cumplido.' : '');
+        this.liquidacionBase = null;
+        this.cargar();
+        this.elegir(act, false);
       },
       error: e => this.error = mensajeDeError(e)
     });

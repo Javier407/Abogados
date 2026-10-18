@@ -38,4 +38,10 @@ class HonorarioEntidad {
 	@Column(name = "fecha_pacto")
 	LocalDate fechaPacto;
 	String estado;
+	@Column(name = "valor_base")
+	BigDecimal valorBase;
+	@Column(name = "valor_liquidado")
+	BigDecimal valorLiquidado;
+	@Column(name = "fecha_liquidacion")
+	LocalDate fechaLiquidacion;
 }

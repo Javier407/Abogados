@@ -1,0 +1,138 @@
+<div class="modulo-container">
+
+  <div class="page-header">
+    <h1>Reportes</h1>
+    <p>Carga del equipo, cumplimiento de términos, resultados y cartera. Cada tabla se puede descargar para Excel.</p>
+  </div>
+
+  @if (error) { <div class="alerta alerta-error" role="alert">{{ error }}</div> }
+
+  <div class="filtros">
+    <label class="form-label periodo" for="rDesde">Periodo</label>
+    <input id="rDesde" class="form-input" type="date" [(ngModel)]="desde" aria-label="Desde" />
+    <input class="form-input" type="date" [(ngModel)]="hasta" aria-label="Hasta" />
+    <button class="btn btn-primary" type="button" (click)="cargar()" [disabled]="cargando">Actualizar</button>
+    <span class="form-ayuda">El periodo aplica a términos y resultados; la carga y la cartera son de hoy.</span>
+  </div>
+
+  @if (cargando) { <p class="form-ayuda">Calculando…</p> }
+
+  <!-- Carga por abogado -->
+  <section class="card">
+    <div class="card-header encabezado"><h2>Carga por abogado</h2>
+      <button class="btn btn-secondary btn-sm" type="button" (click)="exportarCarga()" [disabled]="!carga.length">Descargar CSV</button></div>
+    <div class="card-body">
+      <div class="tabla-wrapper">
+        <table class="tabla">
+          <thead><tr><th>Abogado</th><th>Procesos activos</th><th>Suspendidos</th><th>Términos pendientes</th><th>Vencidos</th><th>Audiencias (30 días)</th></tr></thead>
+          <tbody>
+            @for (c of carga; track c.idAbogado) {
+              <tr>
+                <td><strong>{{ nombre(c.idAbogado) }}</strong></td>
+                <td>
+                  <span class="barra-celda"><span class="barra" [style.width.%]="carga[0].procesosActivos ? c.procesosActivos * 100 / carga[0].procesosActivos : 0"></span></span>
+                  {{ c.procesosActivos }}
+                </td>
+                <td>{{ c.procesosSuspendidos }}</td>
+                <td>{{ c.terminosPendientes }}</td>
+                <td>@if (c.terminosVencidos) { <span class="badge badge-danger">{{ c.terminosVencidos }}</span> } @else { 0 }</td>
+                <td>{{ c.audienciasProximas }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cumplimiento de términos -->
+  <section class="card">
+    <div class="card-header encabezado"><h2>Cumplimiento de términos</h2>
+      <button class="btn btn-secondary btn-sm" type="button" (click)="exportarTerminos()" [disabled]="!terminos.length">Descargar CSV</button></div>
+    <div class="card-body">
+      <p class="form-ayuda">Términos que vencían en el periodo. "A tiempo" se mide desde F8 (fecha de cumplimiento); los cumplidos antes no tienen fecha y no cuentan en el porcentaje.</p>
+      <div class="tabla-wrapper">
+        <table class="tabla">
+          <thead><tr><th>Abogado</th><th>Total</th><th>A tiempo</th><th>Tarde</th><th>Vencidos sin cumplir</th><th>Pendientes</th><th>Sin fecha</th><th>% a tiempo</th></tr></thead>
+          <tbody>
+            @for (t of terminos; track t.idAbogado) {
+              <tr>
+                <td><strong>{{ nombre(t.idAbogado) }}</strong></td>
+                <td>{{ t.total }}</td>
+                <td>{{ t.aTiempo }}</td>
+                <td>{{ t.tarde }}</td>
+                <td>@if (t.vencidosSinCumplir) { <span class="badge badge-danger">{{ t.vencidosSinCumplir }}</span> } @else { 0 }</td>
+                <td>{{ t.pendientes }}</td>
+                <td>{{ t.cumplidosSinFecha }}</td>
+                <td>
+                  @if (porcentaje(t); as p) {
+                    <span class="badge" [class.badge-success]="p >= 90" [class.badge-warning]="p >= 70 && p < 90" [class.badge-danger]="p < 70">{{ p | number:'1.0-1' }} %</span>
+                  } @else if (porcentaje(t) === 0) { <span class="badge badge-danger">0 %</span> } @else { — }
+                </td>
+              </tr>
+            } @empty { <tr><td colspan="8">No vencían términos en el periodo.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Resultados -->
+  <section class="card">
+    <div class="card-header encabezado"><h2>Resultados por rama</h2>
+      <button class="btn btn-secondary btn-sm" type="button" (click)="exportarResultados()" [disabled]="!resultados.length">Descargar CSV</button></div>
+    <div class="card-body">
+      @if (!resultados.length) {
+        <p class="form-ayuda">No hay sentencias registradas en el periodo.</p>
+      } @else {
+        @for (r of resultados; track r.codigoRama) {
+          <div class="resultado">
+            <span class="resultado-rama">{{ r.rama }} <small>({{ total(r) }})</small></span>
+            <span class="resultado-barra" [attr.aria-label]="r.favorables + ' favorables, ' + r.parciales + ' parciales, ' + r.desfavorables + ' desfavorables'">
+              <span class="seg seg-fav" [style.flex-grow]="r.favorables"></span>
+              <span class="seg seg-par" [style.flex-grow]="r.parciales"></span>
+              <span class="seg seg-des" [style.flex-grow]="r.desfavorables"></span>
+              <span class="seg seg-sin" [style.flex-grow]="r.sinSentido"></span>
+            </span>
+            <span class="resultado-cifras">{{ r.favorables }} · {{ r.parciales }} · {{ r.desfavorables }}</span>
+          </div>
+        }
+        <div class="leyenda-res">
+          <span><span class="punto seg-fav"></span> Favorable</span><span><span class="punto seg-par"></span> Parcial</span>
+          <span><span class="punto seg-des"></span> Desfavorable</span><span><span class="punto seg-sin"></span> Sin sentido registrado</span>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Cartera -->
+  <section class="card">
+    <div class="card-header encabezado"><h2>Cartera por cliente · {{ totalCartera | currency:'COP':'symbol-narrow':'1.0-0' }}</h2>
+      <button class="btn btn-secondary btn-sm" type="button" (click)="exportarCartera()" [disabled]="!cartera.length">Descargar CSV</button></div>
+    <div class="card-body">
+      <div class="tabla-wrapper">
+        <table class="tabla">
+          <thead><tr><th>Cliente</th><th>Acuerdos</th><th>Pagado</th><th>Saldo honorarios</th><th>Gastos por reembolsar</th><th>Total por cobrar</th><th>Último pago</th></tr></thead>
+          <tbody>
+            @for (c of cartera; track c.idCliente) {
+              <tr>
+                <td><strong>{{ c.cliente }}</strong></td>
+                <td>{{ c.acuerdos }}</td>
+                <td>{{ c.pagado | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                <td>{{ c.saldoHonorarios | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                <td>{{ c.gastosPorReembolsar | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                <td class="valor-celda">{{ c.totalPorCobrar | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                <td class="fecha-celda">
+                  @if (c.ultimoPago) {
+                    {{ c.ultimoPago | date:'dd/MM/yyyy' }}<br>
+                    <small [class.atrasado]="(c.diasSinPagar ?? 0) > 90">hace {{ c.diasSinPagar }} días</small>
+                  } @else { Sin pagos }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>

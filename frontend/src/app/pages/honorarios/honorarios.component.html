@@ -141,7 +141,7 @@
         <div class="card-header"><h2>{{ h.cliente }}</h2></div>
         <div class="card-body">
           <p class="form-ayuda">
-            <a [routerLink]="['/procesos', h.idProceso, 'editar']" class="mono">{{ radicado(h.idProceso) }}</a>
+            <a [routerLink]="['/procesos', h.idProceso]" class="mono">{{ radicado(h.idProceso) }}</a>
             · acordado el {{ h.fechaPacto | date:'dd/MM/yyyy' }}
           </p>
 
@@ -174,14 +174,50 @@
             </form>
           }
 
+          @if (h.valorLiquidado != null) {
+            <p class="form-ayuda">Liquidado el {{ h.fechaLiquidacion | date:'dd/MM/yyyy' }}: {{ h.valorLiquidado | currency:'COP':'symbol-narrow':'1.0-0' }}
+              sobre {{ h.valorBase | currency:'COP':'symbol-narrow':'1.0-0' }}.</p>
+          }
+          @if (h.estado === 'VIGENTE' && h.porcentaje && manejaFinanzas) {
+            <form class="liquidacion" #formLiq="ngForm" (ngSubmit)="liquidar(formLiq)" novalidate>
+              <h3 class="subtitulo-detalle">{{ h.valorLiquidado != null ? 'Volver a liquidar' : 'Liquidar al terminar el proceso' }}</h3>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label" for="lBase">{{ h.formaCobro === 'PORCENTAJE_CUANTIA' ? 'Cuantía' : 'Valor obtenido por el cliente' }} (COP)</label>
+                  <input id="lBase" class="form-input" type="number" name="base" [(ngModel)]="liquidacionBase" required min="0" />
+                  @if (liquidacionBase != null) {
+                    <span class="form-ayuda">{{ h.porcentaje }} % = {{ (liquidacionBase * h.porcentaje / 100) | currency:'COP':'symbol-narrow':'1.0-0' }}{{ h.formaCobro === 'MIXTO' ? ' + el valor fijo' : '' }}</span>
+                  }
+                </div>
+              </div>
+              <div class="form-actions"><button class="btn btn-secondary btn-sm" type="submit">Liquidar</button></div>
+            </form>
+          }
+
           <h3 class="subtitulo-detalle">Pagos</h3>
           @if (pagos.length === 0) {
             <p class="form-ayuda">Sin pagos todavía.</p>
           } @else {
             <ul class="lista-pagos">
               @for (p of pagos; track p.idPago) {
-                <li><span>{{ p.fecha | date:'dd/MM/yyyy' }} · {{ etiqueta(p.medio) }}{{ p.referencia ? ' · ' + p.referencia : '' }}</span>
-                  <strong>{{ p.valor | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></li>
+                <li [class.pago-anulado]="p.anuladoEn">
+                  <span>{{ p.fecha | date:'dd/MM/yyyy' }} · {{ etiqueta(p.medio) }}{{ p.referencia ? ' · ' + p.referencia : '' }}
+                    @if (p.anuladoEn) { <br><small>Anulado: {{ p.motivoAnulacion }}</small> }
+                  </span>
+                  <span class="pago-valor">
+                    <strong>{{ p.valor | currency:'COP':'symbol-narrow':'1.0-0' }}</strong>
+                    @if (!p.anuladoEn && manejaFinanzas) {
+                      <button class="btn-quitar" type="button" (click)="anulando = p.idPago!; motivoAnulacion = ''" [attr.aria-label]="'Anular el pago del ' + p.fecha">Anular</button>
+                    }
+                  </span>
+                  @if (anulando === p.idPago) {
+                    <form class="anulacion" (ngSubmit)="anular(p)">
+                      <input class="form-input" name="motivo" [(ngModel)]="motivoAnulacion" placeholder="Motivo de la anulación" maxlength="200" required aria-label="Motivo de la anulación" />
+                      <button class="btn btn-danger btn-sm" type="submit">Anular pago</button>
+                      <button class="btn btn-secondary btn-sm" type="button" (click)="anulando = null">Cancelar</button>
+                    </form>
+                  }
+                </li>
               }
             </ul>
           }

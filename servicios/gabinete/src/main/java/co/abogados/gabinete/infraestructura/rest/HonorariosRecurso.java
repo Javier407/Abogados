@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,7 +24,9 @@ import co.abogados.gabinete.dominio.modelo.HonorarioVista;
 import co.abogados.gabinete.dominio.modelo.MedioPago;
 import co.abogados.gabinete.dominio.modelo.Pago;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
@@ -53,6 +56,14 @@ public class HonorariosRecurso {
 			@NotNull(message = "El valor es obligatorio") @Positive(message = "El valor debe ser mayor que cero") BigDecimal valor,
 			@NotNull(message = "El medio de pago es obligatorio") MedioPago medio,
 			@Size(max = 40) String referencia) {
+	}
+
+	public record AnulacionSolicitud(@NotBlank(message = "Escriba el motivo de la anulación") @Size(max = 200) String motivo) {
+	}
+
+	public record LiquidacionSolicitud(
+			@NotNull(message = "Indique el valor obtenido (o la cuantía)") @PositiveOrZero BigDecimal valorBase,
+			LocalDate fecha) {
 	}
 
 	public record CambioEstado(@NotNull(message = "El estado es obligatorio") EstadoHonorario estado) {
@@ -89,6 +100,19 @@ public class HonorariosRecurso {
 	@GetMapping("/{id}/pagos")
 	public List<Pago> pagos(@PathVariable int id) {
 		return servicio.pagos(id);
+	}
+
+	/** Anula un pago (no lo borra). Quién lo anuló sale del token (X-Usuario-Id, puesta por el gateway). */
+	@PostMapping("/{id}/pagos/{idPago}/anulacion")
+	public HonorarioVista anularPago(@PathVariable int id, @PathVariable int idPago,
+			@Valid @RequestBody AnulacionSolicitud s,
+			@RequestHeader(value = "X-Usuario-Id", required = false) Long usuario) {
+		return servicio.anularPago(id, idPago, s.motivo(), usuario);
+	}
+
+	@PostMapping("/{id}/liquidacion")
+	public HonorarioVista liquidar(@PathVariable int id, @Valid @RequestBody LiquidacionSolicitud s) {
+		return servicio.liquidar(id, s.valorBase(), s.fecha());
 	}
 
 	@PostMapping("/{id}/pagos")

@@ -173,7 +173,11 @@ class AutenticacionTest {
 			Usuario u = datos.get(id);
 			datos.put(id, new Usuario(id, u.usuario(), u.nombre(), u.email(), hash, u.activo(), u.roles(),
 					u.intentosFallidos(), u.bloqueadoHasta()));
+			debenCambiar.remove(id);
 		}
+		final java.util.Set<Long> debenCambiar = new java.util.HashSet<>();
+
+		public boolean debeCambiarClave(long id) { return debenCambiar.contains(id); }
 		public void registrarIntento(String usuario, Long id, boolean ok, String motivo, String ip) {
 			intentos.add(usuario + "|" + id + "|" + ok + "|" + motivo);
 		}

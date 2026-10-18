@@ -49,6 +49,16 @@ class SeguridadTest {
 		assertThat(permitido("POST", "/api/audiencias/avisos", "ADMINISTRATIVO")).isFalse();
 		assertThat(permitido("POST", "/api/procesos/34/pruebas", "DEPENDIENTE")).isFalse();
 		assertThat(permitido("GET", "/api/audiencias", "CLIENTE")).isFalse();
+		assertThat(permitido("GET", "/api/usuarios", "ADMIN")).isTrue();
+		assertThat(permitido("POST", "/api/usuarios/5/clave", "SOCIO")).isFalse();
+		assertThat(permitido("GET", "/api/reportes/carga", "SOCIO")).isTrue();
+		assertThat(permitido("GET", "/api/reportes/carga", "ABOGADO")).isFalse();
+		assertThat(permitido("GET", "/api/honorarios/cartera", "ABOGADO")).isFalse();
+		assertThat(permitido("GET", "/api/honorarios/cartera", "ADMINISTRATIVO")).isTrue();
+		assertThat(permitido("POST", "/api/gastos", "ABOGADO")).isTrue();
+		assertThat(permitido("POST", "/api/gastos/3/reembolso", "ABOGADO")).isFalse();
+		assertThat(permitido("POST", "/api/honorarios/2/pagos/5/anulacion", "ADMINISTRATIVO")).isTrue();
+		assertThat(permitido("POST", "/api/honorarios/2/pagos/5/anulacion", "ABOGADO")).isFalse();
 		assertThat(permitido("POST", "/api/procesos", "ABOGADO")).isTrue();
 		assertThat(permitido("GET", "/api/honorarios", "DEPENDIENTE")).isFalse();
 		assertThat(permitido("GET", "/api/honorarios", "ABOGADO")).isTrue();

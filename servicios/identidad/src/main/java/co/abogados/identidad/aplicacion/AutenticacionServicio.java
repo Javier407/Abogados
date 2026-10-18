@@ -82,7 +82,7 @@ public class AutenticacionServicio {
 		}
 		usuarios.guardarIngreso(u.idUsuario(), ahora);
 		usuarios.registrarIntento(recortar(texto), u.idUsuario(), true, null, ip);
-		return tokens.emitir(u, ahora);
+		return tokens.emitir(u, ahora).conCambioDeClave(usuarios.debeCambiarClave(u.idUsuario()));
 	}
 
 	@Transactional(readOnly = true)

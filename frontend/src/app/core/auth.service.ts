@@ -11,6 +11,8 @@ export interface Sesion {
   usuario: string;
   nombre: string;
   roles: string[];
+  /** Cuenta nueva o clave restablecida por el administrador: debe cambiarla antes de seguir. */
+  debeCambiarClave?: boolean;
 }
 
 const CLAVE = 'gj.sesion';
@@ -22,6 +24,7 @@ export const JURIDICO_Y_DEPENDIENTES = ['ADMIN', 'SOCIO', 'ABOGADO', 'DEPENDIENT
 export const VEN_HONORARIOS = ['ADMIN', 'SOCIO', 'ABOGADO', 'ADMINISTRATIVO'];
 export const EDITAN_CLIENTES = ['ADMIN', 'SOCIO', 'ABOGADO', 'ADMINISTRATIVO'];
 export const DIRECCION = ['ADMIN', 'SOCIO'];
+export const MANEJAN_FINANZAS = ['ADMIN', 'SOCIO', 'ADMINISTRATIVO'];
 
 /**
  * Sesión del usuario. El token se guarda en sessionStorage: dura lo que la pestaña y no se comparte
@@ -47,6 +50,15 @@ export class AuthService {
 
   cambiarClave(actual: string, nueva: string): Observable<unknown> {
     return this.http.post('/api/auth/clave', { actual, nueva });
+  }
+
+  /** Tras cambiar la contraseña obligatoria: la sesión sigue y ya puede usar la app. */
+  marcarClaveCambiada(): void {
+    const s = this.sesion();
+    if (!s || !s.debeCambiarClave) return;
+    const nueva = { ...s, debeCambiarClave: false };
+    try { sessionStorage.setItem(CLAVE, JSON.stringify(nueva)); } catch { /* solo en memoria */ }
+    this.sesion.set(nueva);
   }
 
   /** vencida = la cerró el sistema (token vencido o inválido), no el usuario. */

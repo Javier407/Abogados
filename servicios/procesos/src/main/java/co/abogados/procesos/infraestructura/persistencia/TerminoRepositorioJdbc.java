@@ -94,7 +94,7 @@ public class TerminoRepositorioJdbc implements TerminoRepositorio {
 
 	@Override
 	public void marcarCumplido(int idTermino) {
-		jdbc.sql("UPDATE procesos.terminos SET estado = 'CUMPLIDO' WHERE id_termino = :id").param("id", idTermino).update();
+		jdbc.sql("UPDATE procesos.terminos SET estado = 'CUMPLIDO', cumplido_en = CURRENT_DATE WHERE id_termino = :id").param("id", idTermino).update();
 	}
 
 	@Override

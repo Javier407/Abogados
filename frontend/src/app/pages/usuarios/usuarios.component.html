@@ -1,0 +1,136 @@
+<div class="modulo-container">
+
+  <div class="page-header">
+    <h1>Usuarios</h1>
+    <p>Cuentas de acceso, roles y contraseñas. Solo el administrador ve esta pantalla.</p>
+  </div>
+
+  @if (mensaje) { <div class="alerta alerta-exito" role="status">{{ mensaje }}</div> }
+  @if (error) { <div class="alerta alerta-error" role="alert">{{ error }}</div> }
+
+  <div class="filtros">
+    <input class="form-input" [(ngModel)]="filtro" placeholder="Buscar por nombre, usuario, documento o rol" aria-label="Buscar cuentas" />
+    <button class="btn btn-primary" type="button" (click)="creando = !creando" [attr.aria-expanded]="creando">Nueva cuenta</button>
+  </div>
+
+  @if (creando) {
+    <div class="card">
+      <div class="card-header"><h2>Nueva cuenta</h2></div>
+      <div class="card-body">
+        <form #f="ngForm" (ngSubmit)="crear(f)" novalidate>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="cDoc">Documento <span class="requerido">*</span></label>
+              <input id="cDoc" class="form-input" type="number" name="idUsuario" [(ngModel)]="nueva.idUsuario" required min="1" />
+              <span class="form-ayuda">Para el personal, el mismo número de su ficha de abogado.</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cUsuario">Usuario <span class="requerido">*</span></label>
+              <input id="cUsuario" class="form-input" name="usuario" [(ngModel)]="nueva.usuario" required maxlength="30" autocomplete="off" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cNombre">Nombre <span class="requerido">*</span></label>
+              <input id="cNombre" class="form-input" name="nombre" [(ngModel)]="nueva.nombre" required maxlength="120" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cEmail">Correo <span class="requerido">*</span></label>
+              <input id="cEmail" class="form-input" type="email" name="email" [(ngModel)]="nueva.email" required maxlength="120" />
+            </div>
+            <div class="form-group form-group-full">
+              <span class="form-label">Roles <span class="requerido">*</span></span>
+              <div class="roles">
+                @for (r of roles; track r) {
+                  <label class="resumen-chip"><input type="checkbox" [checked]="nueva.roles.includes(r)" (change)="alternarRol(nueva.roles, r)" /> {{ etiqueta(r) }}</label>
+                }
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cClave">Contraseña temporal <span class="requerido">*</span></label>
+              <input id="cClave" class="form-input" type="password" name="claveTemporal" [(ngModel)]="nueva.claveTemporal" required
+                     minlength="10" maxlength="72" autocomplete="new-password" />
+              <span class="form-ayuda">Mínimo 10 caracteres con letras y números. La persona deberá cambiarla al entrar.</span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit" [disabled]="guardando">Crear cuenta</button>
+            <button class="btn btn-secondary" type="button" (click)="creando = false">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (editando; as c) {
+    <div class="card">
+      <div class="card-header"><h2>{{ c.nombre }}</h2></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="eUsuario">Usuario</label>
+            <input id="eUsuario" class="form-input" [(ngModel)]="cambio.usuario" maxlength="30" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="eNombre">Nombre</label>
+            <input id="eNombre" class="form-input" [(ngModel)]="cambio.nombre" maxlength="120" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="eEmail">Correo</label>
+            <input id="eEmail" class="form-input" type="email" [(ngModel)]="cambio.email" maxlength="120" />
+          </div>
+          <div class="form-group">
+            <span class="form-label">Estado</span>
+            <label class="resumen-chip"><input type="checkbox" [(ngModel)]="cambio.activo" [disabled]="esYo(c)" /> Cuenta activa</label>
+          </div>
+          <div class="form-group form-group-full">
+            <span class="form-label">Roles</span>
+            <div class="roles">
+              @for (r of roles; track r) {
+                <label class="resumen-chip"><input type="checkbox" [checked]="cambio.roles.includes(r)" (change)="alternarRol(cambio.roles, r)"
+                       [disabled]="esYo(c) && r === 'ADMIN'" /> {{ etiqueta(r) }}</label>
+              }
+            </div>
+            @if (esYo(c)) { <span class="form-ayuda">No puede quitarse a sí mismo el rol de administrador ni desactivar su cuenta.</span> }
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="button" (click)="guardarCambios()" [disabled]="guardando">Guardar cambios</button>
+          <button class="btn btn-secondary" type="button" (click)="editando = null">Cerrar</button>
+        </div>
+
+        <h3 class="subtitulo-detalle">Restablecer contraseña</h3>
+        <div class="restablecer">
+          <input class="form-input" type="password" [(ngModel)]="claveTemporal" placeholder="Nueva contraseña temporal" minlength="10"
+                 maxlength="72" autocomplete="new-password" aria-label="Nueva contraseña temporal" />
+          <button class="btn btn-danger btn-sm" type="button" (click)="restablecer()" [disabled]="guardando">Restablecer</button>
+        </div>
+        <span class="form-ayuda">También desbloquea la cuenta. La persona deberá cambiarla al entrar.</span>
+      </div>
+    </div>
+  }
+
+  <div class="tabla-wrapper">
+    <table class="tabla">
+      <thead><tr><th>Nombre</th><th>Usuario</th><th>Roles</th><th>Estado</th><th>Último ingreso</th><th></th></tr></thead>
+      <tbody>
+        @for (c of visibles; track c.idUsuario) {
+          <tr>
+            <td><strong>{{ c.nombre }}</strong><br><small>{{ c.idUsuario }} · {{ c.email }}</small></td>
+            <td class="mono">{{ c.usuario }}</td>
+            <td>@for (r of c.roles; track r) { <span class="badge badge-primary">{{ etiqueta(r) }}</span> }</td>
+            <td>
+              @if (!c.activo) { <span class="badge badge-muted">Desactivada</span> }
+              @else if (bloqueada(c)) { <span class="badge badge-danger">Bloqueada</span> }
+              @else { <span class="badge badge-success">Activa</span> }
+              @if (c.debeCambiarClave) { <br><small>Clave temporal</small> }
+            </td>
+            <td class="fecha-celda">{{ c.ultimoIngreso ? (c.ultimoIngreso | date:'dd/MM/yyyy HH:mm') : 'Nunca' }}</td>
+            <td class="acciones-celda">
+              <button class="btn btn-secondary btn-sm" type="button" (click)="editar(c)">Editar</button>
+              @if (bloqueada(c)) { <button class="btn btn-secondary btn-sm" type="button" (click)="desbloquear(c)">Desbloquear</button> }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

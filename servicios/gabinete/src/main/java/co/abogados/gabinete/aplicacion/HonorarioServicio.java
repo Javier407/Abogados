@@ -2,6 +2,7 @@ package co.abogados.gabinete.aplicacion;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -11,10 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 import co.abogados.gabinete.dominio.excepciones.ConflictoException;
 import co.abogados.gabinete.dominio.excepciones.RecursoNoEncontradoException;
 import co.abogados.gabinete.dominio.excepciones.ReglaNegocioException;
+import co.abogados.gabinete.dominio.modelo.Anulacion;
 import co.abogados.gabinete.dominio.modelo.EstadoHonorario;
 import co.abogados.gabinete.dominio.modelo.FormaCobro;
 import co.abogados.gabinete.dominio.modelo.Honorario;
 import co.abogados.gabinete.dominio.modelo.HonorarioVista;
+import co.abogados.gabinete.dominio.modelo.Liquidacion;
 import co.abogados.gabinete.dominio.modelo.Pago;
 import co.abogados.gabinete.dominio.puertos.ClienteRepositorio;
 import co.abogados.gabinete.dominio.puertos.ConsultaProcesos;
@@ -86,9 +89,9 @@ public class HonorarioServicio {
 	}
 
 	/**
-	 * Registra un pago. En un acuerdo de valor FIJO no se puede pagar más que el saldo, y al completar
-	 * el valor el acuerdo queda CUMPLIDO. En MENSUAL y MIXTO el valor fijo no es un tope (mensualidades,
-	 * o porcentaje que se paga al final según el resultado).
+	 * Registra un pago. Cuando el acuerdo tiene un total conocido (valor FIJO, o la parte variable ya liquidada)
+	 * no se puede pagar más que el saldo, y al completarlo el acuerdo queda CUMPLIDO. En MENSUAL, y en MIXTO o
+	 * porcentaje sin liquidar, no hay tope (mensualidades, o un resultado que aún no se conoce).
 	 */
 	public HonorarioVista registrarPago(int idHonorario, Pago pago) {
 		Honorario h = honorarios.acuerdo(idHonorario)
@@ -103,18 +106,75 @@ public class HonorarioServicio {
 			throw new ReglaNegocioException("El pago no puede ser anterior al acuerdo (" + h.fechaPacto() + ")");
 		}
 		BigDecimal pagado = honorarios.totalPagado(idHonorario);
-		if (h.formaCobro() == FormaCobro.FIJO) {
-			BigDecimal saldo = h.valorFijo().subtract(pagado);
+		BigDecimal total = total(h);
+		if (total != null) {
+			BigDecimal saldo = total.subtract(pagado);
 			if (pago.valor().compareTo(saldo) > 0) {
 				throw new ReglaNegocioException("El pago (" + pago.valor().toPlainString() + ") supera el saldo pendiente ("
 						+ saldo.toPlainString() + ")");
 			}
 		}
 		honorarios.registrarPago(new Pago(null, idHonorario, pago.fecha(), pago.valor(), pago.medio(), pago.referencia()));
-		if (h.formaCobro() == FormaCobro.FIJO && pagado.add(pago.valor()).compareTo(h.valorFijo()) == 0) {
+		if (total != null && pagado.add(pago.valor()).compareTo(total) == 0) {
 			honorarios.cambiarEstado(idHonorario, EstadoHonorario.CUMPLIDO.name());
 		}
 		return obtener(idHonorario);
+	}
+
+	/**
+	 * Anula un pago mal registrado: no se borra, queda con el motivo, la fecha y quién lo anuló, y deja de
+	 * contar. Si el acuerdo estaba CUMPLIDO vuelve a VIGENTE (reaparece el saldo).
+	 */
+	public HonorarioVista anularPago(int idHonorario, int idPago, String motivo, Long quien) {
+		Honorario h = acuerdo(idHonorario);
+		Pago p = honorarios.pago(idPago).filter(x -> x.idHonorario() == idHonorario)
+				.orElseThrow(() -> new RecursoNoEncontradoException("No existe el pago " + idPago + " en este acuerdo"));
+		if (p.anulado()) {
+			throw new ConflictoException("El pago " + idPago + " ya estaba anulado");
+		}
+		Anulacion anulacion = new Anulacion(motivo);
+		honorarios.anularPago(idPago, Instant.now(reloj), quien, anulacion.motivo());
+		if (h.estado() == EstadoHonorario.CUMPLIDO) {
+			honorarios.cambiarEstado(idHonorario, EstadoHonorario.VIGENTE.name());
+		}
+		return obtener(idHonorario);
+	}
+
+	/**
+	 * Liquida la parte variable con lo que obtuvo el cliente (o la cuantía): porcentaje × base, más el fijo en
+	 * MIXTO. Desde entonces el acuerdo tiene un total: los pagos no lo pueden superar y al completarlo queda CUMPLIDO.
+	 */
+	public HonorarioVista liquidar(int idHonorario, BigDecimal base, LocalDate fecha) {
+		Honorario h = acuerdo(idHonorario);
+		if (h.estado() != EstadoHonorario.VIGENTE) {
+			throw new ReglaNegocioException("El acuerdo está " + h.estado() + ": no se liquida");
+		}
+		LocalDate dia = fecha == null ? LocalDate.now(reloj) : fecha;
+		if (dia.isAfter(LocalDate.now(reloj))) {
+			throw new ReglaNegocioException("La fecha de liquidación no puede ser futura");
+		}
+		if (dia.isBefore(h.fechaPacto())) {
+			throw new ReglaNegocioException("La liquidación no puede ser anterior al acuerdo (" + h.fechaPacto() + ")");
+		}
+		BigDecimal valor = Liquidacion.calcular(h, base);
+		honorarios.liquidar(idHonorario, base, valor, dia);
+		if (honorarios.totalPagado(idHonorario).compareTo(valor) >= 0) {
+			honorarios.cambiarEstado(idHonorario, EstadoHonorario.CUMPLIDO.name());
+		}
+		return obtener(idHonorario);
+	}
+
+	/** Total que se debe pagar, si se conoce: el valor FIJO o lo liquidado. */
+	private BigDecimal total(Honorario h) {
+		if (h.formaCobro() == FormaCobro.FIJO) {
+			return h.valorFijo();
+		}
+		return honorarios.valorLiquidado(h.idHonorario()).orElse(null);
+	}
+
+	private Honorario acuerdo(int idHonorario) {
+		return honorarios.acuerdo(idHonorario)
+				.orElseThrow(() -> new RecursoNoEncontradoException("No existe el acuerdo de honorarios " + idHonorario));
 	}
 
 }

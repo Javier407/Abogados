@@ -2,6 +2,8 @@ package co.abogados.gabinete.infraestructura.persistencia;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -169,8 +171,7 @@ final class AdaptadoresHonorarios {
 		@Override
 		public List<Pago> pagos(int idHonorario) {
 			return pagos.findByIdHonorarioOrderByFechaDescIdPagoDesc(idHonorario).stream()
-					.map(p -> new Pago(p.idPago, p.idHonorario, p.fecha, p.valor, MedioPago.valueOf(p.medio),
-							p.referencia))
+					.map(HonorarioRepositorioJpa::aPago)
 					.toList();
 		}
 
@@ -190,6 +191,39 @@ final class AdaptadoresHonorarios {
 			return pagos.saveAndFlush(e).idPago;
 		}
 
+		@Override
+		public Optional<Pago> pago(int idPago) {
+			return pagos.findById(idPago).map(HonorarioRepositorioJpa::aPago);
+		}
+
+		@Override
+		public void anularPago(int idPago, Instant cuando, Long quien, String motivo) {
+			PagoEntidad e = pagos.findById(idPago).orElseThrow();
+			e.anuladoEn = cuando;
+			e.anuladoPor = quien;
+			e.motivoAnulacion = motivo;
+			pagos.saveAndFlush(e);
+		}
+
+		@Override
+		public Optional<BigDecimal> valorLiquidado(int idHonorario) {
+			return honorarios.findById(idHonorario).map(h -> h.valorLiquidado);
+		}
+
+		@Override
+		public void liquidar(int idHonorario, BigDecimal base, BigDecimal valor, LocalDate fecha) {
+			HonorarioEntidad e = honorarios.findById(idHonorario).orElseThrow();
+			e.valorBase = base;
+			e.valorLiquidado = valor;
+			e.fechaLiquidacion = fecha;
+			honorarios.saveAndFlush(e);
+		}
+
+		static Pago aPago(PagoEntidad p) {
+			return new Pago(p.idPago, p.idHonorario, p.fecha, p.valor, MedioPago.valueOf(p.medio), p.referencia,
+					p.anuladoEn, p.anuladoPor, p.motivoAnulacion);
+		}
+
 		/** Agrega lo pagado con una sola consulta para todos los acuerdos de la lista. */
 		private List<HonorarioVista> vistas(List<HonorarioEntidad> filas) {
 			Map<Integer, Object[]> resumen = new HashMap<>();
@@ -202,12 +236,14 @@ final class AdaptadoresHonorarios {
 				Object[] r = resumen.get(h.idHonorario);
 				BigDecimal pagado = r == null ? BigDecimal.ZERO : (BigDecimal) r[1];
 				int cantidad = r == null ? 0 : ((Number) r[2]).intValue();
-				// En MENSUAL el valor fijo es la cuota de cada mes, no un total: no hay saldo que calcular.
-				boolean conTotal = "FIJO".equals(h.formaCobro) || "MIXTO".equals(h.formaCobro);
-				BigDecimal saldo = conTotal ? h.valorFijo.subtract(pagado).max(BigDecimal.ZERO) : null;
+				// El total es lo liquidado si ya se liquidó; si no, el valor fijo en FIJO y MIXTO. En MENSUAL el valor
+				// fijo es la cuota de cada mes (no un total) y en porcentaje sin liquidar no se sabe aún: sin saldo.
+				BigDecimal total = h.valorLiquidado != null ? h.valorLiquidado
+						: "FIJO".equals(h.formaCobro) || "MIXTO".equals(h.formaCobro) ? h.valorFijo : null;
+				BigDecimal saldo = total == null ? null : total.subtract(pagado).max(BigDecimal.ZERO);
 				return new HonorarioVista(h.idHonorario, h.idProceso, h.cliente.idCliente, h.cliente.nombre, h.idTarifa,
 						h.formaCobro, h.valorFijo, h.porcentaje, h.valorEstimado, h.fechaPacto, h.estado, pagado, saldo,
-						cantidad);
+						cantidad, h.valorBase, h.valorLiquidado, h.fechaLiquidacion);
 			}).toList();
 		}
 	}

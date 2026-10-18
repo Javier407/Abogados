@@ -72,11 +72,17 @@ public class UsuarioRepositorioJdbc implements UsuarioRepositorio {
 
 	@Override
 	public void cambiarClave(long idUsuario, String hashClave, Instant ahora) {
-		jdbc.sql("UPDATE identidad.usuarios SET password_hash = :h, clave_cambiada = :a WHERE id_usuario = :id")
+		jdbc.sql("UPDATE identidad.usuarios SET password_hash = :h, clave_cambiada = :a, debe_cambiar_clave = false WHERE id_usuario = :id")
 				.param("h", hashClave)
 				.param("a", Timestamp.from(ahora))
 				.param("id", idUsuario)
 				.update();
+	}
+
+	@Override
+	public boolean debeCambiarClave(long idUsuario) {
+		return jdbc.sql("SELECT debe_cambiar_clave FROM identidad.usuarios WHERE id_usuario = :id")
+				.param("id", idUsuario).query(Boolean.class).optional().orElse(false);
 	}
 
 	@Override

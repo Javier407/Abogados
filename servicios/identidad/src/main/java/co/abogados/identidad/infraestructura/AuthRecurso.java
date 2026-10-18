@@ -1,14 +1,10 @@
 package co.abogados.identidad.infraestructura;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.MissingRequestHeaderException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,10 +12,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import co.abogados.identidad.aplicacion.AutenticacionServicio;
-import co.abogados.identidad.dominio.CredencialesInvalidasException;
-import co.abogados.identidad.dominio.CuentaBloqueadaException;
-import co.abogados.identidad.dominio.RecursoNoEncontradoException;
-import co.abogados.identidad.dominio.ReglaNegocioException;
 import co.abogados.identidad.dominio.Sesion;
 import co.abogados.identidad.dominio.Usuario;
 import jakarta.servlet.http.HttpServletRequest;
@@ -91,48 +83,6 @@ public class AuthRecurso {
 	private static String ip(HttpServletRequest p) {
 		String reenviada = p.getHeader("X-Forwarded-For");
 		return reenviada != null && !reenviada.isBlank() ? reenviada.split(",")[0].strip() : p.getRemoteAddr();
-	}
-
-	// ----------------------------------------------------------------- errores { "error": ... }
-
-	@ExceptionHandler(CredencialesInvalidasException.class)
-	public ResponseEntity<Map<String, Object>> credenciales(CredencialesInvalidasException e) {
-		return error(HttpStatus.UNAUTHORIZED, e.getMessage());
-	}
-
-	@ExceptionHandler(CuentaBloqueadaException.class)
-	public ResponseEntity<Map<String, Object>> bloqueada(CuentaBloqueadaException e) {
-		return ResponseEntity.status(HttpStatus.LOCKED).header("Retry-After", String.valueOf(e.minutos() * 60))
-				.body(Map.of("error", e.getMessage()));
-	}
-
-	@ExceptionHandler(ReglaNegocioException.class)
-	public ResponseEntity<Map<String, Object>> regla(ReglaNegocioException e) {
-		return error(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage());
-	}
-
-	@ExceptionHandler(RecursoNoEncontradoException.class)
-	public ResponseEntity<Map<String, Object>> noEncontrado(RecursoNoEncontradoException e) {
-		return error(HttpStatus.NOT_FOUND, e.getMessage());
-	}
-
-	@ExceptionHandler(MissingRequestHeaderException.class)
-	public ResponseEntity<Map<String, Object>> sinIdentidad(MissingRequestHeaderException e) {
-		return error(HttpStatus.UNAUTHORIZED, "Falta la identidad del usuario");
-	}
-
-	@ExceptionHandler(MethodArgumentNotValidException.class)
-	public ResponseEntity<Map<String, Object>> validacion(MethodArgumentNotValidException e) {
-		Map<String, Object> cuerpo = new LinkedHashMap<>();
-		cuerpo.put("error", "Hay datos inválidos en la petición");
-		Map<String, String> campos = new LinkedHashMap<>();
-		e.getBindingResult().getFieldErrors().forEach(f -> campos.putIfAbsent(f.getField(), f.getDefaultMessage()));
-		cuerpo.put("campos", campos);
-		return ResponseEntity.badRequest().body(cuerpo);
-	}
-
-	private static ResponseEntity<Map<String, Object>> error(HttpStatus estado, String mensaje) {
-		return ResponseEntity.status(estado).body(Map.of("error", mensaje));
 	}
 
 }

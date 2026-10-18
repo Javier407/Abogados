@@ -276,6 +276,9 @@ export interface Honorario {
   pagado: number;
   saldo?: number;
   pagos: number;
+  valorBase?: number | null;
+  valorLiquidado?: number | null;
+  fechaLiquidacion?: string | null;
 }
 
 export interface HonorarioSolicitud {
@@ -295,6 +298,9 @@ export interface Pago {
   valor: number | null;
   medio: string;
   referencia?: string;
+  anuladoEn?: string | null;
+  anuladoPor?: number | null;
+  motivoAnulacion?: string | null;
 }
 
 // ---------- asistente (F4) ----------
@@ -419,4 +425,88 @@ export interface SugerenciaTermino {
   origen: 'REGLA' | 'PROVIDENCIA';
   prioridad: number;
   validada: boolean;
+}
+
+// ---------- administración, gastos y reportes (F8) ----------
+export const ROLES_CUENTA = ['ADMIN', 'SOCIO', 'ABOGADO', 'DEPENDIENTE', 'ADMINISTRATIVO', 'CLIENTE'] as const;
+
+export interface Cuenta {
+  idUsuario: number;
+  usuario: string;
+  nombre: string;
+  email: string;
+  activo: boolean;
+  roles: string[];
+  bloqueadoHasta?: string | null;
+  ultimoIngreso?: string | null;
+  debeCambiarClave: boolean;
+}
+export interface CuentaSolicitud {
+  idUsuario: number | null;
+  usuario: string;
+  nombre: string;
+  email: string;
+  roles: string[];
+  claveTemporal: string;
+}
+export interface CambioCuenta { usuario: string; nombre: string; email: string; roles: string[]; activo: boolean; }
+
+export interface Gasto {
+  idGasto: number;
+  idProceso: number;
+  idCliente: number;
+  fecha: string;
+  concepto: string;
+  valor: number;
+  pagadoPor: 'FIRMA' | 'CLIENTE';
+  reembolsable: boolean;
+  reembolsadoEn?: string | null;
+  soporteUrl?: string | null;
+  registradoPor?: number | null;
+}
+export interface GastoSolicitud {
+  idProceso: number;
+  fecha: string;
+  concepto: string;
+  valor: number | null;
+  pagadoPor: 'FIRMA' | 'CLIENTE';
+  reembolsable: boolean;
+  soporteUrl?: string | null;
+}
+export interface CarteraCliente {
+  idCliente: number;
+  cliente: string;
+  acuerdos: number;
+  pactado?: number | null;
+  pagado: number;
+  saldoHonorarios: number;
+  gastosPorReembolsar: number;
+  totalPorCobrar: number;
+  ultimoPago?: string | null;
+  diasSinPagar?: number | null;
+}
+export interface CargaAbogado {
+  idAbogado: number;
+  procesosActivos: number;
+  procesosSuspendidos: number;
+  terminosPendientes: number;
+  terminosVencidos: number;
+  audienciasProximas: number;
+}
+export interface CumplimientoTerminos {
+  idAbogado: number;
+  total: number;
+  aTiempo: number;
+  tarde: number;
+  cumplidosSinFecha: number;
+  vencidosSinCumplir: number;
+  pendientes: number;
+}
+export interface ResultadoRama {
+  codigoRama: string;
+  rama: string;
+  favorables: number;
+  parciales: number;
+  desfavorables: number;
+  sinSentido: number;
 }

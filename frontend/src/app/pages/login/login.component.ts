@@ -79,6 +79,7 @@ export class LoginComponent implements OnInit {
         const volver = this.ruta.snapshot.queryParamMap.get('volver');
         // Solo rutas internas: un ?volver= hacia otro sitio no debe sacar al usuario de la app.
         const destino = volver && volver.startsWith('/') && !volver.startsWith('//') ? volver : '/';
+        if (s.debeCambiarClave) { this.router.navigate(['/cuenta'], { queryParams: { obligatorio: 1 } }); return; }
         this.router.navigateByUrl(s.roles.includes('CLIENTE') && s.roles.length === 1 ? '/cuenta' : destino);
       },
       error: e => {

@@ -198,6 +198,65 @@ paths:
         '201': { description: Acuerdo actualizado con el nuevo saldo }
         '422': { description: Regla de negocio (supera el saldo, fecha, acuerdo no vigente) }
 
+  # ---------------------------------------------------------------- F8: anulación, liquidación, gastos y cartera
+  /honorarios/{id}/pagos/{idPago}/anulacion:
+    post:
+      summary: Anula un pago (no lo borra); deja de contar y, si el acuerdo estaba CUMPLIDO, vuelve a VIGENTE
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: idPago, in: path, required: true, schema: { type: integer } }
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [motivo], properties: { motivo: { type: string, minLength: 5, maxLength: 200 } } } } } }
+      responses:
+        '200': { description: Acuerdo actualizado }
+        '409': { description: El pago ya estaba anulado }
+  /honorarios/{id}/liquidacion:
+    post:
+      summary: Liquida la parte variable (porcentaje × valorBase, más el fijo en MIXTO); desde entonces el saldo tiene tope
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [valorBase], properties: { valorBase: { type: number, minimum: 0 }, fecha: { type: string, format: date } } } } } }
+      responses:
+        '200': { description: Acuerdo con valorBase, valorLiquidado y fechaLiquidacion }
+        '422': { description: El acuerdo no lleva porcentaje o no está vigente }
+  /honorarios/cartera:
+    get:
+      summary: Por cliente, saldo de honorarios con total conocido, gastos por reembolsar y días desde el último pago
+      responses: { '200': { description: Cartera, ordenada de mayor a menor deuda } }
+  /gastos:
+    get:
+      summary: Gastos procesales (filtros opcionales idProceso, idCliente)
+      parameters:
+        - { name: idProceso, in: query, required: false, schema: { type: integer } }
+        - { name: idCliente, in: query, required: false, schema: { type: integer } }
+      responses: { '200': { description: Gastos } }
+    post:
+      summary: Registra un gasto; el cliente se toma del proceso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idProceso, fecha, concepto, valor, pagadoPor]
+              properties:
+                idProceso: { type: integer }
+                fecha: { type: string, format: date }
+                concepto: { type: string, maxLength: 150 }
+                valor: { type: number, exclusiveMinimum: 0 }
+                pagadoPor: { type: string, enum: [FIRMA, CLIENTE] }
+                reembolsable: { type: boolean, description: 'Solo si lo pagó la FIRMA' }
+                soporteUrl: { type: string, maxLength: 300 }
+      responses: { '201': { description: Registrado }, '422': { description: Datos inválidos } }
+  /gastos/{id}/reembolso:
+    post:
+      summary: Marca el gasto como reembolsado por el cliente (fecha opcional, por defecto hoy)
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: Reembolsado }, '409': { description: Ya estaba reembolsado } }
+  /gastos/{id}:
+    delete:
+      summary: Elimina un gasto no reembolsado
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { '204': { description: Eliminado } }
+
 components:
   responses:
     Error:

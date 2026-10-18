@@ -145,7 +145,7 @@ docker compose exec ollama ollama pull qwen2.5:3b   # una sola vez: descarga el 
 
 Luego abrir http://localhost:8090 (en el servidor: http://100.65.152.112:8090). El gateway queda en el puerto 8091 y el buzón de pruebas Mailpit, donde llegan los correos de aviso, en el 8092.
 
-**Inicio de sesión:** cada persona entra con su usuario (por ejemplo `arodriguez`, socio; `scastro`, dependiente). En la base de pruebas todos tienen la contraseña `Prueba2026*`, que se puede cambiar en **Mi cuenta** (mínimo 10 caracteres con letras y números). El menú muestra solo lo que permite el rol, y los avisos son los de la persona conectada.
+**Inicio de sesión:** cada persona entra con su usuario (por ejemplo `arodriguez`, socio; `scastro`, dependiente). En la base de pruebas todos tienen la contraseña `Prueba2026*`, que se puede cambiar en **Mi cuenta** (mínimo 10 caracteres con letras y números). Las cuentas se crean y administran en **Usuarios** (solo ADMIN): la contraseña temporal que escribe el administrador se debe cambiar al entrar. El menú muestra solo lo que permite el rol, y los avisos son los de la persona conectada.
 
 Antes del primer arranque en un servidor hay que crear la llave de firma de los tokens (nunca va a git):
 

@@ -12,19 +12,19 @@ spring:
         - id: identidad
           uri: ${IDENTIDAD_URL:http://localhost:8005}
           predicates:
-            - Path=/api/auth/**
+            - Path=/api/auth/**,/api/usuarios/**
           filters:
             - StripPrefix=1
         - id: gabinete
           uri: ${GABINETE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/clientes/**,/api/abogados/**,/api/gabinete/**,/api/peritos/**,/api/honorarios/**
+            - Path=/api/clientes/**,/api/abogados/**,/api/gabinete/**,/api/peritos/**,/api/honorarios/**,/api/gastos/**
           filters:
             - StripPrefix=1
         - id: procesos
           uri: ${PROCESOS_URL:http://localhost:8082}
           predicates:
-            - Path=/api/procesos/**,/api/catalogos/**,/api/terminos/**,/api/calendario/**,/api/audiencias/**
+            - Path=/api/procesos/**,/api/catalogos/**,/api/terminos/**,/api/calendario/**,/api/audiencias/**,/api/reportes/**
           filters:
             - StripPrefix=1
         - id: notificaciones

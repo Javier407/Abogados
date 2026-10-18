@@ -1,6 +1,8 @@
 package co.abogados.gabinete.dominio.puertos;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,5 +29,15 @@ public interface HonorarioRepositorio {
 	BigDecimal totalPagado(int idHonorario);
 
 	int registrarPago(Pago pago);
+
+	Optional<Pago> pago(int idPago);
+
+	/** Marca el pago como anulado (no se borra); deja de contar en totalPagado. */
+	void anularPago(int idPago, Instant cuando, Long quien, String motivo);
+
+	/** Total de la parte variable ya liquidada (vacío si no se ha liquidado). */
+	Optional<BigDecimal> valorLiquidado(int idHonorario);
+
+	void liquidar(int idHonorario, BigDecimal base, BigDecimal valor, LocalDate fecha);
 
 }

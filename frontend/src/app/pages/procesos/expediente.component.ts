@@ -13,6 +13,7 @@ import {
 } from '../../core/modelos';
 import { TerminosProcesoComponent } from './terminos-proceso.component';
 import { AsistenteProcesoComponent } from './asistente-proceso.component';
+import { GastosProcesoComponent } from './gastos-proceso.component';
 
 type Filtro = 'TODO' | 'ACTUACION' | 'PROVIDENCIA' | 'TERMINO';
 
@@ -23,7 +24,7 @@ type Filtro = 'TODO' | 'ACTUACION' | 'PROVIDENCIA' | 'TERMINO';
 @Component({
   selector: 'app-expediente',
   standalone: true,
-  imports: [FormsModule, DatePipe, RouterLink, TerminosProcesoComponent, AsistenteProcesoComponent],
+  imports: [FormsModule, DatePipe, RouterLink, TerminosProcesoComponent, AsistenteProcesoComponent, GastosProcesoComponent],
   templateUrl: './expediente.component.html',
   styleUrl: './expediente.component.css'
 })
@@ -39,6 +40,7 @@ export class ExpedienteComponent implements OnInit {
   readonly etiqueta = etiqueta;
   readonly juridico = this.auth.tiene(...JURIDICO);
   readonly registraActuaciones = this.auth.tiene(...JURIDICO_Y_DEPENDIENTES);
+  readonly veFinanzas = this.auth.tiene('ADMIN', 'SOCIO', 'ABOGADO', 'ADMINISTRATIVO');
   readonly hoy = new Date().toLocaleDateString('en-CA');      // AAAA-MM-DD en hora local
 
   idProceso = 0;

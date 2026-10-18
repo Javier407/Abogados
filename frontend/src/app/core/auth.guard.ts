@@ -1,5 +1,5 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateChildFn, CanActivateFn, Router } from '@angular/router';
 
 import { AuthService } from './auth.service';
 
@@ -17,4 +17,11 @@ export const conRol = (...roles: string[]): CanActivateFn => () => {
   if (auth.tiene(...roles)) return true;
   // Sin el rol: al panel si es personal; a "Mi cuenta" si no (evita redirigir en círculo).
   return inject(Router).createUrlTree([auth.esPersonal() ? '/' : '/cuenta']);
+};
+
+/** Con una contraseña temporal solo se puede ir a "Mi cuenta" hasta cambiarla. */
+export const claveAlDia: CanActivateChildFn = (_ruta, estado) => {
+  const auth = inject(AuthService);
+  if (!auth.sesion()?.debeCambiarClave || estado.url.startsWith('/cuenta')) return true;
+  return inject(Router).createUrlTree(['/cuenta'], { queryParams: { obligatorio: 1 } });
 };

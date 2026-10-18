@@ -2,7 +2,7 @@
 
 Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-dominio.md`) con lo que el código hace hoy. Sirve para decidir las fases siguientes.
 
-> Escrito al cerrar F5, **actualizado con F6 y F7**. F7 trajo audiencias en la agenda con aviso, pruebas con perito y términos sugeridos.
+> Escrito al cerrar F5, **actualizado con F6, F7 y F8**. F8 agregó administración de cuentas, anulación de pagos, liquidación, gastos, cartera y reportes. F7 trajo audiencias en la agenda con aviso, pruebas con perito y términos sugeridos.
 > Actualización de F6 (rama `feature/f6-expediente`, 2026-10-17): partes y conflicto de intereses, actuaciones, providencia manual, sentencia, recursos, otras instancias y copias de seguridad.
 
 **Estados:**
@@ -18,10 +18,10 @@ Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-domin
 | 2 | Gestión del proceso judicial | 🟡 | Con F6 el expediente tiene partes, actuaciones, providencias, sentencia, recursos y línea de tiempo. Faltan audiencias en la agenda, pruebas y el expediente digital. |
 | 3 | Vigilancia y alertas | ✅ | Rama Judicial (real o simulada), correo, avisos en la app y Telegram. |
 | 4 | Redacción asistida (IA) | 🟡 | Contestación y resumen para el cliente. Faltan la demanda, los recursos y el resumen de autos. |
-| 5 | Finanzas | 🟡 | Tarifas, acuerdos y pagos. Faltan anulación de pagos, gastos procesales, facturación y cartera. |
-| 6 | Administración de la firma | 🟡 | Abogados, peritos y seguridad. Sedes, áreas y cargos son solo de lectura. No hay administración de usuarios. |
+| 5 | Finanzas | 🟡 | Tarifas, acuerdos, pagos con anulación, liquidación de la parte variable, gastos y cartera (F8). Falta la facturación electrónica. |
+| 6 | Administración de la firma | 🟡 | Abogados, peritos, seguridad y cuentas de usuario desde la app (F8). Sedes, áreas y cargos siguen siendo solo de lectura. |
 | 7 | Portal del cliente | ❌ | El rol CLIENTE solo ve "Mi cuenta". |
-| 8 | Reportes e indicadores | 🟡 | Panel general. Faltan reportes por abogado, área y resultados. |
+| 8 | Reportes e indicadores | ✅ | Panel general y, desde F8, carga por abogado, cumplimiento de términos, resultados por rama y cartera, con exportación a CSV. |
 | 9 | Plataforma (no funcional) | 🟡 | CI, JWT, auditoría, healthchecks y copias de seguridad diarias (F6). Faltan HTTPS, refresh token, outbox y copias fuera del servidor. |
 
 ## 1. Captación y vinculación del cliente
@@ -81,11 +81,11 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Tarifas de referencia (Conalbos, SMMLV) | ✅ | `gabinete` → `/gabinete/tarifas` | — |
 | Acuerdo de honorarios por proceso | ✅ | `HonorariosRecurso` | — |
 | Registrar pagos | ✅ | `POST /honorarios/{id}/pagos` | — |
-| Anular un pago con motivo | ❌ | Hoy se corrige en la base de datos. | `POST /honorarios/{id}/pagos/{pago}/anulacion`, que deja un rastro y nunca borra el pago. |
-| Liquidar la cuota litis al terminar el proceso | ❌ | — | Al registrar una sentencia favorable con valor obtenido, calcular el porcentaje pactado. |
-| Gastos procesales (copias, notificaciones, peritos) | ❌ | — | Tabla `gabinete.gastos` por proceso, reembolsable o no. |
+| Anular un pago con motivo | ✅ F8 | `POST /honorarios/{id}/pagos/{pago}/anulacion`: queda en el historial con motivo, fecha y autor | — |
+| Liquidar la cuota litis al terminar el proceso | ✅ F8 | `POST /honorarios/{id}/liquidacion`: porcentaje × valor obtenido (+ fijo en MIXTO); desde ahí el saldo tiene tope | Proponerla al registrar una sentencia favorable. |
+| Gastos procesales (copias, notificaciones, peritos) | ✅ F8 | `gabinete.gastos` y `/gastos`; tarjeta en el expediente; reembolsables en la cartera | — |
 | Facturación electrónica (DIAN) | ❌ | Pregunta abierta 5. | Integración con un proveedor tecnológico. Fuera del alcance académico; se registra como decisión. |
-| Cartera por cliente y vencimientos | 🟡 | Saldo total en la pantalla de honorarios. | Reporte por cliente y antigüedad (sección 8). |
+| Cartera por cliente y vencimientos | ✅ F8 | `GET /honorarios/cartera`: saldo, gastos por reembolsar y días desde el último pago | — |
 
 ## 6. Administración de la firma
 
@@ -94,7 +94,7 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Abogados y personal | ✅ | `AbogadosRecurso`, `pages/abogados` | — |
 | Peritos | ✅ | `PeritosRecurso`, `pages/peritos` | No tiene `DELETE`. Si se agrega, debe impedir borrar peritos con pruebas asignadas. |
 | Sedes, áreas de práctica y cargos | 🟡 | Solo `GET` en `/gabinete/*`. | CRUD solo para la dirección (ADMIN o SOCIO). |
-| Usuarios, roles y restablecer contraseña | ❌ | Se hace por SQL. | `identidad`: `/usuarios` (solo ADMIN) y pantalla de administración. Enlazar abogado → usuario (1 : 0..1). |
+| Usuarios, roles y restablecer contraseña | ✅ F8 | `identidad` `/usuarios` (solo ADMIN) y pantalla Usuarios; clave temporal que se debe cambiar al entrar | Enlazar la cuenta con la ficha del abogado al crearla. |
 | Seguridad: login, roles, bloqueo y auditoría | ✅ | `identidad`, `gateway` (`PoliticaAcceso`, `Auditoria`) | — |
 
 ## 7. Portal del cliente ❌
@@ -111,10 +111,10 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Proceso | Estado | Dónde iría |
 |---|---|---|
 | Panel general (términos, procesos por rama) | ✅ | `dashboard` |
-| Carga por abogado y por área | ❌ | Consultas en `procesos` (ya existen ejemplos en `db/consultas/ejemplos.sql`) y una pantalla de reportes para SOCIO y ADMIN. |
-| Resultados (sentencias favorables por rama) | ❌ | Depende de "Sentencia y resultado" (sección 2). |
-| Términos cumplidos a tiempo y vencidos | ❌ | Fecha de cumplimiento frente al vencimiento en `procesos.terminos`. |
-| Exportar a Excel o PDF | ❌ | En el frontend (por ejemplo, CSV) o un endpoint de exportación. |
+| Carga por abogado y por área | ✅ F8 (por abogado) | `GET /reportes/carga` | Agrupar también por área de práctica. |
+| Resultados (sentencias favorables por rama) | ✅ F8 | `GET /reportes/resultados` | — |
+| Términos cumplidos a tiempo y vencidos | ✅ F8 | `GET /reportes/terminos`; `procesos.terminos.cumplido_en` desde F8 | — |
+| Exportar a Excel o PDF | 🟡 F8 | CSV (abre en Excel) en cada tabla de Reportes | PDF. |
 
 ## 9. Plataforma (no funcional)
 
@@ -138,5 +138,5 @@ Ordenadas por valor para la firma y por dependencias:
 |---|---|---|
 | **F6. Expediente** ✅ | Partes (con conflicto de intereses), actuaciones con línea de tiempo, providencia manual, sentencia con sentido, recursos. Copias de seguridad diarias. | Completa el corazón del dominio: hoy un proceso no tiene historia propia, solo términos y autos detectados. Antes de meter datos reales hacen falta copias de seguridad. |
 | **F7. Agenda y pruebas** ✅ | Audiencias en el calendario con aviso, pruebas con perito, términos sugeridos al llegar un auto (reglas validadas por un abogado). | Usa las actuaciones de F6. Es lo que más evita olvidos después de los términos. |
-| **F8. Administración y finanzas** | Usuarios y roles desde la app, anulación de pagos, gastos, cuota litis, reportes. | Quita el trabajo por SQL y da información a los socios. |
+| **F8. Administración y finanzas** ✅ | Usuarios y roles desde la app, anulación de pagos, gastos, cuota litis, reportes. | Quita el trabajo por SQL y da información a los socios. |
 | **F9. Portal del cliente y endurecimiento** | Portal, avisos al cliente, HTTPS, refresh token, outbox. | El portal expone datos fuera del equipo: requiere primero las prioridades 1 a 3 de seguridad. |

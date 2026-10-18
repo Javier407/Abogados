@@ -16,7 +16,11 @@ public interface UsuarioRepositorio {
 
 	void guardarIngreso(long idUsuario, Instant ahora);
 
+	/** Cambia la contraseña y quita la obligación de cambiarla (la persona ya puso una propia). */
 	void cambiarClave(long idUsuario, String hashClave, Instant ahora);
+
+	/** La cuenta es nueva o el administrador restableció la contraseña: debe cambiarla al entrar. */
+	boolean debeCambiarClave(long idUsuario);
 
 	/** Bitácora de intentos: usuario escrito, cuenta (si existe), resultado, motivo e IP. */
 	void registrarIntento(String usuario, Long idUsuario, boolean exitoso, String motivo, String ip);

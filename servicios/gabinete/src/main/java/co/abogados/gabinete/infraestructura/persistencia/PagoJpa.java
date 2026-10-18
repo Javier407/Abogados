@@ -11,10 +11,10 @@ interface PagoJpa extends JpaRepository<PagoEntidad, Integer> {
 
 	List<PagoEntidad> findByIdHonorarioOrderByFechaDescIdPagoDesc(Integer idHonorario);
 
-	@Query("SELECT coalesce(sum(p.valor), 0) FROM PagoEntidad p WHERE p.idHonorario = :id")
+	@Query("SELECT coalesce(sum(p.valor), 0) FROM PagoEntidad p WHERE p.idHonorario = :id AND p.anuladoEn IS NULL")
 	BigDecimal totalPagado(@Param("id") Integer idHonorario);
 
-	/** Por cada acuerdo: [idHonorario, total pagado, cantidad de pagos]. */
-	@Query("SELECT p.idHonorario, sum(p.valor), count(p) FROM PagoEntidad p WHERE p.idHonorario IN :ids GROUP BY p.idHonorario")
+	/** Por cada acuerdo: [idHonorario, total pagado, cantidad de pagos], sin los pagos anulados. */
+	@Query("SELECT p.idHonorario, sum(p.valor), count(p) FROM PagoEntidad p WHERE p.idHonorario IN :ids AND p.anuladoEn IS NULL GROUP BY p.idHonorario")
 	List<Object[]> resumen(@Param("ids") List<Integer> idsHonorario);
 }

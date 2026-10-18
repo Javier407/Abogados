@@ -446,6 +446,26 @@ paths:
       responses:
         '200': { description: Cuántas se avisaron, content: { application/json: { schema: { type: object, properties: { avisadas: { type: integer } } } } } }
 
+  # ---------------------------------------------------------------- reportes (F8, solo ADMIN y SOCIO)
+  /reportes/carga:
+    get:
+      summary: Por abogado responsable, procesos activos y suspendidos, términos pendientes y vencidos, audiencias de 30 días
+      responses: { '200': { description: Carga } }
+  /reportes/terminos:
+    get:
+      summary: Cumplimiento de los términos que vencían en el periodo (por defecto, el último año)
+      parameters:
+        - { name: desde, in: query, required: false, schema: { type: string, format: date } }
+        - { name: hasta, in: query, required: false, schema: { type: string, format: date } }
+      responses: { '200': { description: 'Por responsable: total, aTiempo, tarde, cumplidosSinFecha, vencidosSinCumplir, pendientes' } }
+  /reportes/resultados:
+    get:
+      summary: Sentencias del periodo por rama según su sentido (favorable, parcial, desfavorable, sin sentido)
+      parameters:
+        - { name: desde, in: query, required: false, schema: { type: string, format: date } }
+        - { name: hasta, in: query, required: false, schema: { type: string, format: date } }
+      responses: { '200': { description: Resultados por rama } }
+
 components:
   responses:
     Error:
