@@ -569,6 +569,56 @@ paths:
       responses:
         "200": { description: El archivo }
         "404": { description: No existe, no es visible o es de otro cliente }
+  # ---------------------------------------------------------------- F12: reglas de términos
+  /reglas-termino:
+    get:
+      summary: Todas las reglas (activas o no), con quién las validó. Las ve el personal.
+      responses:
+        "200": { description: Reglas, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/ReglaTermino' } } } } }
+    post:
+      summary: Crea una regla (nace sin validar). Solo SOCIO.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ReglaSolicitud' } } } }
+      responses:
+        "201": { description: Creada (Location /reglas-termino/{id}) }
+        "400": { $ref: '#/components/responses/Error' }
+        "403": { $ref: '#/components/responses/Error' }
+        "422": { description: 'Patrón que no es una expresión regular, rama o tipo inexistente, tipo de otra rama, días fuera de 1–365' }
+  /reglas-termino/{idRegla}:
+    put:
+      summary: Edita la regla. Si cambia lo que dice (no solo activa), queda sin validar. Solo SOCIO.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ReglaSolicitud' } } } }
+      responses:
+        "200": { description: La regla guardada }
+        "403": { $ref: '#/components/responses/Error' }
+        "404": { $ref: '#/components/responses/Error' }
+  /reglas-termino/{idRegla}/validacion:
+    post:
+      summary: El socio del token valida la regla (queda a su nombre y con la fecha). Solo SOCIO.
+      responses:
+        "200": { description: La regla validada }
+        "409": { description: Ya estaba validada }
+        "422": { description: La regla está inactiva }
+  /reglas-termino/{idRegla}/historial:
+    get:
+      summary: Quién cambió qué y cuándo (CREADA, EDITADA, VALIDADA, ACTIVADA, DESACTIVADA), del más reciente al más antiguo
+      responses:
+        "200": { description: Cambios }
+  /reglas-termino/prueba:
+    get:
+      summary: ¿El patrón coincide con la clase de una providencia? Compara con el texto normalizado, como al sugerir.
+      parameters:
+        - { name: patron, in: query, required: true, schema: { type: string } }
+        - { name: clase, in: query, required: true, schema: { type: string } }
+      responses:
+        "200": { description: '{ coincide, claseNormalizada }' }
+        "422": { description: El patrón no es una expresión regular válida }
+  /catalogos/tipos/{idTipo}/contestacion:
+    put:
+      summary: Días hábiles para contestar en un tipo de proceso (null = no aplica). Deja sin validar las reglas que los usan. Solo SOCIO.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { dias: { type: integer, nullable: true, minimum: 1, maximum: 365 } } } } } }
+      responses:
+        "200": { description: '{ reglasSinValidar: n }' }
+        "404": { $ref: '#/components/responses/Error' }
 components:
   responses:
     Error:
@@ -582,6 +632,32 @@ components:
               error: { type: string }
               campos: { type: object, additionalProperties: { type: string } }
   schemas:
+    ReglaSolicitud:
+      type: object
+      required: [tipoProvidencia, patron, descripcion, norma]
+      properties:
+        tipoProvidencia: { type: string, enum: [AUTO, SENTENCIA] }
+        codigoRama: { type: string, nullable: true, description: 'null = todas; con idTipo se toma la de ese tipo' }
+        idTipo: { type: integer, nullable: true, description: 'null = todos los tipos de la rama' }
+        patron: { type: string, maxLength: 200, description: 'Expresión regular sobre la clase normalizada (sin tildes, minúsculas, sin puntuación)' }
+        lado: { type: string, enum: [DEMANDANTE, DEMANDADO], nullable: true }
+        descripcion: { type: string, maxLength: 150 }
+        dias: { type: integer, nullable: true, minimum: 1, maximum: 365, description: 'null = los días de contestación del tipo de proceso' }
+        norma: { type: string, maxLength: 120 }
+        prioridad: { type: integer, enum: [1, 2], default: 1 }
+        activa: { type: boolean, default: true }
+    ReglaTermino:
+      allOf:
+        - $ref: '#/components/schemas/ReglaSolicitud'
+        - type: object
+          properties:
+            idRegla: { type: integer }
+            validada: { type: boolean }
+            validadaPor: { type: integer, format: int64, nullable: true }
+            nombreValidador: { type: string, nullable: true }
+            validadaEn: { type: string, format: date-time, nullable: true }
+            modificadaPor: { type: integer, format: int64, nullable: true }
+            modificadaEn: { type: string, format: date-time, nullable: true }
     EstadoProceso: { type: string, enum: [ACTIVO, SUSPENDIDO, TERMINADO, ARCHIVADO] }
     EtapaProceso:
       type: string

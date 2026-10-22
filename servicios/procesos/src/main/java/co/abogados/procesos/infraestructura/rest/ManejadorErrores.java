@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import co.abogados.procesos.dominio.excepciones.AccesoDenegadoException;
 import co.abogados.procesos.dominio.excepciones.ConflictoException;
 import co.abogados.procesos.dominio.excepciones.RecursoNoEncontradoException;
 import co.abogados.procesos.dominio.excepciones.ReglaNegocioException;
@@ -27,6 +28,12 @@ public class ManejadorErrores {
 	@ExceptionHandler(RecursoNoEncontradoException.class)
 	@ResponseStatus(HttpStatus.NOT_FOUND)
 	public Map<String, Object> noEncontrado(RecursoNoEncontradoException ex) {
+		return error(ex.getMessage());
+	}
+
+	@ExceptionHandler(AccesoDenegadoException.class)
+	@ResponseStatus(HttpStatus.FORBIDDEN)
+	public Map<String, Object> accesoDenegado(AccesoDenegadoException ex) {
 		return error(ex.getMessage());
 	}
 
@@ -79,11 +86,25 @@ public class ManejadorErrores {
 	}
 
 	@ExceptionHandler({ org.springframework.web.multipart.support.MissingServletRequestPartException.class,
-			org.springframework.web.bind.MissingServletRequestParameterException.class,
 			org.springframework.web.multipart.MultipartException.class })
 	@ResponseStatus(HttpStatus.BAD_REQUEST)
 	public Map<String, Object> faltaArchivo(Exception ex) {
 		return error("Adjunte el archivo y elija la categoría");
+	}
+
+	/** F12: antes daba el mensaje de los archivos para cualquier parámetro que faltara (p. ej. GET /audiencias sin "hasta"). */
+	@ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
+	@ResponseStatus(HttpStatus.BAD_REQUEST)
+	public Map<String, Object> faltaParametro(org.springframework.web.bind.MissingServletRequestParameterException ex) {
+		return error("categoria".equals(ex.getParameterName()) ? "Adjunte el archivo y elija la categoría"
+				: "Falta el parámetro '" + ex.getParameterName() + "'");
+	}
+
+	/** Falta una cabecera de identidad (X-Usuario-Id): mismo formato de error que el resto. */
+	@ExceptionHandler(org.springframework.web.bind.MissingRequestHeaderException.class)
+	@ResponseStatus(HttpStatus.BAD_REQUEST)
+	public Map<String, Object> faltaCabecera(org.springframework.web.bind.MissingRequestHeaderException ex) {
+		return error("Falta la cabecera " + ex.getHeaderName());
 	}
 
 	private static Map<String, Object> error(String mensaje) {

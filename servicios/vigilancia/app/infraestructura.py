@@ -231,8 +231,8 @@ class RelayOutbox:
                     await con.execute("""UPDATE vigilancia.outbox SET enviado_en = now(), intentos = intentos + 1,
                                          ultimo_error = NULL WHERE id_evento = %s""", (id_evento,))
                     enviados += 1
+                    self._caido = False   # se avisa otra vez solo si vuelve a caer después de un envío
         if enviados:
-            self._caido = False
             log.info("%s evento(s) enviados desde el outbox", enviados)
         return enviados
 

@@ -607,3 +607,42 @@ export interface ResultadoRama {
   desfavorables: number;
   sinSentido: number;
 }
+
+// ------------------------------------------------------------------ F12: reglas de términos y estado del servidor
+
+export type TipoProvidencia = 'AUTO' | 'SENTENCIA';
+
+/** Lo que se escribe al crear o editar una regla. dias vacío = los días de contestación del tipo de proceso. */
+export interface ReglaSolicitud {
+  tipoProvidencia: TipoProvidencia; codigoRama?: string | null; idTipo?: number | null; patron: string;
+  lado?: 'DEMANDANTE' | 'DEMANDADO' | null; descripcion: string; dias?: number | null; norma: string;
+  prioridad: 1 | 2; activa: boolean;
+}
+
+export interface ReglaTermino extends ReglaSolicitud {
+  idRegla: number; validada: boolean; validadaPor?: number; nombreValidador?: string; validadaEn?: string;
+  modificadaPor?: number; modificadaEn?: string;
+}
+
+export interface CambioRegla {
+  momento: string; idUsuario: number; nombre?: string;
+  accion: 'CREADA' | 'EDITADA' | 'VALIDADA' | 'ACTIVADA' | 'DESACTIVADA'; detalle?: string;
+}
+
+export interface PruebaPatron { coincide: boolean; claseNormalizada: string; }
+
+export interface PuntoServidor {
+  momento: string; disco: number; memoriaMb: number; appOk: boolean; problemas: number; revisiones: number; sinApp: number;
+}
+
+export interface IncidenteServidor {
+  clave: string; mensaje: string; inicio: string; fin?: string | null; abierto: boolean; minutos: number;
+}
+
+export interface EstadoServidor {
+  dias: number;
+  ultima: { momento: string; disco: number; memoriaMb: number; respaldoHoras?: number | null; appOk: boolean;
+            problemas: number; detalle: string[] } | null;
+  vigiaActivo: boolean; revisiones: number; disponibilidad: number | null;
+  serie: PuntoServidor[]; incidentes: IncidenteServidor[];
+}

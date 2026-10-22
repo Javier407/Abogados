@@ -14,7 +14,7 @@
 	<name>gabinete</name>
 	<description>Servicio gabinete: firma, sedes, abogados y clientes</description>
 	<properties>
-		<cobertura.minima>0.62</cobertura.minima>   <!-- F11: no puede bajar; meta 0.70 -->
+		<cobertura.minima>0.80</cobertura.minima>   <!-- F12: no puede bajar de lo alcanzado (con margen para el CI); nunca menos de 0.70 -->
 		<java.version>17</java.version>
 	</properties>
 	<dependencies>

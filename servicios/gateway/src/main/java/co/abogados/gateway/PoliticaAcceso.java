@@ -82,6 +82,10 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			r(null, "/api/procesos/**", JURIDICO),
 			r(GET, "/api/terminos/**", INTERNOS),
 			r(null, "/api/terminos/**", JURIDICO_Y_DEPENDIENTES),
+			// reglas de términos (F12): las ve el personal; las cambia y valida un socio (juicio jurídico)
+			r(GET, "/api/reglas-termino/**", INTERNOS),
+			r(null, "/api/reglas-termino/**", Set.of("SOCIO")),
+			r(HttpMethod.PUT, "/api/catalogos/tipos/*/contestacion", Set.of("SOCIO")),
 			r(GET, "/api/catalogos/**", INTERNOS),
 			r(GET, "/api/calendario/**", INTERNOS),
 			r(GET, "/api/audiencias/**", INTERNOS),
@@ -89,6 +93,8 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			r(GET, "/api/reportes/**", DIRECCION),
 			// vigilancia, avisos y asistente
 			r(null, "/api/vigilancia/**", JURIDICO_Y_DEPENDIENTES),
+			r(GET, "/api/notificaciones/servidor/**", Set.of("ADMIN")),     // historial del vigía (F12)
+			r(null, "/api/notificaciones/servidor/**", Set.of()),
 			r(null, "/api/notificaciones/**", TODOS),      // cada quien solo los suyos: lo valida notificaciones
 			r(null, "/api/asistente/**", JURIDICO));
 

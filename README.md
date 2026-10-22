@@ -173,6 +173,8 @@ done
 
 Desde ahí http://IP:8090 redirige a HTTPS, el navegador recibe HSTS y la cookie de la sesión solo viaja cifrada. Mientras no haya HTTPS, `COOKIE_SEGURA=false` (si no, el navegador no guarda la cookie y la sesión dura 15 minutos).
 
+**Historial del servidor (F12).** El vigía guarda cada revisión (90 días) y cada incidente en el esquema `operacion`; el administrador los ve en la pantalla **Servidor**. **Reglas de términos (F12):** pantalla **Reglas**; solo un socio las cambia o valida.
+
 **Vigía del servidor (F11).** `infra/monitoreo/vigia.sh` revisa cada 5 minutos contenedores, disco, memoria, respaldos, outbox, colas de RabbitMQ y HTTPS, y avisa por Telegram a los administradores que vincularon Telegram en la app (problema nuevo, resuelto y un resumen diario). Se instala como timer de systemd con `sh infra/monitoreo/instalar.sh` (`quitar` para desinstalarlo). Para revisar a mano: `sh infra/monitoreo/vigia.sh estado`.
 
 **Copias fuera de la VM (F10).** Cada día el contenedor `respaldo` deja la base (`gabinete-*.dump`) y los documentos del expediente (`documentos-*.tar.gz`) en `infra/respaldos/`. En el PC de Javier, la tarea programada "Abogados - copia de respaldos" ejecuta `infra/respaldo/copiar-al-pc.ps1` a las 9:00 y al iniciar sesión. El script baja lo nuevo a `D:\respaldos\abogados`, comprueba el SHA-256 y guarda 30 días. Para ejecutarla a mano:

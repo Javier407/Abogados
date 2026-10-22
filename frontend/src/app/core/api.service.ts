@@ -11,7 +11,8 @@ import {
   Audiencia, Prueba, PruebaSolicitud, SugerenciaTermino,
   CambioCuenta, CargaAbogado, CarteraCliente, Cuenta, CuentaSolicitud, CumplimientoTerminos, Gasto, GastoSolicitud,
   ResultadoRama, ProcesoPortal, DetallePortal, FinanzasPortal, ResumenPublicado,
-  CategoriaDocumento, Consulta, ConsultaConAvisos, Documento, EstadoConsulta, Integrante, RolEquipo
+  CategoriaDocumento, Consulta, ConsultaConAvisos, Documento, EstadoConsulta, Integrante, RolEquipo,
+  CambioRegla, EstadoServidor, PruebaPatron, ReglaSolicitud, ReglaTermino
 } from './modelos';
 
 /**
@@ -83,6 +84,31 @@ export class ApiService {
   }
   desglosarRadicado(numero: string): Observable<DesgloseRadicado> {
     return this.http.get<DesgloseRadicado>(`${API}/procesos/radicado/${encodeURIComponent(numero)}`);
+  }
+
+  // ---------------------------------------------------------------- reglas de términos (F12)
+
+  reglas(): Observable<ReglaTermino[]> { return this.http.get<ReglaTermino[]>(`${API}/reglas-termino`); }
+  historialRegla(id: number): Observable<CambioRegla[]> {
+    return this.http.get<CambioRegla[]>(`${API}/reglas-termino/${id}/historial`);
+  }
+  probarPatron(patron: string, clase: string): Observable<PruebaPatron> {
+    return this.http.get<PruebaPatron>(`${API}/reglas-termino/prueba`, { params: filtros({ patron, clase }) });
+  }
+  guardarRegla(id: number | null, r: ReglaSolicitud): Observable<ReglaTermino> {
+    return id == null ? this.http.post<ReglaTermino>(`${API}/reglas-termino`, r)
+      : this.http.put<ReglaTermino>(`${API}/reglas-termino/${id}`, r);
+  }
+  validarRegla(id: number): Observable<ReglaTermino> {
+    return this.http.post<ReglaTermino>(`${API}/reglas-termino/${id}/validacion`, {});
+  }
+  cambiarContestacion(idTipo: number, dias: number | null): Observable<{ reglasSinValidar: number }> {
+    return this.http.put<{ reglasSinValidar: number }>(`${API}/catalogos/tipos/${idTipo}/contestacion`, { dias });
+  }
+
+  /** Estado del servidor según el vigía (F12, solo ADMIN). */
+  estadoServidor(dias: number): Observable<EstadoServidor> {
+    return this.http.get<EstadoServidor>(`${API}/notificaciones/servidor`, { params: filtros({ dias }) });
   }
 
   ramas(): Observable<Rama[]> { return this.http.get<Rama[]>(`${API}/catalogos/ramas`); }

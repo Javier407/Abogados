@@ -388,3 +388,44 @@ class Mensajeria:
     async def cerrar(self) -> None:
         if self.conexion is not None:
             await self.conexion.close()
+
+
+# ------------------------------------------------------------------ estado del servidor (F12)
+
+class RepositorioServidorPostgres:
+    """Lee lo que escribe el vigía en operacion.revisiones e incidentes (notificaciones solo tiene SELECT)."""
+
+    def __init__(self, pool: AsyncConnectionPool):
+        self.pool = pool
+
+    async def ultima_revision(self) -> dict | None:
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                """SELECT momento, disco, memoria_mb, respaldo_horas, app_ok, problemas, detalle
+                   FROM operacion.revisiones ORDER BY momento DESC LIMIT 1""")
+            fila = await cur.fetchone()
+        if fila is None:
+            return None
+        m, disco, memoria, respaldo, app_ok, problemas, detalle = fila
+        return {"momento": m, "disco": disco, "memoriaMb": memoria, "respaldoHoras": respaldo, "appOk": app_ok,
+                "problemas": problemas, "detalle": [l for l in (detalle or "").splitlines() if l.strip()]}
+
+    async def serie(self, desde, por_hora: bool) -> list[dict]:
+        # Por hora: el peor valor de la hora (más disco, menos memoria) para no esconder un pico.
+        sql = ("""SELECT date_trunc('hour', momento), max(disco), min(memoria_mb), bool_and(app_ok), max(problemas),
+                         count(*), count(*) FILTER (WHERE NOT app_ok)
+                  FROM operacion.revisiones WHERE momento >= %s GROUP BY 1 ORDER BY 1""" if por_hora else
+               """SELECT momento, disco, memoria_mb, app_ok, problemas, 1, CASE WHEN app_ok THEN 0 ELSE 1 END
+                  FROM operacion.revisiones WHERE momento >= %s ORDER BY momento""")
+        async with self.pool.connection() as con:
+            cur = await con.execute(sql, (desde,))
+            filas = await cur.fetchall()
+        return [{"momento": m, "disco": d, "memoriaMb": mem, "appOk": ok, "problemas": p, "revisiones": n,
+                 "sinApp": sin} for m, d, mem, ok, p, n, sin in filas]
+
+    async def incidentes(self, desde) -> list[dict]:
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                """SELECT clave, mensaje, inicio, fin FROM operacion.incidentes
+                   WHERE fin IS NULL OR fin >= %s ORDER BY inicio DESC LIMIT 100""", (desde,))
+            return [{"clave": c, "mensaje": m, "inicio": i, "fin": f} for c, m, i, f in await cur.fetchall()]

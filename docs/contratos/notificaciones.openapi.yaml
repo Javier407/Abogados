@@ -48,6 +48,18 @@ paths:
       parameters: [ { name: idPersona, in: query, required: true, schema: { type: integer, format: int64 } } ]
       responses:
         '200': { description: Cuántos se marcaron, content: { application/json: { schema: { type: object, properties: { marcadas: { type: integer } } } } } }
+  /notificaciones/servidor:
+    get:
+      summary: Estado del servidor según el vigía (F12). Solo ADMIN.
+      description: |
+        Lee operacion.revisiones e incidentes, que escribe infra/monitoreo/vigia.sh cada 5 minutos.
+        Con más de 2 días la serie va por hora (el peor valor de cada hora). vigiaActivo = hubo revisión en los
+        últimos 15 minutos. disponibilidad = % de revisiones en que la app respondió por HTTPS.
+      parameters: [ { name: dias, in: query, schema: { type: integer, default: 7, minimum: 1, maximum: 90 } } ]
+      responses:
+        '200': { description: '{ dias, ultima, vigiaActivo, revisiones, disponibilidad, serie[], incidentes[] }' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
   /notificaciones/stream:
     get:
       summary: Avisos nuevos en vivo (Server-Sent Events)

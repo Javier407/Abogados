@@ -140,3 +140,13 @@ Con esto, Seguridad pasa de 8 a 9 (falta MFA y el análisis de dependencias) y F
 | Fiabilidad (operación) | Vigía con avisos por Telegram: un contenedor caído, el disco lleno, un respaldo atrasado o eventos atascados se avisan en máximo 5 minutos. |
 
 Mantenibilidad sube de 8 a 9 (cobertura medida y dependencias vigiladas, falta llegar al 70 %) y Fiabilidad de 8 a 9 (vigilancia activa; sigue un único servidor). Total estimado: **8,8**.
+
+## 8. Avance tras F12 (2026-10-22)
+
+| Prioridad del plan | Estado tras F12 |
+|---|---|
+| 7 · Cobertura | **Resuelta.** Todos los servicios sobre 70 % de líneas (procesos 85 %, gabinete 85 %, identidad 78 %, gateway 95 %, notificaciones 74 %, vigilancia 99 %, asistente-ia 84 %); el CI exige lo alcanzado. Las pruebas nuevas encontraron dos errores menores, ya corregidos. |
+| Adecuación funcional (corrección) | Las reglas de términos dejan de ser solo "de referencia": un socio las valida, cada cambio las deja otra vez sin validar y todo queda en un historial (también es trazabilidad, de Seguridad). |
+| Fiabilidad (operación) | El vigía guarda la historia: disponibilidad medida y cada incidente con su duración. |
+
+Mantenibilidad sube de 9 a 10 (cobertura sobre la meta en todos los servicios, protegida en el CI). Total estimado: **9,0**. Lo que queda para subir más está fuera del código: un segundo servidor (Fiabilidad) y MFA (Seguridad).

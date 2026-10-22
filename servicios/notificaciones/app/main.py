@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from .aplicacion import ServicioNotificaciones
+from .aplicacion import ConsultaServidor, ServicioNotificaciones
 from .seguridad import MiddlewareToken, TokenServicio, VerificadorTokens
 from .infraestructura import AvisosEnVivoMemoria
 
@@ -36,8 +36,17 @@ def persona_autorizada(request: Request, idPersona: int = Query(..., gt=0)) -> i
     return idPersona
 
 
+def solo_admin(request: Request) -> None:
+    """El estado del servidor (F12) es solo para el administrador; el gateway también lo exige."""
+    if not (request.headers.get("x-usuario-id") or "").strip():
+        raise HTTPException(401, detail="Falta la identidad del usuario")
+    if "ADMIN" not in (request.headers.get("x-usuario-roles") or "").split(","):
+        raise HTTPException(403, detail="Solo el administrador ve el estado del servidor")
+
+
 def crear_app(servicio: ServicioNotificaciones | None = None,
-              en_vivo: AvisosEnVivoMemoria | None = None, verificador: VerificadorTokens | None = None) -> FastAPI:
+              en_vivo: AvisosEnVivoMemoria | None = None, verificador: VerificadorTokens | None = None,
+              servidor: ConsultaServidor | None = None) -> FastAPI:
     """Sin argumentos conecta PostgreSQL, SMTP y RabbitMQ; en las pruebas se pasan dobles."""
 
     @asynccontextmanager
@@ -45,6 +54,7 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
         if servicio is not None:
             app.state.servicio = servicio
             app.state.en_vivo = en_vivo or AvisosEnVivoMemoria()
+            app.state.servidor = servidor
             yield
             return
 
@@ -52,7 +62,7 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
 
         from .config import Config
         from .infraestructura import (ClienteIdentidad, ClienteProcesos, CorreoSmtp, DirectorioGabinete, Mensajeria,
-                                      RepositorioPostgres, TelegramBot)
+                                      RepositorioPostgres, RepositorioServidorPostgres, TelegramBot)
 
         cfg = Config.desde_entorno()
         # check: se comprueba cada conexión antes de usarla; si PostgreSQL se reinició, se abre otra.
@@ -73,6 +83,7 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
             RepositorioPostgres(pool), CorreoSmtp(cfg), DirectorioGabinete(cfg.gabinete_url, token), vivo, mensajeria,
             url_app=cfg.url_app, telegram=telegram, procesos=ClienteProcesos(cfg.procesos_url, token),
             cuentas=ClienteIdentidad(cfg.identidad_url, token))
+        app.state.servidor = ConsultaServidor(RepositorioServidorPostgres(pool))
         tareas = [asyncio.create_task(mensajeria.iniciar(app.state.servicio.procesar))]
         if telegram is not None:
             tareas.append(asyncio.create_task(telegram.escuchar(app.state.servicio.vincular_telegram)))
@@ -130,6 +141,14 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
     @app.delete("/notificaciones/telegram")
     async def desvincular_telegram(request: Request, idPersona: int = Depends(persona_autorizada)):
         return {"desvinculado": await srv(request).desvincular_telegram(idPersona)}
+
+    @app.get("/notificaciones/servidor")
+    async def estado_servidor(request: Request, dias: int = Query(7, ge=1, le=90)):
+        solo_admin(request)
+        consulta = getattr(request.app.state, "servidor", None)
+        if consulta is None:
+            raise HTTPException(503, detail="El estado del servidor no está disponible")
+        return await consulta.estado(dias)
 
     @app.get("/notificaciones/stream")
     async def stream(request: Request, idPersona: int = Depends(persona_autorizada)):

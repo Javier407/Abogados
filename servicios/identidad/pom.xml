@@ -14,7 +14,7 @@
 	<name>identidad</name>
 	<description>Inicio de sesión, tokens JWT firmados con RSA, roles y bloqueo por intentos fallidos</description>
 	<properties>
-		<cobertura.minima>0.57</cobertura.minima>   <!-- F11: no puede bajar; meta 0.70 -->
+		<cobertura.minima>0.74</cobertura.minima>   <!-- F12: no puede bajar de lo alcanzado (con margen para el CI); nunca menos de 0.70 -->
 		<java.version>17</java.version>
 	</properties>
 	<dependencies>

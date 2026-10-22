@@ -2,7 +2,7 @@
 
 Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-dominio.md`) con lo que el código hace hoy. Sirve para decidir las fases siguientes.
 
-> Escrito al cerrar F5, **actualizado con F6 a F11**. F11 agregó el vigía del servidor con avisos por Telegram, la cobertura y la auditoría de dependencias en el CI, los abogados de apoyo, la edición de sedes, cargos y áreas y los reportes en PDF. F10 agregó el expediente digital, los borradores de demanda y recurso, la consulta inicial y la copia diaria de los respaldos al PC. F9 agregó el portal del cliente con sus avisos, sesiones renovables y revocables, verificación del token en cada servicio, outbox y HTTPS. F8 agregó administración de cuentas, anulación de pagos, liquidación, gastos, cartera y reportes. F7 trajo audiencias en la agenda con aviso, pruebas con perito y términos sugeridos.
+> Escrito al cerrar F5, **actualizado con F6 a F12**. F12 agregó las reglas de términos editables y validadas por un socio con su historial, el historial del vigía con la pantalla "Servidor" y la cobertura de pruebas sobre 70 % en todos los servicios. F11 agregó el vigía del servidor con avisos por Telegram, la cobertura y la auditoría de dependencias en el CI, los abogados de apoyo, la edición de sedes, cargos y áreas y los reportes en PDF. F10 agregó el expediente digital, los borradores de demanda y recurso, la consulta inicial y la copia diaria de los respaldos al PC. F9 agregó el portal del cliente con sus avisos, sesiones renovables y revocables, verificación del token en cada servicio, outbox y HTTPS. F8 agregó administración de cuentas, anulación de pagos, liquidación, gastos, cartera y reportes. F7 trajo audiencias en la agenda con aviso, pruebas con perito y términos sugeridos.
 > Actualización de F6 (rama `feature/f6-expediente`, 2026-10-17): partes y conflicto de intereses, actuaciones, providencia manual, sentencia, recursos, otras instancias y copias de seguridad.
 
 **Estados:**
@@ -15,7 +15,7 @@ Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-domin
 | # | Macroproceso | Estado | Resumen |
 |---|---|---|---|
 | 1 | Captación y vinculación del cliente | ✅ | Consulta inicial con conflicto de intereses (F10), clientes, acuerdos de honorarios y poder firmado en el expediente. |
-| 2 | Gestión del proceso judicial | 🟡 | Partes, equipo (F11), actuaciones, providencias, términos sugeridos, audiencias, pruebas, sentencia, recursos y documentos (F10). Las reglas de términos sugeridos (también las de recursos) esperan la validación de un abogado. |
+| 2 | Gestión del proceso judicial | ✅ | Partes, equipo (F11), actuaciones, providencias, términos sugeridos con reglas editables y validables por un socio (F12), audiencias, pruebas, sentencia, recursos y documentos (F10). Falta que un abogado de la firma valide las reglas (revisión jurídica). |
 | 3 | Vigilancia y alertas | ✅ | Rama Judicial (real o simulada), correo, avisos en la app y Telegram; avisos al cliente y entrega garantizada (F9). |
 | 4 | Redacción asistida (IA) | ✅ | Contestación, demanda, recurso y resumen para el cliente (F10). El resumen de autos en el aviso se decidió no hacerlo. |
 | 5 | Finanzas | 🟡 | Tarifas, acuerdos, pagos con anulación, liquidación de la parte variable, gastos y cartera (F8). Falta la facturación electrónica. |
@@ -47,11 +47,11 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Providencias detectadas por la vigilancia | ✅ | `ConsumidorActuaciones` → `ProvidenciaServicio.registrarDetectada`, `providencias-proceso.component` | — |
 | Registrar una providencia a mano | ✅ F6 | `POST /procesos/{id}/providencias` | — |
 | Términos (crear, cumplir, revisión diaria, calendario) | ✅ | `TerminoServicio`, `CalendarioServicio`, `RevisionDiariaTerminos`, `pages/terminos`, `pages/calendario` | — |
-| Términos sugeridos al llegar un auto (por ejemplo, admite demanda → 20 días en un verbal) | ✅ F7 (reglas a validar) | Los términos de referencia están en `01-dominio.md` §1.6, pero no en el código. | Tabla `procesos.reglas_termino` (tipo de proceso × clase de auto → días). `ProvidenciaServicio` propone el término y el abogado lo confirma. Las reglas debe validarlas un abogado. |
+| Términos sugeridos al llegar un auto (por ejemplo, admite demanda → 20 días en un verbal) | ✅ F7, F12 | `SugeridorTerminos` con `procesos.reglas_termino`; desde F12 la pantalla "Reglas" las edita y un socio las valida (con historial) | Que un abogado de la firma valide cada regla (revisión jurídica, no de código). |
 | Audiencias y agenda | ✅ F7 | Hora y lugar, calendario y aviso `audiencia.proxima` el día hábil anterior. | Actuación tipo `AUDIENCIA` con fecha futura, mostrada en el calendario, con un aviso el día antes (evento `audiencia.proxima`). |
 | Pruebas (documental, pericial, testimonial…) | ✅ F7 | `/procesos/{id}/pruebas` con perito y término de entrega. | CRUD `/procesos/{id}/pruebas`, asignación de perito (lee `gabinete` vía `DirectorioGabinete`) y fecha de entrega del dictamen como término. |
 | Sentencia y resultado | ✅ F6 | Sentencia manual con `sentido`; el proceso pasa a la etapa SENTENCIA | Usar el sentido en la cuota litis (sección 5) y en los reportes (sección 8). |
-| Recursos (apelación, reposición, impugnación de tutela) | 🟡 F6 | Actuación `RECURSO` contra una providencia; otras instancias del mismo radicado enlazadas en el expediente | El término de 3 días se crea a mano: sugerirlo automáticamente (F7). |
+| Recursos (apelación, reposición, impugnación de tutela) | ✅ F6, F7 | Actuación `RECURSO` contra una providencia; otras instancias del mismo radicado enlazadas; el término (reposición 3 días, apelación 3 o 10, impugnación de tutela 3) lo sugieren las reglas | Validación de esas reglas por un socio (F12). |
 | Expediente digital (documentos) | ✅ F10 | `procesos` → `DocumentoServicio`, volumen `documentos`, `/procesos/{id}/documentos`; el cliente ve los visibles en su portal | Antivirus si se aceptan más tipos de archivo. |
 
 ## 3. Vigilancia y alertas ✅
@@ -127,8 +127,8 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Validar el JWT en cada servicio | ✅ F9 | `FiltroToken` (Java) y `MiddlewareToken` (Python); tokens de servicio entre ellos. |
 | Outbox de eventos | ✅ F9 | `procesos` y `vigilancia`. |
 | Copias de seguridad de PostgreSQL y documentos | ✅ F10 | `pg_dump` y paquete de documentos diarios en la VM (14 días) y copia al PC con SHA-256 verificado (tarea programada, 30 días). |
-| Monitoreo y alertas | ✅ F11 | Vigía cada 5 minutos con avisos por Telegram (`infra/monitoreo`). Sin historia de métricas ni logs centralizados. |
-| Análisis de dependencias y cobertura | ✅ F11 | Dependabot, `pip-audit` y `npm audit` en el CI; JaCoCo y coverage.py con mínimo por servicio. |
+| Monitoreo y alertas | ✅ F11, F12 | Vigía cada 5 minutos con avisos por Telegram (`infra/monitoreo`); desde F12 guarda cada revisión e incidente y la pantalla "Servidor" muestra la historia (90 días). Sin logs centralizados. |
+| Análisis de dependencias y cobertura | ✅ F11, F12 | Dependabot, `pip-audit` y `npm audit` en el CI; JaCoCo y coverage.py con mínimo por servicio, todos sobre 70 % desde F12. |
 | IP real del cliente (Tailscale SNAT) | ✅ F9 | Por `tailscale serve`: última IP de `X-Forwarded-For`. |
 
 ## Propuesta de fases siguientes
@@ -143,3 +143,4 @@ Ordenadas por valor para la firma y por dependencias:
 | **F9. Portal del cliente y endurecimiento** ✅ | Portal, avisos al cliente, HTTPS, refresh token, JWT en cada servicio, outbox. | El portal expone datos fuera del equipo: requiere primero las prioridades 1 a 3 de seguridad. |
 | **F10. Documentos y redacción** ✅ | Expediente digital con archivos y control de acceso, borradores de demanda y recurso, consulta inicial, copias fuera de la VM. (El resumen del auto en el aviso se decidió no hacerlo.) | Lo que más trabajo ahorra ahora que el núcleo está completo. |
 | **F11. Operación** ✅ | Vigía con avisos por Telegram, análisis de dependencias y cobertura en el CI, sedes/áreas/cargos editables, abogados de apoyo, PDF en reportes. | Lo que faltaba para operar con tranquilidad. |
+| **F12. Reglas validadas y calidad** ✅ | Reglas de términos editables y validadas por un socio con historial, historial del vigía con pantalla "Servidor", cobertura ≥ 70 % en todos los servicios. | Las sugerencias de términos necesitaban el respaldo de un abogado y el código, pruebas. |

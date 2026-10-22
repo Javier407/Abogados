@@ -65,9 +65,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # minimo: cobertura (líneas y ramas) por debajo de la cual falla; la meta es 70.
-          - { servicio: notificaciones, minimo: 71 }
-          - { servicio: vigilancia, minimo: 63 }
+          # minimo: cobertura (líneas y ramas) por debajo de la cual falla (F12: lo alcanzado, nunca menos de 70).
+          - { servicio: notificaciones, minimo: 72 }
+          - { servicio: vigilancia, minimo: 95 }
           - { servicio: asistente-ia, minimo: 82 }
     defaults:
       run:

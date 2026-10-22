@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 import secrets
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Callable, Protocol
 from zoneinfo import ZoneInfo
 
@@ -228,3 +228,50 @@ class ServicioNotificaciones:
 
     async def desvincular_telegram(self, id_persona: int) -> bool:
         return await self.repo.quitar_telegram(id_persona)
+
+
+# ------------------------------------------------------------------ estado del servidor (F12)
+
+class RepositorioServidor(Protocol):
+    """Lo que escribe el vigía (infra/monitoreo/vigia.sh) en el esquema operacion."""
+    async def ultima_revision(self) -> dict | None: ...
+    async def serie(self, desde: datetime, por_hora: bool) -> list[dict]: ...
+    async def incidentes(self, desde: datetime) -> list[dict]: ...
+
+
+VIGIA_DORMIDO = timedelta(minutes=15)   # el vigía revisa cada 5 minutos: tres vueltas sin revisión = algo pasa
+
+
+class ConsultaServidor:
+    """
+    Estado del servidor para la pantalla del administrador: la última revisión, la serie de disco y memoria
+    (por hora si se piden más de 2 días), la disponibilidad de la app y los incidentes del periodo.
+    """
+
+    def __init__(self, repo: RepositorioServidor, ahora: Callable[[], datetime] = lambda: datetime.now(BOGOTA)):
+        self.repo = repo
+        self.ahora = ahora
+
+    async def estado(self, dias: int) -> dict:
+        ahora = self.ahora()
+        desde = ahora - timedelta(days=dias)
+        ultima = await self.repo.ultima_revision()
+        serie = await self.repo.serie(desde, por_hora=dias > 2)
+        total = sum(p["revisiones"] for p in serie)
+        sin_app = sum(p["sinApp"] for p in serie)
+        incidentes = []
+        for i in await self.repo.incidentes(desde):
+            fin = i["fin"]
+            incidentes.append({"clave": i["clave"], "mensaje": i["mensaje"], "inicio": i["inicio"].isoformat(),
+                               "fin": fin.isoformat() if fin else None, "abierto": fin is None,
+                               "minutos": round(((fin or ahora) - i["inicio"]).total_seconds() / 60)})
+        return {
+            "dias": dias,
+            "ultima": None if ultima is None else {**ultima, "momento": ultima["momento"].isoformat()},
+            "vigiaActivo": ultima is not None and ahora - ultima["momento"] <= VIGIA_DORMIDO,
+            "revisiones": total,
+            # % de revisiones en que la app respondió por HTTPS (None si no hay revisiones en el periodo)
+            "disponibilidad": round(100 * (total - sin_app) / total, 2) if total else None,
+            "serie": [{k: (v.isoformat() if k == "momento" else v) for k, v in p.items()} for p in serie],
+            "incidentes": incidentes,
+        }

@@ -55,6 +55,10 @@ export const routes: Routes = [
       { path: 'reportes', component: ReportesComponent, title: 'Reportes', canActivate: [conRol(...DIRECCION)] },
       { path: 'firma', loadComponent: () => import('./pages/firma/firma.component').then(m => m.FirmaComponent),
         title: 'La firma', canActivate: [conRol(...DIRECCION)] },
+      { path: 'reglas', loadComponent: () => import('./pages/reglas/reglas.component').then(m => m.ReglasComponent),
+        title: 'Reglas de términos', canActivate: [personal] },
+      { path: 'servidor', loadComponent: () => import('./pages/servidor/servidor.component').then(m => m.ServidorComponent),
+        title: 'Servidor', canActivate: [conRol('ADMIN')] },
       { path: 'peritos', component: PeritosComponent, title: 'Peritos', canActivate: [personal] },
       { path: '**', redirectTo: '' }
     ]

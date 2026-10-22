@@ -9,6 +9,9 @@
 # outbox, colas de RabbitMQ sin consumidor o acumuladas y la app por HTTPS. Una vez al día (después de las 7:00)
 # manda un resumen aunque todo esté bien, para saber que el vigía sigue vivo.
 #
+# Cada revisión queda en operacion.revisiones (90 días) y cada problema en operacion.incidentes, desde que aparece
+# hasta que se resuelve (F12): lo muestra la pantalla "Servidor" del administrador.
+#
 # Avisa a las cuentas ADMIN activas que vincularon Telegram en la app (notificaciones.preferencias). Si la base
 # no responde, usa los destinatarios de la última revisión. El token del bot sale de infra/.env y no se muestra.
 set -u
@@ -34,6 +37,12 @@ psql_q() {
   timeout 20 docker compose exec -T postgres sh -c 'psql -tA -U "$POSTGRES_USER" -d "$POSTGRES_DB"' 2>/dev/null
 }
 
+# psql_v -v nombre=valor ... < sql: los valores van como variables de psql (:'nombre'), nunca pegados en el SQL.
+psql_v() {
+  timeout 20 docker compose exec -T postgres sh -c \
+    'psql -tA -q -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" "$@"' sh "$@" 2>/dev/null
+}
+
 # ---------------------------------------------------------------- revisiones
 
 esperados=$(docker compose config --services 2>/dev/null)
@@ -56,6 +65,7 @@ memoria=$(awk '/MemAvailable/ {print int($2 / 1024)}' /proc/meminfo)
 [ "${memoria:-0}" -lt "$UMBRAL_MEMORIA_MB" ] && agregar memoria "Memoria disponible baja: ${memoria} MB"
 
 ultimo=$(ls -1t respaldos/gabinete-*.dump 2>/dev/null | head -1)
+horas=""
 if [ -z "$ultimo" ]; then
   agregar respaldo "No hay respaldos de la base en infra/respaldos"
 else
@@ -89,9 +99,10 @@ else
 fi
 
 url=$(sed -n 's/^URL_PUBLICA=//p' .env | tail -1)
+app_ok=true
 if [ -n "$url" ]; then
   codigo=$(curl -s -o /dev/null -m 20 -w '%{http_code}' "$url/")
-  [ "$codigo" = "200" ] || agregar https "La app no responde por HTTPS ($url → ${codigo:-sin respuesta})"
+  [ "$codigo" = "200" ] || { app_ok=false; agregar https "La app no responde por HTTPS ($url → ${codigo:-sin respuesta})"; }
 fi
 
 problemas=$(printf '%s' "$problemas" | sed '/^$/d' | sort)
@@ -137,6 +148,28 @@ case "$MODO" in
     enviar "🔔 Gestión Jurídica: mensaje de prueba del vigía del servidor. Los avisos llegarán aquí."
     exit 0 ;;
 esac
+
+# Historial (F12). Los incidentes se concilian con la lista actual (no con los cambios de esta vuelta), así se
+# corrigen solos si una vuelta no pudo escribir porque la base no respondía.
+psql_v -v "disco=${disco:-0}" -v "memoria=${memoria:-0}" -v "respaldo=$horas" -v "app_ok=$app_ok" \
+  -v "problemas=$(wc -l < "$ESTADO/actuales")" -v "detalle=$abiertos" \
+  -v "actuales=$(cat "$ESTADO/actuales")" <<'SQL' || echo "No se pudo guardar la revisión en la base"
+INSERT INTO operacion.revisiones (disco, memoria_mb, respaldo_horas, app_ok, problemas, detalle)
+VALUES (:'disco'::smallint, :'memoria'::int, NULLIF(:'respaldo', '')::int, :'app_ok'::boolean,
+        :'problemas'::smallint, NULLIF(:'detalle', ''));
+WITH actuales AS (
+  SELECT split_part(l, E'\t', 1) AS clave, split_part(l, E'\t', 2) AS mensaje
+  FROM unnest(string_to_array(:'actuales', E'\n')) AS l WHERE l <> ''
+), cerrados AS (
+  UPDATE operacion.incidentes SET fin = now()
+  WHERE fin IS NULL AND clave NOT IN (SELECT clave FROM actuales) RETURNING 1
+)
+INSERT INTO operacion.incidentes (clave, mensaje)
+SELECT left(clave, 80), left(mensaje, 300) FROM actuales a
+WHERE NOT EXISTS (SELECT 1 FROM operacion.incidentes i WHERE i.fin IS NULL AND i.clave = left(a.clave, 80));
+DELETE FROM operacion.revisiones WHERE momento < now() - interval '90 days';
+DELETE FROM operacion.incidentes WHERE fin < now() - interval '365 days';
+SQL
 
 if [ -n "$(printf '%s' "$nuevos" | sed '/^$/d')" ]; then
   enviar "⚠️ Gestión Jurídica — problema en el servidor:

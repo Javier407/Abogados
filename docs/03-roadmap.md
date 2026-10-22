@@ -10,6 +10,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | **F3. Vigilancia** | Enterarse de los autos sin entrar al portal | `vigilancia` con la interfaz `FuenteRamaJudicial`; consulta programada; evento `actuacion.detectada`; notificaciones por Telegram | Un auto nuevo en un radicado vigilado llega por Telegram y queda registrado en el proceso |
 | **F4. Asistente y administración** | Apoyo a la redacción y gestión de la firma | `asistente-ia` con Hermes (borradores y resúmenes); módulo de peritos; tarifas, honorarios pactados y pagos | Generar un borrador de contestación a partir de un proceso y registrar un pago de honorarios |
 | **F5. Seguridad y calidad** | Listo para uso real | `identidad` con JWT y roles; contraseñas con BCrypt; CI con GitHub Actions (build y pruebas por servicio); nueva evaluación ISO/IEC 25010 | Ningún servicio responde sin token; el pipeline pasa en verde; Seguridad ≥ 7 en la evaluación |
+| **F12. Reglas validadas y calidad** | Que las sugerencias de términos tengan respaldo de un abogado y que el código esté probado | Reglas de términos editables, validadas por un socio, con historial; días de contestación editables; historial del vigía con pantalla "Servidor"; cobertura de pruebas ≥ 70 % en todos los servicios | Un socio valida una regla y queda a su nombre; cambiarla la deja sin validar; un contenedor detenido queda como incidente con su duración; el CI exige la cobertura alcanzada |
 | **F11. Operación** | Operar con tranquilidad: enterarse de los problemas antes que los usuarios y que la calidad no retroceda | Vigía del servidor con avisos por Telegram; Dependabot, auditoría de dependencias y cobertura mínima en el CI; abogados de apoyo; sedes, cargos y áreas editables; reportes en PDF | Un contenedor detenido llega como aviso por Telegram y su recuperación también; el CI falla si baja la cobertura o aparece una vulnerabilidad conocida; un abogado de apoyo ve el proceso en sus procesos; la dirección crea una sede sin romper la regla de una sola principal |
 | **F10. Documentos, redacción y consultas** | Que el expediente tenga sus archivos, que el asistente redacte demandas y recursos, que la firma registre a quien consulta y que los respaldos no dependan del servidor | Expediente digital con permisos (el cliente ve lo que se marque visible); borradores de demanda y recurso; consulta inicial con conflicto de intereses y paso a cliente; copia diaria de base y documentos al PC | Un PDF subido se descarga idéntico y uno falso se rechaza; el cliente solo descarga lo visible de sus procesos; una consulta contra un cliente avisa el conflicto y otra se convierte en cliente; los respaldos llegan al PC con su SHA-256 verificado |
 | **F9. Portal del cliente y endurecimiento** | Que el cliente vea lo suyo sin llamar a la firma, y que la app aguante datos reales | Portal (mis procesos, novedades, resumen publicado, pagos) y avisos al cliente; HTTPS con `tailscale serve`; token de 15 min con refresh token rotatorio y revocable; contraseña temporal exigida por la API; cada servicio verifica el token; outbox en `procesos` y `vigilancia` | Un cliente ve solo sus procesos y pagos; al publicar el abogado un resumen con RabbitMQ caído, el aviso le llega cuando RabbitMQ vuelve; un token revocado deja de servir; ningún servicio responde sin token aunque se le llame desde la red interna |
@@ -33,6 +34,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F9 | Terminada: en el servidor (39 comprobaciones, repetidas por HTTPS el 2026-10-22 en https://docker-server.tail76e9a3.ts.net), Carolina Méndez ve solo su proceso y sus pagos (otro proceso responde 404); con RabbitMQ detenido el abogado publicó un resumen, el evento esperó en el outbox y el aviso le llegó al volver RabbitMQ; un refresh token reutilizado cerró la sesión y su token de acceso dejó de servir en 20 s; los 6 servicios responden 401 sin token desde la red interna aunque se envíen cabeceras falsas; con clave temporal la API niega todo menos cambiarla | 2026-10-18 |
 | F10 | Terminada: en el servidor (27 comprobaciones por HTTPS), un PDF subido se descargó con el mismo SHA-256 y uno falso, un HTML y uno de 20,5 MB se rechazaron; Carolina Méndez solo descargó el documento marcado visible y otro cliente recibió 404; una consulta contra "CONSTRUCTORA ALTAMIRA S.A.S." avisó el conflicto con el cliente 2 y otra se convirtió en cliente; el recurso citó la providencia elegida; la tarea del PC copió 8 respaldos verificando su SHA-256 | 2026-10-22 |
 | F11 | Terminada: en el servidor (24 comprobaciones por HTTPS), al detener Mailpit llegó el aviso por Telegram y al encenderlo el de "resuelto"; Laura Pineda agregada como apoyo vio el proceso en sus procesos; marcar una sede nueva como principal dejó una sola principal; la auditoría encontró y se corrigieron vulnerabilidades en Angular, Starlette y PyJWT | 2026-10-22 |
+| F12 | Terminada: en el servidor (20 comprobaciones por HTTPS), un socio creó, validó, editó y desactivó una regla y el historial lo contó todo; cambiar los días de contestación del verbal dejó sin validar la regla de contestar; al detener Mailpit quedó un incidente abierto y al encenderlo se cerró con su duración; cobertura de líneas: procesos 85 %, gabinete 85 %, identidad 78 %, vigilancia 99 %, notificaciones 74 % | 2026-10-22 |
 
 ## F1: qué quedó y qué falta
 
@@ -310,3 +312,41 @@ Pendiente o decidido para después:
 - Subir la cobertura de procesos, identidad, gabinete y vigilancia hasta el 70 %.
 - El vigía no avisa por correo (el correo de la firma aún va a Mailpit) y no guarda historia de métricas: para eso haría falta una herramienta como Prometheus o Uptime Kuma.
 - El PDF de los reportes lo genera el navegador; no hay PDF generado en el servidor (por ejemplo, para enviarlo por correo).
+
+## F12: qué quedó y qué falta
+
+Hecho:
+
+1. **Reglas de términos validadas** (pantalla "Reglas", `/reglas-termino` en procesos, migración `009`):
+   - El personal ve las reglas; solo un **SOCIO** las crea, edita, activa o desactiva y **valida** (es un juicio jurídico; el ADMIN no basta). Lo exigen el gateway y el propio servicio.
+   - Validar deja la regla a nombre del socio y con la fecha. Cambiar lo que dice (patrón, días, norma, rama…) la deja otra vez **sin validar**; activarla o desactivarla, no. Una regla desactivada deja de sugerir términos.
+   - Los **días de contestación** de cada tipo de proceso se editan en la misma pantalla; cambiarlos deja sin validar las reglas que los usan.
+   - **Historial** de cada regla: quién la creó, cambió (con el antes y el después), validó o desactivó, y cuándo.
+   - "Probar" un patrón con la clase de un auto, con el mismo texto normalizado que usa el sugeridor.
+2. **Historial del vigía** (pantalla "Servidor", solo ADMIN, `GET /notificaciones/servidor`):
+   - `vigia.sh` guarda cada revisión en `operacion.revisiones` (90 días) y cada problema en `operacion.incidentes`, desde que aparece hasta que se resuelve. Los incidentes se concilian con la lista actual, así que se corrigen solos si una vuelta no pudo escribir.
+   - La pantalla muestra el estado actual, la disponibilidad de la app en el periodo (1, 7, 30 o 90 días), gráficas de disco y memoria (por hora si son más de 2 días, con el peor valor de cada hora) e incidentes con su duración. Si el vigía lleva 15 minutos sin revisar, lo advierte.
+3. **Cobertura ≥ 70 % en todos los servicios** (pruebas nuevas, sin cambiar el código de producción salvo los arreglos de abajo):
+
+   | Servicio | F11 | F12 | Mínimo en el CI |
+   |---|---|---|---|
+   | procesos | 49 % | 85 % | 80 % |
+   | gabinete | 64 % | 85 % | 80 % |
+   | identidad | 59 % | 78 % | 74 % |
+   | gateway | 95 % | 95 % | 90 % |
+   | notificaciones | 73 % | 74 % | 72 % |
+   | vigilancia | 65 % | 99 % | 95 % |
+   | asistente-ia | 84 % | 84 % | 82 % |
+
+   Los repositorios JDBC de procesos se prueban con un doble de `JdbcClient` que pasa las filas por el `RowMapper` real; los de gabinete, con H2.
+4. Arreglos encontrados al escribir las pruebas:
+   - procesos: un parámetro obligatorio que faltaba en cualquier ruta respondía "Adjunte el archivo y elija la categoría"; ahora dice cuál falta. Una cabecera de identidad que falta responde con el formato de error de siempre.
+   - vigilancia: el relay del outbox repetía el aviso de "RabbitMQ no confirmó" en cada vuelta si una tanda salía a medias.
+
+Pendiente o decidido para después:
+
+- **Que un abogado de la firma revise y valide las reglas.** El software ya lo permite y lo registra; la revisión jurídica no la puede hacer el código.
+- Observaciones de las pruebas que no se cambiaron (riesgo bajo, se registran):
+  - identidad no consulta la lista de tokens revocados (sí lo hace el gateway, que es la única entrada desde fuera de la VM).
+  - Fallar 5 veces la contraseña de alguien bloquea su cuenta y cierra sus sesiones al renovar: es lo buscado contra la fuerza bruta, pero permite molestar a un usuario conocido. Lo mitiga el límite de intentos por IP.
+- PDF generado en el servidor y facturación electrónica (DIAN), como en F11.

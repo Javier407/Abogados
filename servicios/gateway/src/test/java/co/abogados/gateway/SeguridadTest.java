@@ -68,6 +68,17 @@ class SeguridadTest {
 		assertThat(permitido("POST", "/api/abogados", "SOCIO")).isTrue();
 		assertThat(permitido("POST", "/api/asistente/borradores", "ADMINISTRATIVO")).isFalse();
 		assertThat(permitido("PUT", "/api/vigilancia/radicados/1", "DEPENDIENTE")).isTrue();
+		// F12: reglas de términos (las valida un socio) y estado del servidor (solo el administrador)
+		assertThat(permitido("GET", "/api/reglas-termino", "DEPENDIENTE")).isTrue();
+		assertThat(permitido("POST", "/api/reglas-termino/4/validacion", "SOCIO")).isTrue();
+		assertThat(permitido("POST", "/api/reglas-termino/4/validacion", "ADMIN")).isFalse();
+		assertThat(permitido("PUT", "/api/reglas-termino/4", "ABOGADO")).isFalse();
+		assertThat(permitido("PUT", "/api/catalogos/tipos/3/contestacion", "SOCIO")).isTrue();
+		assertThat(permitido("PUT", "/api/catalogos/tipos/3/contestacion", "ADMIN")).isFalse();
+		assertThat(permitido("GET", "/api/notificaciones/servidor", "ADMIN")).isTrue();
+		assertThat(permitido("GET", "/api/notificaciones/servidor", "SOCIO")).isFalse();
+		assertThat(permitido("DELETE", "/api/notificaciones/servidor/revisiones", "ADMIN")).isFalse();
+		assertThat(permitido("GET", "/api/notificaciones", "CLIENTE")).isTrue();
 		// F11: catálogos de la firma y equipo del proceso
 		assertThat(permitido("POST", "/api/gabinete/sedes", "SOCIO")).isTrue();
 		assertThat(permitido("PUT", "/api/gabinete/cargos/2", "ABOGADO")).isFalse();

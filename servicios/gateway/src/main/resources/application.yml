@@ -24,7 +24,7 @@ spring:
         - id: procesos
           uri: ${PROCESOS_URL:http://localhost:8082}
           predicates:
-            - Path=/api/procesos/**,/api/catalogos/**,/api/terminos/**,/api/calendario/**,/api/audiencias/**,/api/reportes/**,/api/portal/procesos/**
+            - Path=/api/procesos/**,/api/reglas-termino/**,/api/catalogos/**,/api/terminos/**,/api/calendario/**,/api/audiencias/**,/api/reportes/**,/api/portal/procesos/**
           filters:
             - StripPrefix=1
         - id: notificaciones
