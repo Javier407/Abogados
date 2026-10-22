@@ -42,8 +42,16 @@ paths:
               required: [idProceso, tipo]
               properties:
                 idProceso: { type: integer }
-                tipo: { type: string, enum: [CONTESTACION, RESUMEN_CLIENTE], description: CONTESTACION solo si el cliente es demandado o accionado }
-                instrucciones: { type: string, maxLength: 800 }
+                tipo:
+                  type: string
+                  enum: [CONTESTACION, DEMANDA, RECURSO, RESUMEN_CLIENTE]
+                  description: |
+                    CONTESTACION solo si el cliente es demandado o accionado. DEMANDA (F10) solo si es demandante,
+                    accionante o víctima, y exige los hechos y pretensiones en instrucciones (mínimo 40 caracteres:
+                    el asistente no inventa hechos). RECURSO (F10) exige idProvidencia. Ninguno si el proceso está cerrado,
+                    salvo RESUMEN_CLIENTE.
+                instrucciones: { type: string, maxLength: 800, description: "En DEMANDA: los hechos y lo que pide el cliente" }
+                idProvidencia: { type: integer, nullable: true, description: "RECURSO: la providencia del proceso que se recurre" }
       responses:
         '200':
           description: Flujo de eventos

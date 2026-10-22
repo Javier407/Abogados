@@ -304,7 +304,7 @@ export interface Pago {
 }
 
 // ---------- asistente (F4) ----------
-export type TipoBorrador = 'CONTESTACION' | 'RESUMEN_CLIENTE';
+export type TipoBorrador = 'CONTESTACION' | 'RESUMEN_CLIENTE' | 'DEMANDA' | 'RECURSO';
 export interface EstadoAsistente { modelo: string; disponible: boolean; detalle: string; }
 export interface EventoBorrador { evento: 'inicio' | 'texto' | 'aviso' | 'fin'; texto?: string; mensaje?: string; modelo?: string | null; conModelo?: boolean; segundos?: number; }
 
@@ -480,6 +480,56 @@ export interface DetallePortal {
   novedades: NovedadPortal[];
   audiencias: AudienciaPortal[];
   resumen: ResumenPublicado | null;
+  documentos: DocumentoPortal[];
+}
+export interface DocumentoPortal {
+  idDocumento: number; nombre: string; categoria: string; descripcion: string | null; tamano: number; subido: string;
+}
+
+// ---------- expediente digital (F10) ----------
+export type CategoriaDocumento = 'PODER' | 'DEMANDA' | 'CONTESTACION' | 'MEMORIAL' | 'PRUEBA' | 'PROVIDENCIA' | 'CONTRATO' | 'OTRO';
+export const CATEGORIAS_DOCUMENTO: CategoriaDocumento[] =
+  ['PODER', 'DEMANDA', 'CONTESTACION', 'MEMORIAL', 'PRUEBA', 'PROVIDENCIA', 'CONTRATO', 'OTRO'];
+export interface Documento {
+  idDocumento: number;
+  idProceso: number;
+  nombre: string;
+  tipoMime: string;
+  tamano: number;
+  sha256: string;
+  categoria: CategoriaDocumento;
+  descripcion: string | null;
+  visibleCliente: boolean;
+  subidoPor: number;
+  subido: string;
+}
+
+// ---------- consulta inicial (F10) ----------
+export type EstadoConsulta = 'ABIERTA' | 'CONTRATADA' | 'NO_CONTRATADA' | 'REMITIDA';
+export interface Consulta {
+  idConsulta: number;
+  fecha: string;
+  nombre: string;
+  tipoDocumento: string | null;
+  numeroDocumento: string | null;
+  email: string | null;
+  telefono: string | null;
+  contraparte: string | null;
+  contraparteDocumento: string | null;
+  codigoRama: string | null;
+  asunto: string;
+  descripcion: string | null;
+  idAbogado: number | null;
+  estado: EstadoConsulta;
+  motivoCierre: string | null;
+  idCliente: number | null;
+}
+export interface ConsultaConAvisos { consulta: Consulta; avisos: string[]; }
+
+/** Tamaño de archivo legible: 1,2 MB, 340 KB. */
+export function tamanoLegible(bytes: number): string {
+  if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toLocaleString('es-CO', { maximumFractionDigits: 1 }) + ' MB';
+  return Math.max(1, Math.round(bytes / 1024)).toLocaleString('es-CO') + ' KB';
 }
 export interface PagoPortal { fecha: string; valor: number; medio: string; referencia: string | null; }
 export interface AcuerdoPortal {

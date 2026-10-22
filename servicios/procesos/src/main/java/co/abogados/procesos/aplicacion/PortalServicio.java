@@ -24,6 +24,7 @@ import co.abogados.procesos.dominio.modelo.Portal.ResumenPublicado;
 import co.abogados.procesos.dominio.modelo.ProcesoVista;
 import co.abogados.procesos.dominio.puertos.AgendaRepositorio;
 import co.abogados.procesos.dominio.puertos.DirectorioGabinete;
+import co.abogados.procesos.dominio.puertos.DocumentoRepositorio;
 import co.abogados.procesos.dominio.puertos.ExpedienteRepositorio;
 import co.abogados.procesos.dominio.puertos.ProcesoRepositorio;
 import co.abogados.procesos.dominio.puertos.PublicadorPortal;
@@ -48,16 +49,19 @@ public class PortalServicio {
 	private final ResumenRepositorio resumenes;
 	private final DirectorioGabinete gabinete;
 	private final PublicadorPortal publicador;
+	private final DocumentoRepositorio documentos;
 	private final Clock reloj;
 
 	public PortalServicio(ProcesoRepositorio procesos, ExpedienteRepositorio expediente, AgendaRepositorio agenda,
-			ResumenRepositorio resumenes, DirectorioGabinete gabinete, PublicadorPortal publicador, Clock reloj) {
+			ResumenRepositorio resumenes, DirectorioGabinete gabinete, PublicadorPortal publicador,
+			DocumentoRepositorio documentos, Clock reloj) {
 		this.procesos = procesos;
 		this.expediente = expediente;
 		this.agenda = agenda;
 		this.resumenes = resumenes;
 		this.gabinete = gabinete;
 		this.publicador = publicador;
+		this.documentos = documentos;
 		this.reloj = reloj;
 	}
 
@@ -81,7 +85,12 @@ public class PortalServicio {
 				.filter(Objects::nonNull).filter(n -> !n.fecha().isAfter(hoy)).toList();   // lo programado va en audiencias
 		List<Audiencia> audiencias = proximas.stream().filter(a -> a.idProceso() == idProceso).map(PortalServicio::audiencia)
 				.toList();
-		return new Portal.Detalle(aCliente(p, proximas), novedades, audiencias, resumenes.ultimo(idProceso).orElse(null));
+		List<Portal.DocumentoCliente> visibles = documentos.listar(idProceso, true).stream()
+				.map(d -> new Portal.DocumentoCliente(d.idDocumento(), d.nombre(), d.categoria().name(), d.descripcion(),
+						d.tamano(), d.subido()))
+				.toList();
+		return new Portal.Detalle(aCliente(p, proximas), novedades, audiencias, resumenes.ultimo(idProceso).orElse(null),
+				visibles);
 	}
 
 	// ------------------------------------------------------------------ resúmenes (los publica el abogado)

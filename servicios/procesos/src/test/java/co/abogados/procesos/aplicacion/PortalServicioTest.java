@@ -46,6 +46,8 @@ class PortalServicioTest {
 	ResumenRepositorio resumenes = mock(ResumenRepositorio.class);
 	DirectorioGabinete gabinete = mock(DirectorioGabinete.class);
 	PublicadorPortal publicador = mock(PublicadorPortal.class);
+	co.abogados.procesos.dominio.puertos.DocumentoRepositorio documentos =
+			mock(co.abogados.procesos.dominio.puertos.DocumentoRepositorio.class);
 	PortalServicio servicio;
 
 	static ProcesoVista proceso(int id, int cliente) {
@@ -57,7 +59,7 @@ class PortalServicioTest {
 
 	@BeforeEach
 	void preparar() {
-		servicio = new PortalServicio(procesos, expediente, agenda, resumenes, gabinete, publicador,
+		servicio = new PortalServicio(procesos, expediente, agenda, resumenes, gabinete, publicador, documentos,
 				Clock.fixed(HOY.atTime(9, 0).atZone(ZoneId.of("America/Bogota")).toInstant(), ZoneId.of("America/Bogota")));
 		given(procesos.buscar(34)).willReturn(Optional.of(proceso(34, 6)));
 		given(gabinete.abogado(52345678L)).willReturn(Optional.of(new DirectorioGabinete.Abogado(52345678L, "Catalina",

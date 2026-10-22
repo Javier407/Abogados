@@ -267,6 +267,61 @@ paths:
       responses:
         "200": { description: "{ acuerdos[], gastosPorReembolsar[], saldoHonorarios, totalGastosPorReembolsar }" }
         "403": { description: No es una cuenta del portal }
+  # ---------------------------------------------------------------- consulta inicial (F10)
+  /consultas:
+    get:
+      summary: Consultas iniciales, de la más reciente a la más antigua (personal)
+      parameters:
+        - { in: query, name: estado, schema: { type: string, enum: [ABIERTA, CONTRATADA, NO_CONTRATADA, REMITIDA] } }
+      responses:
+        "200": { description: Lista de consultas }
+    post:
+      summary: Registra una consulta y revisa el conflicto de intereses (personal)
+      description: |
+        Responde { consulta, avisos }. avisos dice si la contraparte ya es cliente de la firma (mismo documento o
+        nombre, sin importar tildes, mayúsculas ni puntuación) o si quien consulta ya es cliente.
+      responses:
+        "201": { description: "{ consulta, avisos }" }
+        "422": { description: Datos inválidos (nombre y asunto obligatorios; documento con tipo y número) }
+  /consultas/{id}:
+    get:
+      summary: Una consulta con sus avisos de conflicto
+      responses:
+        "200": { description: "{ consulta, avisos }" }
+  /consultas/{id}/contratacion:
+    post:
+      summary: Contrató; crea su ficha de cliente o enlaza la existente con el mismo documento (ADMIN, SOCIO, ABOGADO, ADMINISTRATIVO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ciudad, idSede]
+              properties:
+                ciudad: { type: string, maxLength: 60 }
+                idSede: { type: integer }
+                direccion: { type: string, maxLength: 150 }
+      responses:
+        "200": { description: Consulta CONTRATADA con idCliente }
+        "409": { description: La consulta ya estaba cerrada }
+        "422": { description: La consulta no tiene documento }
+  /consultas/{id}/cierre:
+    post:
+      summary: No contrató o se remitió (con motivo)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [estado, motivo]
+              properties:
+                estado: { type: string, enum: [NO_CONTRATADA, REMITIDA] }
+                motivo: { type: string, maxLength: 300 }
+      responses:
+        "200": { description: Consulta cerrada }
+        "409": { description: La consulta ya estaba cerrada }
 components:
   responses:
     Error:

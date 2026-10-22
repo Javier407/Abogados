@@ -511,6 +511,64 @@ paths:
       responses:
         "200": { description: "{ proceso, novedades, audiencias, resumen }" }
         "404": { description: No existe (o no es de este cliente) }
+  # ---------------------------------------------------------------- expediente digital (F10)
+  /procesos/{idProceso}/documentos:
+    get:
+      summary: Documentos del proceso, del más reciente al más antiguo (personal)
+      parameters:
+        - { in: path, name: idProceso, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: "[{ idDocumento, nombre, tipoMime, tamano, sha256, categoria, descripcion, visibleCliente, subidoPor, subido }]" }
+    post:
+      summary: Sube un documento (ADMIN, SOCIO, ABOGADO, DEPENDIENTE)
+      description: |
+        PDF, Word (.docx), Excel (.xlsx), imagen (.jpg, .png) o texto (.txt), hasta 20 MB. El tipo se comprueba por el
+        contenido: una extensión que no corresponde se rechaza. Se guarda con un nombre aleatorio y su SHA-256.
+      parameters:
+        - { in: path, name: idProceso, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo, categoria]
+              properties:
+                archivo: { type: string, format: binary }
+                categoria: { type: string, enum: [PODER, DEMANDA, CONTESTACION, MEMORIAL, PRUEBA, PROVIDENCIA, CONTRATO, OTRO] }
+                descripcion: { type: string, maxLength: 300 }
+                visibleCliente: { type: boolean, default: false }
+      responses:
+        "201": { description: Documento guardado }
+        "400": { description: Falta el archivo o la categoría }
+        "413": { description: Pasa de 20 MB }
+        "422": { description: Tipo no permitido, contenido que no corresponde a la extensión o archivo vacío }
+  /procesos/{idProceso}/documentos/{idDocumento}:
+    put:
+      summary: Cambia categoría, descripción y si el cliente lo ve (ADMIN, SOCIO, ABOGADO)
+      responses:
+        "200": { description: Documento actualizado }
+    delete:
+      summary: Borra el documento y su archivo (ADMIN, SOCIO, ABOGADO)
+      responses:
+        "204": { description: Borrado }
+  /procesos/{idProceso}/documentos/{idDocumento}/archivo:
+    get:
+      summary: Descarga el archivo (personal). Siempre como adjunto, con X-Content-Type-Options nosniff y sin caché
+      responses:
+        "200": { description: El archivo }
+        "404": { description: No existe (o es de otro proceso) }
+  /portal/procesos/{idProceso}/documentos:
+    get:
+      summary: Documentos visibles para el cliente del token (solo rol CLIENTE; proceso de otro cliente = 404)
+      responses:
+        "200": { description: Lista de documentos visibles }
+  /portal/procesos/{idProceso}/documentos/{idDocumento}/archivo:
+    get:
+      summary: Descarga de un documento visible por el cliente del token
+      responses:
+        "200": { description: El archivo }
+        "404": { description: No existe, no es visible o es de otro cliente }
 components:
   responses:
     Error:

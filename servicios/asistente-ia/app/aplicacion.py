@@ -21,6 +21,7 @@ class Procesos(Protocol):
     async def proceso(self, id_proceso: int) -> dict | None: ...
     async def providencias(self, id_proceso: int) -> list[dict]: ...
     async def terminos(self, id_proceso: int) -> list[dict]: ...
+    async def partes(self, id_proceso: int) -> list[dict]: ...
 
 
 class Gabinete(Protocol):
@@ -48,7 +49,7 @@ class ServicioAsistente:
         listo, detalle = await self.modelo.disponible()
         return {"modelo": self.modelo.nombre, "disponible": listo, "detalle": detalle}
 
-    async def caso(self, id_proceso: int) -> Caso:
+    async def caso(self, id_proceso: int, id_providencia: int | None = None) -> Caso:
         p = await self.procesos.proceso(id_proceso)
         if p is None:
             raise ProcesoNoEncontrado(f"No existe el proceso {id_proceso}")
@@ -57,6 +58,13 @@ class ServicioAsistente:
         abogado = abogado or {}
         providencias = await self.procesos.providencias(id_proceso)
         terminos = await self.procesos.terminos(id_proceso)
+        partes = await self.procesos.partes(id_proceso)
+        # La contraparte: quien está del otro lado (no el cliente ni los terceros).
+        lado_cliente = "DEMANDADO" if p["rolCliente"] in ("DEMANDADO", "ACCIONADO", "PROCESADO") else "DEMANDANTE"
+        contrarios = {"DEMANDADO": ("DEMANDANTE", "ACCIONANTE", "VICTIMA"),
+                      "DEMANDANTE": ("DEMANDADO", "ACCIONADO", "PROCESADO")}[lado_cliente]
+        recurrida = next((x for x in providencias if x.get("idProvidencia") == id_providencia), None) \
+            if id_providencia else None
         return Caso(
             radicado_legible=p["radicadoLegible"], rama=p["rama"], tipo_proceso=p["tipoProceso"],
             despacho=p["despachoActual"], asunto=p["asunto"], etapa=p["etapa"], estado=p["estado"],
@@ -68,12 +76,16 @@ class ServicioAsistente:
             actuaciones=[Actuacion(date.fromisoformat(x["fechaEstado"]), x["tipo"], x["clase"], x.get("decision") or "")
                          for x in providencias],
             terminos_pendientes=[f"{t['descripcion']} (vence {date.fromisoformat(t['fechaVencimiento']).strftime('%d/%m/%Y')})"
-                                 for t in terminos if t.get("estado") == "PENDIENTE"])
+                                 for t in terminos if t.get("estado") == "PENDIENTE"],
+            contrapartes=[x["nombre"] for x in partes if x.get("rol") in contrarios and not x.get("esCliente")],
+            providencia=Actuacion(date.fromisoformat(recurrida["fechaEstado"]), recurrida["tipo"], recurrida["clase"],
+                                  recurrida.get("decision") or "") if recurrida else None)
 
-    async def preparar(self, tipo: TipoBorrador, id_proceso: int) -> Caso:
+    async def preparar(self, tipo: TipoBorrador, id_proceso: int, instrucciones: str = "",
+                       id_providencia: int | None = None) -> Caso:
         """Arma y valida el caso antes de empezar a responder (los errores salen como 404/422 normales)."""
-        caso = await self.caso(id_proceso)
-        validar(tipo, caso)
+        caso = await self.caso(id_proceso, id_providencia)
+        validar(tipo, caso, instrucciones)
         return caso
 
     async def redactar(self, tipo: TipoBorrador, caso: Caso, instrucciones: str = "") -> AsyncIterator[dict]:

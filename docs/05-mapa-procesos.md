@@ -2,7 +2,7 @@
 
 Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-dominio.md`) con lo que el código hace hoy. Sirve para decidir las fases siguientes.
 
-> Escrito al cerrar F5, **actualizado con F6 a F9**. F9 agregó el portal del cliente con sus avisos, sesiones renovables y revocables, verificación del token en cada servicio, outbox y HTTPS. F8 agregó administración de cuentas, anulación de pagos, liquidación, gastos, cartera y reportes. F7 trajo audiencias en la agenda con aviso, pruebas con perito y términos sugeridos.
+> Escrito al cerrar F5, **actualizado con F6 a F10**. F10 agregó el expediente digital, los borradores de demanda y recurso, la consulta inicial y la copia diaria de los respaldos al PC. F9 agregó el portal del cliente con sus avisos, sesiones renovables y revocables, verificación del token en cada servicio, outbox y HTTPS. F8 agregó administración de cuentas, anulación de pagos, liquidación, gastos, cartera y reportes. F7 trajo audiencias en la agenda con aviso, pruebas con perito y términos sugeridos.
 > Actualización de F6 (rama `feature/f6-expediente`, 2026-10-17): partes y conflicto de intereses, actuaciones, providencia manual, sentencia, recursos, otras instancias y copias de seguridad.
 
 **Estados:**
@@ -14,25 +14,25 @@ Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-domin
 
 | # | Macroproceso | Estado | Resumen |
 |---|---|---|---|
-| 1 | Captación y vinculación del cliente | 🟡 | Clientes, acuerdos de honorarios, conflicto de intereses y poder (F6). Falta la consulta inicial. |
+| 1 | Captación y vinculación del cliente | ✅ | Consulta inicial con conflicto de intereses (F10), clientes, acuerdos de honorarios y poder firmado en el expediente. |
 | 2 | Gestión del proceso judicial | 🟡 | Con F6 el expediente tiene partes, actuaciones, providencias, sentencia, recursos y línea de tiempo. Faltan audiencias en la agenda, pruebas y el expediente digital. |
 | 3 | Vigilancia y alertas | ✅ | Rama Judicial (real o simulada), correo, avisos en la app y Telegram; avisos al cliente y entrega garantizada (F9). |
-| 4 | Redacción asistida (IA) | 🟡 | Contestación y resumen para el cliente. Faltan la demanda, los recursos y el resumen de autos. |
+| 4 | Redacción asistida (IA) | ✅ | Contestación, demanda, recurso y resumen para el cliente (F10). El resumen de autos en el aviso se decidió no hacerlo. |
 | 5 | Finanzas | 🟡 | Tarifas, acuerdos, pagos con anulación, liquidación de la parte variable, gastos y cartera (F8). Falta la facturación electrónica. |
 | 6 | Administración de la firma | 🟡 | Abogados, peritos, seguridad y cuentas de usuario desde la app (F8). Sedes, áreas y cargos siguen siendo solo de lectura. |
 | 7 | Portal del cliente | ✅ | Desde F9: sus procesos, novedades, resumen publicado por el abogado, pagos y avisos. |
 | 8 | Reportes e indicadores | ✅ | Panel general y, desde F8, carga por abogado, cumplimiento de términos, resultados por rama y cartera, con exportación a CSV. |
-| 9 | Plataforma (no funcional) | 🟡 | CI, JWT, auditoría, copias diarias, refresh token, JWT en cada servicio y outbox (F9). HTTPS activo. Faltan copias fuera del servidor y monitoreo. |
+| 9 | Plataforma (no funcional) | 🟡 | CI, JWT, auditoría, copias diarias, refresh token, JWT en cada servicio y outbox (F9). HTTPS activo y copias en el PC (F10). Falta monitoreo. |
 
 ## 1. Captación y vinculación del cliente
 
 | Proceso | Estado | Código actual | Dónde iría lo que falta |
 |---|---|---|---|
-| Registrar consulta inicial (quién, qué caso, resultado) | ❌ | — | `gabinete`: tabla `gabinete.consultas` (nueva) y pantalla de secretaría. |
+| Registrar consulta inicial (quién, qué caso, resultado) | ✅ F10 | `gabinete` → `ConsultaServicio`, `/consultas`, pantalla Consultas (con conflicto de intereses y paso a cliente) | — |
 | Verificar conflicto de intereses (¿la contraparte ya es cliente?) | ✅ F6 | `ExpedienteServicio.conflictos`: documento exacto o nombre normalizado contra los clientes de gabinete; aviso en la tarjeta de partes | A escala (miles de clientes), búsqueda normalizada en gabinete. |
 | Registrar cliente | ✅ | `gabinete` → `ClientesRecurso`, `pages/clientes` | — |
 | Pactar honorarios | ✅ | `gabinete` → `HonorariosRecurso`, `pages/honorarios` | — |
-| Otorgar poder (documento firmado) | 🟡 F6 | Actuación tipo `PODER` con enlace al documento. | Guardar el archivo: ver "Expediente digital". |
+| Otorgar poder (documento firmado) | ✅ F10 | Actuación `PODER` y el archivo firmado en el expediente digital (categoría PODER) | — |
 
 ## 2. Gestión del proceso judicial
 
@@ -52,7 +52,7 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Pruebas (documental, pericial, testimonial…) | ✅ F7 | `/procesos/{id}/pruebas` con perito y término de entrega. | CRUD `/procesos/{id}/pruebas`, asignación de perito (lee `gabinete` vía `DirectorioGabinete`) y fecha de entrega del dictamen como término. |
 | Sentencia y resultado | ✅ F6 | Sentencia manual con `sentido`; el proceso pasa a la etapa SENTENCIA | Usar el sentido en la cuota litis (sección 5) y en los reportes (sección 8). |
 | Recursos (apelación, reposición, impugnación de tutela) | 🟡 F6 | Actuación `RECURSO` contra una providencia; otras instancias del mismo radicado enlazadas en el expediente | El término de 3 días se crea a mano: sugerirlo automáticamente (F7). |
-| Expediente digital (documentos) | 🟡 F6 | Las actuaciones guardan un enlace (`documento_url`). | Servicio `documentos` o almacenamiento tipo S3/MinIO (ya hay uno en el servidor, de otro proyecto: crear uno propio). Debe tener control de acceso por proceso. |
+| Expediente digital (documentos) | ✅ F10 | `procesos` → `DocumentoServicio`, volumen `documentos`, `/procesos/{id}/documentos`; el cliente ve los visibles en su portal | Antivirus si se aceptan más tipos de archivo. |
 
 ## 3. Vigilancia y alertas ✅
 
@@ -70,9 +70,9 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 |---|---|---|---|
 | Borrador de contestación | ✅ | `asistente-ia` → `TipoBorrador.CONTESTACION`, `asistente-proceso.component` | — |
 | Resumen del proceso para el cliente | ✅ | `TipoBorrador.RESUMEN_CLIENTE` | — |
-| Borrador de demanda | ❌ | — | Nuevo `TipoBorrador.DEMANDA`: solo cuando el cliente es demandante, con hechos y pretensiones que escribe el abogado. |
-| Borrador de recurso | ❌ | — | `TipoBorrador.RECURSO`, a partir de la providencia que se recurre. |
-| Resumen de un auto nuevo, adjunto al aviso | ❌ | — | Al recibir `actuacion.detectada`, `asistente-ia` resume la providencia y `notificaciones` lo incluye en el aviso. |
+| Borrador de demanda | ✅ F10 | `TipoBorrador.DEMANDA`: solo si el cliente es demandante; hechos y pretensiones del abogado como datos | — |
+| Borrador de recurso | ✅ F10 | `TipoBorrador.RECURSO` contra la providencia elegida | — |
+| Resumen de un auto nuevo, adjunto al aviso | ⏸ Decidido no hacerlo (F10) | — | Las anotaciones del portal son cortas y el modelo local tarda minutos en CPU; el aviso ya trae la anotación. Revisar si se usa un modelo más rápido. |
 
 ## 5. Finanzas
 
@@ -126,7 +126,7 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Refresh token y revocación | ✅ F9 | Token de 15 min, refresh token rotatorio en cookie HttpOnly, lista de revocados en el gateway. |
 | Validar el JWT en cada servicio | ✅ F9 | `FiltroToken` (Java) y `MiddlewareToken` (Python); tokens de servicio entre ellos. |
 | Outbox de eventos | ✅ F9 | `procesos` y `vigilancia`. |
-| Copias de seguridad de PostgreSQL | 🟡 F6 | `pg_dump` diario con 14 días de historia y prueba de restauración (`infra/respaldo/respaldar.sh`). Falta copiarlas **fuera de la VM**. |
+| Copias de seguridad de PostgreSQL y documentos | ✅ F10 | `pg_dump` y paquete de documentos diarios en la VM (14 días) y copia al PC con SHA-256 verificado (tarea programada, 30 días). |
 | Monitoreo y logs centralizados | ❌ | Solo `docker compose logs`. |
 | IP real del cliente (Tailscale SNAT) | ✅ F9 | Por `tailscale serve`: última IP de `X-Forwarded-For`. |
 
@@ -140,4 +140,5 @@ Ordenadas por valor para la firma y por dependencias:
 | **F7. Agenda y pruebas** ✅ | Audiencias en el calendario con aviso, pruebas con perito, términos sugeridos al llegar un auto (reglas validadas por un abogado). | Usa las actuaciones de F6. Es lo que más evita olvidos después de los términos. |
 | **F8. Administración y finanzas** ✅ | Usuarios y roles desde la app, anulación de pagos, gastos, cuota litis, reportes. | Quita el trabajo por SQL y da información a los socios. |
 | **F9. Portal del cliente y endurecimiento** ✅ | Portal, avisos al cliente, HTTPS, refresh token, JWT en cada servicio, outbox. | El portal expone datos fuera del equipo: requiere primero las prioridades 1 a 3 de seguridad. |
-| **F10 (propuesta). Documentos y redacción** | Expediente digital con archivos y control de acceso, borradores de demanda y recurso, resumen del auto en el aviso, consulta inicial, copias fuera de la VM. | Lo que más trabajo ahorra ahora que el núcleo está completo. |
+| **F10. Documentos y redacción** ✅ | Expediente digital con archivos y control de acceso, borradores de demanda y recurso, consulta inicial, copias fuera de la VM. (El resumen del auto en el aviso se decidió no hacerlo.) | Lo que más trabajo ahorra ahora que el núcleo está completo. |
+| **F11 (propuesta). Operación** | Monitoreo y alertas del servidor, análisis de dependencias en CI, cobertura medida, sedes/áreas/cargos editables, agregar abogados de apoyo, PDF en reportes. | Lo que falta para operar con tranquilidad. |

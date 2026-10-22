@@ -75,6 +75,15 @@ server {
     proxy_read_timeout 10m;
   }
 
+  # Expediente digital (F10): solo esta ruta acepta archivos grandes (20 MB y un margen para el formulario).
+  location ~ ^/api/procesos/[0-9]+/documentos$ {
+    client_max_body_size 21m;
+    include /etc/nginx/proxy-api.inc;
+    proxy_pass $gateway;
+    proxy_request_buffering off;
+    proxy_read_timeout 120s;
+  }
+
   location /api/ {
     include /etc/nginx/proxy-api.inc;
     proxy_pass $gateway;

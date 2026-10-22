@@ -67,6 +67,9 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			r(GET, "/api/honorarios/cartera", MANEJAN_FINANZAS),
 			r(GET, "/api/honorarios/**", VEN_FINANZAS),
 			r(null, "/api/honorarios/**", MANEJAN_FINANZAS),
+			// consultas iniciales (F10): las registra el personal; convertirlas en cliente, quien crea clientes
+			r(HttpMethod.POST, "/api/consultas/*/contratacion", Set.of("ADMIN", "SOCIO", "ABOGADO", "ADMINISTRATIVO")),
+			r(null, "/api/consultas/**", INTERNOS),
 			r(GET, "/api/gastos/**", VEN_FINANZAS),
 			r(HttpMethod.POST, "/api/gastos", VEN_FINANZAS),               // quien incurre en el gasto lo registra
 			r(null, "/api/gastos/**", MANEJAN_FINANZAS),                   // reembolsos y borrado: administración
@@ -74,6 +77,7 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			r(GET, "/api/procesos/**", INTERNOS),
 			r(HttpMethod.POST, "/api/procesos/*/terminos", JURIDICO_Y_DEPENDIENTES),
 			r(HttpMethod.POST, "/api/procesos/*/actuaciones", JURIDICO_Y_DEPENDIENTES),   // el dependiente radica memoriales
+			r(HttpMethod.POST, "/api/procesos/*/documentos", JURIDICO_Y_DEPENDIENTES),    // y sube los documentos (F10)
 			r(null, "/api/procesos/**", JURIDICO),
 			r(GET, "/api/terminos/**", INTERNOS),
 			r(null, "/api/terminos/**", JURIDICO_Y_DEPENDIENTES),

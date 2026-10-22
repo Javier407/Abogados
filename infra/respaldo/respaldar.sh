@@ -4,11 +4,15 @@
 #   respaldar.sh ahora      una copia ya
 #   respaldar.sh probar     restaura la copia más reciente en una base temporal, cuenta filas y la borra
 # Formato custom de pg_dump (-Fc): comprimido y restaurable tabla por tabla con pg_restore.
+# Desde F10 también empaqueta los documentos del expediente (volumen montado en /documentos, solo lectura) y deja
+# los archivos a nombre de PROPIETARIO (el usuario de la VM) para que la copia al PC pueda descargarlos.
 set -eu
 
 DIR=/respaldos
 HORA="${HORA_RESPALDO:-02:30}"
 RETENER="${RETENER_DIAS:-14}"
+PROPIETARIO="${PROPIETARIO:-}"
+DOCS=/documentos
 export PGHOST=postgres PGUSER="$POSTGRES_USER" PGPASSWORD="$POSTGRES_PASSWORD"
 
 respaldar() {
@@ -17,8 +21,22 @@ respaldar() {
   pg_restore --list "$archivo.parcial" > /dev/null      # el archivo se puede leer de vuelta
   mv "$archivo.parcial" "$archivo"
   chmod 600 "$archivo"
+  [ -n "$PROPIETARIO" ] && chown "$PROPIETARIO" "$archivo"
   find "$DIR" -name 'gabinete-*.dump' -mtime +"$RETENER" -delete
   echo "$(date '+%F %T') respaldo listo: $archivo ($(du -h "$archivo" | cut -f1))"
+  respaldar_documentos
+}
+
+respaldar_documentos() {
+  [ -d "$DOCS" ] || return 0
+  paquete="$DIR/documentos-$(date +%Y%m%d-%H%M%S).tar.gz"
+  tar -czf "$paquete.parcial" -C "$DOCS" .
+  tar -tzf "$paquete.parcial" > /dev/null                 # el paquete se puede leer de vuelta
+  mv "$paquete.parcial" "$paquete"
+  chmod 600 "$paquete"
+  [ -n "$PROPIETARIO" ] && chown "$PROPIETARIO" "$paquete"
+  find "$DIR" -name 'documentos-*.tar.gz' -mtime +"$RETENER" -delete
+  echo "$(date '+%F %T') documentos empaquetados: $paquete ($(du -h "$paquete" | cut -f1))"
 }
 
 probar() {

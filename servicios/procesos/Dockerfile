@@ -7,7 +7,9 @@ COPY src ./src
 RUN --mount=type=cache,target=/root/.m2 mvn -B package
 
 FROM eclipse-temurin:17.0.13_11-jre-alpine
-RUN addgroup -S app && adduser -S app -G app
+RUN addgroup -S app && adduser -S app -G app \
+ && mkdir -p /datos/documentos && chown app:app /datos/documentos
+# El volumen "documentos" se crea con el dueño de esta carpeta (app): el servicio puede escribir sin ser root.
 WORKDIR /app
 COPY --from=build /src/target/app.jar app.jar
 USER app

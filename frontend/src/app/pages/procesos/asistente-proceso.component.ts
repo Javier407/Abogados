@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
 import { AsistenteService } from '../../core/asistente.service';
-import { EstadoAsistente, ResumenPublicado, TipoBorrador } from '../../core/modelos';
+import { EstadoAsistente, Providencia, ResumenPublicado, TipoBorrador } from '../../core/modelos';
 
 /**
- * Borradores con el modelo local: contestación de la demanda o resumen del proceso para el cliente.
+ * Borradores con el modelo local: contestación, demanda (con los hechos que escribe el abogado), recurso contra una
+ * providencia del proceso (F10) o resumen del proceso para el cliente.
  * El resumen, una vez revisado por el abogado, se publica en el portal del cliente y se le avisa (F9).
  */
 @Component({
@@ -28,13 +29,33 @@ import { EstadoAsistente, ResumenPublicado, TipoBorrador } from '../../core/mode
             <label class="form-label" for="tipoBorrador">Borrador</label>
             <select id="tipoBorrador" class="form-input" [(ngModel)]="tipo" [disabled]="redactando">
               <option value="CONTESTACION">Contestación de la demanda</option>
+              <option value="DEMANDA">Demanda</option>
+              <option value="RECURSO">Recurso contra una providencia</option>
               <option value="RESUMEN_CLIENTE">Resumen del proceso para el cliente</option>
             </select>
           </div>
+          @if (tipo === 'RECURSO') {
+            <div class="form-group">
+              <label class="form-label" for="providenciaRecurrida">Providencia que se recurre <span class="requerido">*</span></label>
+              <select id="providenciaRecurrida" class="form-input" [(ngModel)]="idProvidencia" [disabled]="redactando">
+                <option [ngValue]="null">Elija…</option>
+                @for (p of providencias; track p.idProvidencia) {
+                  <option [ngValue]="p.idProvidencia">{{ p.fechaEstado | date:'dd/MM/yyyy' }} · {{ p.clase }}</option>
+                }
+              </select>
+            </div>
+          }
           <div class="form-group form-group-full">
-            <label class="form-label" for="instrucciones">Indicaciones (opcional)</label>
-            <input id="instrucciones" class="form-input" [(ngModel)]="instrucciones" maxlength="800" [disabled]="redactando"
-              placeholder="Ej: proponer la excepción de contrato no cumplido" />
+            @if (tipo === 'DEMANDA') {
+              <label class="form-label" for="instrucciones">Hechos y pretensiones <span class="requerido">*</span></label>
+              <textarea id="instrucciones" class="form-input form-textarea" [(ngModel)]="instrucciones" maxlength="800" rows="5"
+                [disabled]="redactando"
+                placeholder="Qué pasó (fechas, montos, documentos) y qué pide el cliente. El asistente no inventa hechos: solo ordena y redacta los que usted escriba."></textarea>
+            } @else {
+              <label class="form-label" for="instrucciones">Indicaciones (opcional)</label>
+              <input id="instrucciones" class="form-input" [(ngModel)]="instrucciones" maxlength="800" [disabled]="redactando"
+                [placeholder]="tipo === 'RECURSO' ? 'Ej: reposición y en subsidio apelación; el juez no valoró el dictamen' : 'Ej: proponer la excepción de contrato no cumplido'" />
+            }
           </div>
         </div>
         <div class="form-actions">
@@ -99,12 +120,15 @@ export class AsistenteProcesoComponent implements OnInit, OnDestroy {
   publicando = false;
   mensaje = '';
   publicado: ResumenPublicado | null = null;
+  providencias: Providencia[] = [];
+  idProvidencia: number | null = null;
   private cancelar: AbortController | null = null;
   private reloj: ReturnType<typeof setInterval> | null = null;
 
   ngOnInit(): void {
     this.api.estadoAsistente().subscribe({ next: e => this.estado = e, error: () => this.estado = null });
     this.api.resumenCliente(this.idProceso()).subscribe({ next: r => this.publicado = r, error: () => {} });
+    this.api.providencias(this.idProceso()).subscribe({ next: p => this.providencias = p, error: () => {} });
   }
 
   /** Redactar el resumen a mano (parte del último publicado, si hay). */
@@ -137,7 +161,7 @@ export class AsistenteProcesoComponent implements OnInit, OnDestroy {
         else if (e.evento === 'fin') {
           this.resumen = e.conModelo ? `Redactado por el modelo en ${e.segundos} s.` : 'Plantilla sin modelo.';
         }
-      }), this.cancelar.signal);
+      }), this.cancelar.signal, this.tipo === 'RECURSO' ? this.idProvidencia : null);
     } catch (err) {
       if (!(err instanceof DOMException && err.name === 'AbortError')) {
         this.aviso = err instanceof Error ? err.message : 'No se pudo generar el borrador.';
@@ -163,7 +187,7 @@ export class AsistenteProcesoComponent implements OnInit, OnDestroy {
   }
 
   descargar(): void {
-    const nombre = `${this.tipo === 'CONTESTACION' ? 'contestacion' : 'resumen'}-${this.radicado() || this.idProceso()}.txt`;
+    const nombre = `${this.tipo.toLowerCase().replace('_cliente', '')}-${this.radicado() || this.idProceso()}.txt`;
     const url = URL.createObjectURL(new Blob([this.texto], { type: 'text/plain;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url;

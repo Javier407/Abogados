@@ -388,6 +388,7 @@
       </div>
     </section>
 
+    <app-documentos-proceso [idProceso]="idProceso" />
     @for (v of [version]; track v) { <app-terminos-proceso [idProceso]="idProceso" /> }
     @if (veFinanzas) { <app-gastos-proceso [idProceso]="idProceso" /> }
     @if (juridico) { <app-asistente-proceso [idProceso]="idProceso" [radicado]="p.radicado" /> }

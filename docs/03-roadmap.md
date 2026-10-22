@@ -10,6 +10,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | **F3. Vigilancia** | Enterarse de los autos sin entrar al portal | `vigilancia` con la interfaz `FuenteRamaJudicial`; consulta programada; evento `actuacion.detectada`; notificaciones por Telegram | Un auto nuevo en un radicado vigilado llega por Telegram y queda registrado en el proceso |
 | **F4. Asistente y administración** | Apoyo a la redacción y gestión de la firma | `asistente-ia` con Hermes (borradores y resúmenes); módulo de peritos; tarifas, honorarios pactados y pagos | Generar un borrador de contestación a partir de un proceso y registrar un pago de honorarios |
 | **F5. Seguridad y calidad** | Listo para uso real | `identidad` con JWT y roles; contraseñas con BCrypt; CI con GitHub Actions (build y pruebas por servicio); nueva evaluación ISO/IEC 25010 | Ningún servicio responde sin token; el pipeline pasa en verde; Seguridad ≥ 7 en la evaluación |
+| **F10. Documentos, redacción y consultas** | Que el expediente tenga sus archivos, que el asistente redacte demandas y recursos, que la firma registre a quien consulta y que los respaldos no dependan del servidor | Expediente digital con permisos (el cliente ve lo que se marque visible); borradores de demanda y recurso; consulta inicial con conflicto de intereses y paso a cliente; copia diaria de base y documentos al PC | Un PDF subido se descarga idéntico y uno falso se rechaza; el cliente solo descarga lo visible de sus procesos; una consulta contra un cliente avisa el conflicto y otra se convierte en cliente; los respaldos llegan al PC con su SHA-256 verificado |
 | **F9. Portal del cliente y endurecimiento** | Que el cliente vea lo suyo sin llamar a la firma, y que la app aguante datos reales | Portal (mis procesos, novedades, resumen publicado, pagos) y avisos al cliente; HTTPS con `tailscale serve`; token de 15 min con refresh token rotatorio y revocable; contraseña temporal exigida por la API; cada servicio verifica el token; outbox en `procesos` y `vigilancia` | Un cliente ve solo sus procesos y pagos; al publicar el abogado un resumen con RabbitMQ caído, el aviso le llega cuando RabbitMQ vuelve; un token revocado deja de servir; ningún servicio responde sin token aunque se le llame desde la red interna |
 | **F8. Administración y finanzas** | Que la firma se administre desde la app y los socios tengan información | Cuentas y roles desde la app (clave temporal que se cambia al entrar); anulación de pagos con motivo; liquidación de la cuota litis; gastos procesales; cartera; reportes de carga, términos y resultados con CSV | Crear una cuenta y que deba cambiar la clave al entrar; anular un pago y que quede en el historial sin contar; liquidar una cuota litis; registrar un gasto reembolsable y verlo en la cartera; reportes visibles solo para la dirección |
 | **F7. Agenda y pruebas** | Que no se olvide una audiencia ni una entrega, y que los términos de cada auto no dependan de la memoria | Audiencias con hora y lugar en el calendario y aviso el día hábil anterior (`audiencia.proxima`); pruebas con perito y término de entrega; términos sugeridos al llegar una providencia | Una audiencia programada sale en el calendario y se avisa el día hábil anterior; una prueba pericial con perito y fecha de entrega crea su término; un auto que admite la demanda en un verbal sugiere contestar en 20 días y el término se crea con un clic |
@@ -29,6 +30,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F7 | Terminada: en el proceso 2 (verbal, cliente demandado) un auto "admite la demanda" sugirió contestar en 20 días y el término se creó con un clic (vence 17/11/2026); una audiencia del lunes se avisó el domingo por la app, el correo y Telegram; una prueba pericial con entrega el 2/11 (festivo) creó su término al 30/10 y quedó cumplido al practicarla | 2026-10-18 |
 | F8 | Terminada: en el servidor (23 comprobaciones), cuenta nueva con clave temporal que exige el cambio al entrar; el administrador no puede quitarse su rol; pago anulado que queda en el historial y deja de contar; cuota litis del 25 % sobre 40.000.000 liquidada en 10.000.000; gasto reembolsable registrado por un abogado y visible en la cartera; reportes 403 para abogados | 2026-10-18 |
 | F9 | Terminada: en el servidor (39 comprobaciones, repetidas por HTTPS el 2026-10-22 en https://docker-server.tail76e9a3.ts.net), Carolina Méndez ve solo su proceso y sus pagos (otro proceso responde 404); con RabbitMQ detenido el abogado publicó un resumen, el evento esperó en el outbox y el aviso le llegó al volver RabbitMQ; un refresh token reutilizado cerró la sesión y su token de acceso dejó de servir en 20 s; los 6 servicios responden 401 sin token desde la red interna aunque se envíen cabeceras falsas; con clave temporal la API niega todo menos cambiarla | 2026-10-18 |
+| F10 | Terminada: en el servidor (27 comprobaciones por HTTPS), un PDF subido se descargó con el mismo SHA-256 y uno falso, un HTML y uno de 20,5 MB se rechazaron; Carolina Méndez solo descargó el documento marcado visible y otro cliente recibió 404; una consulta contra "CONSTRUCTORA ALTAMIRA S.A.S." avisó el conflicto con el cliente 2 y otra se convirtió en cliente; el recurso citó la providencia elegida; la tarea del PC copió 8 respaldos verificando su SHA-256 | 2026-10-22 |
 
 ## F1: qué quedó y qué falta
 
@@ -254,3 +256,30 @@ Pendiente o decidido para después:
 - El cliente no puede cambiar por dónde recibe los avisos (siempre app y correo de su cuenta).
 - Las copias de seguridad siguen en la misma VM.
 - Facturación electrónica, expediente digital (archivos) y los borradores de demanda y recurso.
+
+## F10: qué quedó y qué falta
+
+Hecho:
+
+1. **Expediente digital** (`procesos`, tarjeta "Documentos" del expediente):
+   - PDF, Word, Excel, imágenes y texto de hasta 20 MB. El tipo se comprueba por el contenido (un .pdf que no empieza por `%PDF` se rechaza); no se aceptan HTML, SVG ni ejecutables.
+   - Se guarda en el volumen `documentos` con un nombre aleatorio y su SHA-256; los datos en `procesos.documentos`. Si falla guardar los datos, el archivo se borra.
+   - Abogados y dependientes suben; abogados cambian y borran. Las descargas van como adjunto, con `nosniff` y sin caché. Cada subida, descarga y borrado queda en el log con quién lo hizo.
+   - **Portal:** el cliente ve y descarga solo los documentos marcados "visible para el cliente", y solo de sus procesos.
+   - nginx acepta archivos grandes solo en la ruta de subida (el resto de la API sigue en 1 MB).
+2. **Borradores de demanda y recurso** (asistente):
+   - Demanda: solo si el cliente es demandante, accionante o víctima, y con los hechos y pretensiones que escribe el abogado (van al modelo como datos; no inventa hechos). El encabezado pone demandante y demandado desde las partes del expediente.
+   - Recurso: contra una providencia del proceso que se elige; el encabezado la cita y la plantilla trae sus secciones.
+   - Ningún escrito (salvo el resumen) sobre un proceso cerrado.
+3. **Consulta inicial** (`gabinete`, pantalla "Consultas"): quién consulta, contraparte, rama, asunto y quién atiende. Avisa el conflicto de intereses si la contraparte ya es cliente (por documento o por nombre, sin importar tildes ni puntuación). "Contrató" crea la ficha de cliente (o enlaza la existente); "No contrató" y "Remitida" piden motivo.
+4. **Copias fuera de la VM:**
+   - El contenedor `respaldo` empaqueta también los documentos cada día (`documentos-*.tar.gz`) y deja los archivos a nombre del usuario de la VM.
+   - En el PC, la tarea programada **"Abogados - copia de respaldos"** (todos los días a las 9:00 y al iniciar sesión; si el PC estaba apagado, al encenderlo) ejecuta `infra/respaldo/copiar-al-pc.ps1`. El script baja lo nuevo a `D:\respaldos\abogados`, verifica el SHA-256 contra el servidor, guarda 30 días y deja `copias.log`.
+5. Migración `008-f10-documentos-y-consultas.sql`. Pruebas nuevas: documentos (6 + 1), consultas (5), asistente (5) y permisos del gateway (10).
+
+Pendiente o decidido para después:
+
+- **Resumen del auto en el aviso:** se decidió no hacerlo por ahora. Las anotaciones del portal de la Rama Judicial son cortas, y el modelo local tarda minutos por texto en CPU. El aviso ya trae la anotación completa.
+- Los documentos no se revisan con antivirus: solo se aceptan tipos de archivo pasivos, comprobados por su contenido.
+- Las copias en el PC no van cifradas (el disco es del PC de Javier). Si el PC se comparte, conviene cifrarlas.
+- Si el PC no se enciende en varios días, la copia en el PC se atrasa (en la VM se guardan 14 días).

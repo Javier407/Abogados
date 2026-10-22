@@ -46,7 +46,8 @@ services:
     mem_limit: 512m
     logging: *logs
 
-  # Copia diaria de la base (pg_dump) en ./respaldos, 14 días de historia. Ver respaldo/respaldar.sh.
+  # Copia diaria de la base (pg_dump) y de los documentos en ./respaldos, 14 días de historia. Ver respaldo/respaldar.sh.
+  # Fuera de la VM: infra/respaldo/copiar-al-pc.ps1 (tarea programada en el PC de Javier).
   # Solo recibe las credenciales de PostgreSQL, no el resto del .env.
   respaldo:
     image: postgres:16.4-alpine
@@ -60,12 +61,18 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       HORA_RESPALDO: "02:30"
       RETENER_DIAS: "14"
+      # Dueño de los archivos (usuario de la VM): la copia diaria al PC los descarga por SSH (F10).
+      PROPIETARIO: ${PROPIETARIO_RESPALDOS:-1000:1000}
     volumes:
       - ./respaldo/respaldar.sh:/respaldo/respaldar.sh:ro
       - ./respaldos:/respaldos
+      - documentos:/documentos:ro
     depends_on:
       postgres:
         condition: service_healthy
+      # procesos crea primero el volumen documentos, con su usuario como dueño (si no, quedaría de root)
+      procesos:
+        condition: service_started
     healthcheck:
       # Sano si hay un respaldo de menos de 26 horas
       test: ["CMD-SHELL", "find /respaldos -name 'gabinete-*.dump' -mmin -1560 | grep -q ."]
@@ -157,6 +164,9 @@ services:
       GABINETE_URL: http://gabinete:8080
       IDENTIDAD_URL: http://identidad:8080
       SERVICIO_CLAVE: ${CLAVE_SVC_PROCESOS:-}
+    volumes:
+      # Expediente digital (F10): archivos de los documentos. Entra en la copia diaria (contenedor respaldo).
+      - documentos:/datos/documentos
     depends_on:
       postgres:
         condition: service_healthy
@@ -346,4 +356,5 @@ services:
 volumes:
   pgdata:
   rabbitdata:
+  documentos:
   ollama-modelos:

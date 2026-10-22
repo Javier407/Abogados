@@ -72,6 +72,20 @@ public class ManejadorErrores {
 		return error("Valor inválido para '" + ex.getName() + "': " + ex.getValue());
 	}
 
+	@ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+	@ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+	public Map<String, Object> archivoGrande(org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+		return error("El archivo pasa del máximo permitido (20 MB)");
+	}
+
+	@ExceptionHandler({ org.springframework.web.multipart.support.MissingServletRequestPartException.class,
+			org.springframework.web.bind.MissingServletRequestParameterException.class,
+			org.springframework.web.multipart.MultipartException.class })
+	@ResponseStatus(HttpStatus.BAD_REQUEST)
+	public Map<String, Object> faltaArchivo(Exception ex) {
+		return error("Adjunte el archivo y elija la categoría");
+	}
+
 	private static Map<String, Object> error(String mensaje) {
 		Map<String, Object> cuerpo = new LinkedHashMap<>();
 		cuerpo.put("error", mensaje);

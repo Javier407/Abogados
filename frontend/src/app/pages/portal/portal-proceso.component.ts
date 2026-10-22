@@ -3,7 +3,8 @@ import { DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
-import { DetallePortal, etiqueta } from '../../core/modelos';
+import { guardarArchivo } from '../../core/descargas';
+import { DetallePortal, DocumentoPortal, etiqueta, tamanoLegible } from '../../core/modelos';
 
 /**
  * Un proceso visto por el cliente: el resumen que publicó su abogado, las próximas audiencias y las novedades
@@ -44,6 +45,23 @@ import { DetallePortal, etiqueta } from '../../core/modelos';
             }
           </div>
         </section>
+
+        @if (d.documentos.length) {
+          <section class="card">
+            <div class="card-header"><h2>Documentos de su proceso</h2></div>
+            <div class="card-body">
+              <ul class="lista-pagos">
+                @for (doc of d.documentos; track doc.idDocumento) {
+                  <li><span>
+                    <strong>{{ doc.nombre }}</strong> · {{ etiqueta(doc.categoria) }} · {{ tamano(doc.tamano) }}
+                    @if (doc.descripcion) { <br><small>{{ doc.descripcion }}</small> }
+                  </span>
+                  <button class="btn btn-secondary btn-sm" type="button" (click)="descargar(doc)">Descargar</button></li>
+                }
+              </ul>
+            </div>
+          </section>
+        }
 
         @if (d.audiencias.length) {
           <section class="card">
@@ -91,10 +109,19 @@ export class PortalProcesoComponent implements OnInit {
   private api = inject(ApiService);
   private ruta = inject(ActivatedRoute);
   readonly etiqueta = etiqueta;
+  readonly tamano = tamanoLegible;
 
   detalle: DetallePortal | null = null;
   cargando = true;
   error = '';
+
+  descargar(doc: DocumentoPortal): void {
+    if (!this.detalle) return;
+    this.api.archivoDocumento(this.detalle.proceso.idProceso, doc.idDocumento, true).subscribe({
+      next: b => guardarArchivo(b, doc.nombre),
+      error: e => this.error = mensajeDeError(e)
+    });
+  }
 
   ngOnInit(): void {
     this.api.portalProceso(Number(this.ruta.snapshot.paramMap.get('id'))).subscribe({

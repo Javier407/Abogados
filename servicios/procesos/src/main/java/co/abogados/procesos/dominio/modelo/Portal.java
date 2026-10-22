@@ -22,7 +22,12 @@ public final class Portal {
 
 	/** El expediente visto por el cliente. */
 	public record Detalle(ProcesoCliente proceso, List<Novedad> novedades, List<Audiencia> audiencias,
-			ResumenPublicado resumen) {
+			ResumenPublicado resumen, List<DocumentoCliente> documentos) {
+	}
+
+	/** Documento que el abogado dejó visible para el cliente (F10). */
+	public record DocumentoCliente(int idDocumento, String nombre, String categoria, String descripcion, long tamano,
+			Instant subido) {
 	}
 
 	/** Una actuación de la firma o una decisión del juez, en palabras simples. */

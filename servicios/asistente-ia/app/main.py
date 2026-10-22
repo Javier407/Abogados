@@ -23,6 +23,7 @@ class PedidoBorrador(BaseModel):
     idProceso: int = Field(..., gt=0)
     tipo: TipoBorrador
     instrucciones: str = Field("", max_length=800)
+    idProvidencia: int | None = Field(None, gt=0)    # solo RECURSO: la providencia que se recurre
 
 
 def crear_app(servicio: ServicioAsistente | None = None, verificador: VerificadorTokens | None = None) -> FastAPI:
@@ -63,7 +64,7 @@ def crear_app(servicio: ServicioAsistente | None = None, verificador: Verificado
     async def borrador(request: Request, pedido: PedidoBorrador):
         """Redacta por partes (Server-Sent Events). Los errores del pedido llegan antes, como JSON normal."""
         s = srv(request)
-        caso = await s.preparar(pedido.tipo, pedido.idProceso)
+        caso = await s.preparar(pedido.tipo, pedido.idProceso, pedido.instrucciones, pedido.idProvidencia)
 
         async def eventos():
             async for ev in s.redactar(pedido.tipo, caso, pedido.instrucciones):

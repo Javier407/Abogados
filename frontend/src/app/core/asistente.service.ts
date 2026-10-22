@@ -15,14 +15,14 @@ export class AsistenteService {
   private auth = inject(AuthService);
 
   async redactar(idProceso: number, tipo: TipoBorrador, instrucciones: string,
-                 alRecibir: (e: EventoBorrador) => void, cancelar?: AbortSignal): Promise<void> {
+                 alRecibir: (e: EventoBorrador) => void, cancelar?: AbortSignal, idProvidencia?: number | null): Promise<void> {
     // fetch no pasa por el interceptor: se pide un token vigente (se renueva si está por vencer).
     const token = await firstValueFrom(this.auth.tokenVigente());
     const r = await fetch(this.api.urlBorradores(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream',
         Authorization: `Bearer ${token ?? ''}` },
-      body: JSON.stringify({ idProceso, tipo, instrucciones }),
+      body: JSON.stringify({ idProceso, tipo, instrucciones, idProvidencia: idProvidencia ?? null }),
       signal: cancelar
     });
     if (r.status === 401) {

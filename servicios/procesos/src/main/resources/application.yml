@@ -20,6 +20,14 @@ server:
   port: 8080
   shutdown: graceful
 
+# Expediente digital (F10): archivos de hasta 20 MB en el volumen "documentos".
+documentos:
+  ruta: ${DOCUMENTOS_RUTA:/datos/documentos}
+  maximo-mb: 20
+spring.servlet.multipart:
+  max-file-size: 20MB
+  max-request-size: 21MB
+
 gabinete:
   url: ${GABINETE_URL:http://localhost:8081}
 

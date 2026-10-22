@@ -10,7 +10,8 @@ import {
   Actuacion, ActuacionSolicitud, Expediente, Parte, ParteRegistrada, ParteSolicitud, ProvidenciaSolicitud,
   Audiencia, Prueba, PruebaSolicitud, SugerenciaTermino,
   CambioCuenta, CargaAbogado, CarteraCliente, Cuenta, CuentaSolicitud, CumplimientoTerminos, Gasto, GastoSolicitud,
-  ResultadoRama, ProcesoPortal, DetallePortal, FinanzasPortal, ResumenPublicado
+  ResultadoRama, ProcesoPortal, DetallePortal, FinanzasPortal, ResumenPublicado,
+  CategoriaDocumento, Consulta, ConsultaConAvisos, Documento, EstadoConsulta
 } from './modelos';
 
 /**
@@ -196,6 +197,49 @@ export class ApiService {
   }
   publicarResumen(idProceso: number, texto: string): Observable<ResumenPublicado> {
     return this.http.post<ResumenPublicado>(`${API}/procesos/${idProceso}/resumen-cliente`, { texto });
+  }
+
+  // ---------- expediente digital (F10) ----------
+  documentos(idProceso: number): Observable<Documento[]> {
+    return this.http.get<Documento[]>(`${API}/procesos/${idProceso}/documentos`);
+  }
+  subirDocumento(idProceso: number, archivo: File, categoria: CategoriaDocumento, descripcion: string,
+                 visibleCliente: boolean): Observable<Documento> {
+    const datos = new FormData();
+    datos.append('archivo', archivo, archivo.name);
+    datos.append('categoria', categoria);
+    if (descripcion.trim()) datos.append('descripcion', descripcion.trim());
+    datos.append('visibleCliente', String(visibleCliente));
+    return this.http.post<Documento>(`${API}/procesos/${idProceso}/documentos`, datos);
+  }
+  actualizarDocumento(idProceso: number, d: Documento): Observable<Documento> {
+    return this.http.put<Documento>(`${API}/procesos/${idProceso}/documentos/${d.idDocumento}`,
+      { categoria: d.categoria, descripcion: d.descripcion, visibleCliente: d.visibleCliente });
+  }
+  eliminarDocumento(idProceso: number, idDocumento: number): Observable<void> {
+    return this.http.delete<void>(`${API}/procesos/${idProceso}/documentos/${idDocumento}`);
+  }
+  /** El archivo como Blob (la descarga lleva el token: no se puede con un enlace directo). */
+  archivoDocumento(idProceso: number, idDocumento: number, portal = false): Observable<Blob> {
+    const base = portal ? `${API}/portal/procesos` : `${API}/procesos`;
+    return this.http.get(`${base}/${idProceso}/documentos/${idDocumento}/archivo`, { responseType: 'blob' });
+  }
+
+  // ---------- consultas iniciales (F10) ----------
+  consultas(estado?: EstadoConsulta | ''): Observable<Consulta[]> {
+    return this.http.get<Consulta[]>(`${API}/consultas`, { params: filtros({ estado: estado || undefined }) });
+  }
+  consulta(id: number): Observable<ConsultaConAvisos> {
+    return this.http.get<ConsultaConAvisos>(`${API}/consultas/${id}`);
+  }
+  registrarConsulta(c: Partial<Consulta>): Observable<ConsultaConAvisos> {
+    return this.http.post<ConsultaConAvisos>(`${API}/consultas`, c);
+  }
+  contratarConsulta(id: number, datos: { ciudad: string; idSede: number | null; direccion: string }): Observable<ConsultaConAvisos> {
+    return this.http.post<ConsultaConAvisos>(`${API}/consultas/${id}/contratacion`, datos);
+  }
+  cerrarConsulta(id: number, estado: EstadoConsulta, motivo: string): Observable<ConsultaConAvisos> {
+    return this.http.post<ConsultaConAvisos>(`${API}/consultas/${id}/cierre`, { estado, motivo });
   }
 
   cuentas(): Observable<Cuenta[]> {

@@ -73,6 +73,9 @@ class ClienteProcesos:
     async def terminos(self, id_proceso: int) -> list[dict]:
         return await self._get("/terminos", {"idProceso": id_proceso}) or []
 
+    async def partes(self, id_proceso: int) -> list[dict]:
+        return await self._get(f"/procesos/{id_proceso}/partes") or []
+
 
 class ClienteGabinete:
     def __init__(self, url: str, token=None):

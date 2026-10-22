@@ -38,6 +38,8 @@ export const routes: Routes = [
       { path: 'procesos/:id', component: ExpedienteComponent, title: 'Expediente', canActivate: [personal] },
       { path: 'procesos/:id/editar', component: ProcesoFormComponent, title: 'Editar proceso', canActivate: [juridico] },
       { path: 'clientes', component: ClientesComponent, title: 'Clientes', canActivate: [personal] },
+      { path: 'consultas', loadComponent: () => import('./pages/consultas/consultas.component').then(m => m.ConsultasComponent),
+        title: 'Consultas iniciales', canActivate: [personal] },
       { path: 'abogados', component: AbogadosComponent, title: 'Abogados', canActivate: [personal] },
       { path: 'terminos', component: TerminosComponent, title: 'Términos', canActivate: [personal] },
       { path: 'calendario', component: CalendarioComponent, title: 'Calendario judicial', canActivate: [personal] },

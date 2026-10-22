@@ -68,6 +68,17 @@ class SeguridadTest {
 		assertThat(permitido("POST", "/api/abogados", "SOCIO")).isTrue();
 		assertThat(permitido("POST", "/api/asistente/borradores", "ADMINISTRATIVO")).isFalse();
 		assertThat(permitido("PUT", "/api/vigilancia/radicados/1", "DEPENDIENTE")).isTrue();
+		// F10: documentos y consultas iniciales
+		assertThat(permitido("POST", "/api/procesos/34/documentos", "DEPENDIENTE")).isTrue();
+		assertThat(permitido("DELETE", "/api/procesos/34/documentos/2", "DEPENDIENTE")).isFalse();
+		assertThat(permitido("DELETE", "/api/procesos/34/documentos/2", "ABOGADO")).isTrue();
+		assertThat(permitido("GET", "/api/procesos/34/documentos/2/archivo", "ADMINISTRATIVO")).isTrue();
+		assertThat(permitido("GET", "/api/procesos/34/documentos/2/archivo", "CLIENTE")).isFalse();
+		assertThat(permitido("GET", "/api/portal/procesos/7/documentos/2/archivo", "CLIENTE")).isTrue();
+		assertThat(permitido("POST", "/api/consultas", "ADMINISTRATIVO")).isTrue();
+		assertThat(permitido("POST", "/api/consultas/3/contratacion", "DEPENDIENTE")).isFalse();
+		assertThat(permitido("POST", "/api/consultas/3/contratacion", "ADMINISTRATIVO")).isTrue();
+		assertThat(permitido("GET", "/api/consultas", "CLIENTE")).isFalse();
 	}
 
 	@Test

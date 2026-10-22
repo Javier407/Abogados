@@ -173,6 +173,16 @@ done
 
 Desde ahí http://IP:8090 redirige a HTTPS, el navegador recibe HSTS y la cookie de la sesión solo viaja cifrada. Mientras no haya HTTPS, `COOKIE_SEGURA=false` (si no, el navegador no guarda la cookie y la sesión dura 15 minutos).
 
+**Copias fuera de la VM (F10).** Cada día el contenedor `respaldo` deja la base (`gabinete-*.dump`) y los documentos del expediente (`documentos-*.tar.gz`) en `infra/respaldos/`. En el PC de Javier, la tarea programada "Abogados - copia de respaldos" ejecuta `infra/respaldo/copiar-al-pc.ps1` a las 9:00 y al iniciar sesión. El script baja lo nuevo a `D:\respaldos\abogados`, comprueba el SHA-256 y guarda 30 días. Para ejecutarla a mano:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File infra\respaldo\copiar-al-pc.ps1
+```
+
+Restaurar los documentos: detener `procesos` y descomprimir el paquete dentro del volumen (`docker run --rm -v abogados_documentos:/d -v "$PWD/respaldos":/r alpine tar -xzf /r/documentos-AAAAMMDD-HHMMSS.tar.gz -C /d`).
+
+**Expediente digital y consultas (F10).** Cada proceso tiene su tarjeta "Documentos" (PDF, Word, Excel, imágenes y texto de hasta 20 MB); lo que se marque "visible para el cliente" aparece en su portal. La pantalla **Consultas** registra a quien llega a la firma, avisa el conflicto de intereses y, si contrata, crea su ficha de cliente. El asistente redacta también demandas (con los hechos que escribe el abogado) y recursos contra una providencia.
+
 **Portal del cliente (F9).** Una cuenta con rol CLIENTE se enlaza con su ficha de cliente (en **Usuarios**). Entra a **Mis procesos** (etapa, abogado, próxima audiencia, novedades y el resumen que publicó su abogado) y **Mis pagos**; recibe avisos cuando su abogado publica un resumen y el día hábil antes de una audiencia. En la base de pruebas: `cmendez` (Carolina Méndez) y `andina` (Inversiones Andina).
 
 **Copias de seguridad:** el contenedor `respaldo` hace un `pg_dump` cada día a las 02:30 (y al arrancar, si la última copia tiene más de un día) en `infra/respaldos/`, fuera de git, y guarda 14 días. Para probar que la última copia se restaura bien (en una base temporal que luego borra):
