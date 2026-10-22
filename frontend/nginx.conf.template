@@ -13,6 +13,17 @@ map $server_port $proto_original {
   81      https;
   default $scheme;
 }
+# IP real del cliente. Por el puerto 81 solo llega tailscale serve (publicado en 127.0.0.1), que agrega la IP del
+# equipo de la VPN al final de X-Forwarded-For: se toma la ÚLTIMA (las anteriores las pudo escribir el cliente).
+# Por el puerto 80 la conexión llega enmascarada por Docker y se usa la dirección de la conexión.
+map $http_x_forwarded_for $xff_ultima {
+  "~(?<ultima>[^,\s]+)\s*$" $ultima;
+  default "";
+}
+map "$server_port|$xff_ultima" $ip_cliente {
+  "~^81\|(?<ip>.+)$" $ip;
+  default $remote_addr;
+}
 
 server {
   listen 80;

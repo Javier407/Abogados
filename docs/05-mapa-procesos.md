@@ -2,7 +2,7 @@
 
 Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-dominio.md`) con lo que el código hace hoy. Sirve para decidir las fases siguientes.
 
-> Escrito al cerrar F5, **actualizado con F6 a F9**. F9 agregó el portal del cliente con sus avisos, sesiones renovables y revocables, verificación del token en cada servicio, outbox y HTTPS listo para activar. F8 agregó administración de cuentas, anulación de pagos, liquidación, gastos, cartera y reportes. F7 trajo audiencias en la agenda con aviso, pruebas con perito y términos sugeridos.
+> Escrito al cerrar F5, **actualizado con F6 a F9**. F9 agregó el portal del cliente con sus avisos, sesiones renovables y revocables, verificación del token en cada servicio, outbox y HTTPS. F8 agregó administración de cuentas, anulación de pagos, liquidación, gastos, cartera y reportes. F7 trajo audiencias en la agenda con aviso, pruebas con perito y términos sugeridos.
 > Actualización de F6 (rama `feature/f6-expediente`, 2026-10-17): partes y conflicto de intereses, actuaciones, providencia manual, sentencia, recursos, otras instancias y copias de seguridad.
 
 **Estados:**
@@ -22,7 +22,7 @@ Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-domin
 | 6 | Administración de la firma | 🟡 | Abogados, peritos, seguridad y cuentas de usuario desde la app (F8). Sedes, áreas y cargos siguen siendo solo de lectura. |
 | 7 | Portal del cliente | ✅ | Desde F9: sus procesos, novedades, resumen publicado por el abogado, pagos y avisos. |
 | 8 | Reportes e indicadores | ✅ | Panel general y, desde F8, carga por abogado, cumplimiento de términos, resultados por rama y cartera, con exportación a CSV. |
-| 9 | Plataforma (no funcional) | 🟡 | CI, JWT, auditoría, copias diarias, refresh token, JWT en cada servicio y outbox (F9). HTTPS listo pero falta activarlo en Tailscale; faltan copias fuera del servidor y monitoreo. |
+| 9 | Plataforma (no funcional) | 🟡 | CI, JWT, auditoría, copias diarias, refresh token, JWT en cada servicio y outbox (F9). HTTPS activo. Faltan copias fuera del servidor y monitoreo. |
 
 ## 1. Captación y vinculación del cliente
 
@@ -122,13 +122,13 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 |---|---|---|
 | CI en cada push | ✅ | `.github/workflows/ci.yml` |
 | JWT, roles, bloqueo y auditoría | ✅ | F5 |
-| HTTPS / `tailscale serve` | 🟡 F9 | Entrada local 8093, redirección y HSTS listos; falta activar "HTTPS Certificates" en la consola de Tailscale. |
+| HTTPS / `tailscale serve` | ✅ F9 | https://docker-server.tail76e9a3.ts.net (solo tailnet), redirección, HSTS y cookie Secure. |
 | Refresh token y revocación | ✅ F9 | Token de 15 min, refresh token rotatorio en cookie HttpOnly, lista de revocados en el gateway. |
 | Validar el JWT en cada servicio | ✅ F9 | `FiltroToken` (Java) y `MiddlewareToken` (Python); tokens de servicio entre ellos. |
 | Outbox de eventos | ✅ F9 | `procesos` y `vigilancia`. |
 | Copias de seguridad de PostgreSQL | 🟡 F6 | `pg_dump` diario con 14 días de historia y prueba de restauración (`infra/respaldo/respaldar.sh`). Falta copiarlas **fuera de la VM**. |
 | Monitoreo y logs centralizados | ❌ | Solo `docker compose logs`. |
-| IP real del cliente (Tailscale SNAT) | ❌ | Brecha 7 de la evaluación ISO. |
+| IP real del cliente (Tailscale SNAT) | ✅ F9 | Por `tailscale serve`: última IP de `X-Forwarded-For`. |
 
 ## Propuesta de fases siguientes
 

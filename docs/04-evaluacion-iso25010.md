@@ -123,10 +123,10 @@ Cambios sobre las brechas de la sección 1 y el plan de la sección 4:
 | Brecha / prioridad | Estado tras F9 |
 |---|---|
 | 1 · Confianza en la red interna (prioridad 3) | **Resuelta.** Cada servicio verifica el token con la llave pública de identidad y toma la identidad del token; las cabeceras `X-Usuario-*` que lleguen se descartan. Entre servicios se usa un token de servicio (solo lectura) obtenido con una clave por servicio. Comprobado desde la red interna: los 6 servicios responden 401 sin token aunque se envíen cabeceras falsas. |
-| 2 · Sin TLS propio (prioridad 1) | **Lista, falta activarla.** `tailscale serve` con certificado de Tailscale, redirección http→https y HSTS. Requiere encender "HTTPS Certificates" en la consola de Tailscale. |
+| 2 · Sin TLS propio (prioridad 1) | **Resuelta (2026-10-22).** `tailscale serve` con certificado de Tailscale, redirección http→https, HSTS y cookie `Secure`. |
 | 3 · Sin revocación ni refresh token (prioridad 2) | **Resuelta.** Token de 15 min; refresh token rotatorio en cookie HttpOnly/SameSite=Strict; detección de reutilización; cerrar sesión, cambiar o restablecer la clave, desactivar la cuenta o cambiarle los roles revocan los tokens vigentes (lista de revocados en el gateway, 15 s). |
 | 4 · Administración de usuarios (prioridad 5) | Resuelta en F8; desde F9 la clave temporal la exige la API, no solo la interfaz. MFA sigue pendiente. |
 | 6 · Eventos que se pueden perder (prioridad 6) | **Resuelta.** Outbox en `procesos` y `vigilancia` con confirmación del broker. |
-| 7 · IP real del cliente | Se resolverá al activar `tailscale serve` (la conexión llega a la VM, no a la red de Docker). |
+| 7 · IP real del cliente | **Resuelta.** Por `tailscale serve` se registra la IP del equipo en la VPN; una IP falsa en `X-Forwarded-For` se ignora (comprobado). |
 
-Con esto, Seguridad pasa de 8 a 9 (falta HTTPS activo y MFA) y Fiabilidad de 7 a 8 (falta un segundo servidor). Adecuación funcional sube a 10 con el portal del cliente. Total estimado: **8,6**.
+Con esto, Seguridad pasa de 8 a 9 (falta MFA y el análisis de dependencias) y Fiabilidad de 7 a 8 (falta un segundo servidor). Adecuación funcional sube a 10 con el portal del cliente. Total estimado: **8,6**.

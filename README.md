@@ -143,7 +143,7 @@ docker compose up -d --build      # compila, prueba y arranca los 11 contenedore
 docker compose exec ollama ollama pull qwen2.5:3b   # una sola vez: descarga el modelo (~2 GB)
 ```
 
-Luego abrir http://localhost:8090 (en el servidor: http://100.65.152.112:8090, o por HTTPS si está activado; ver abajo). El buzón de pruebas Mailpit, donde llegan los correos de aviso, queda en el 8092. El gateway (8091) solo escucha en la propia máquina.
+Luego abrir http://localhost:8090 (en el servidor: https://docker-server.tail76e9a3.ts.net, solo dentro de la VPN; http://100.65.152.112:8090 redirige ahí). El buzón de pruebas Mailpit, donde llegan los correos de aviso, queda en el 8092. El gateway (8091) solo escucha en la propia máquina.
 
 **Inicio de sesión:** cada persona entra con su usuario (por ejemplo `arodriguez`, socio; `scastro`, dependiente). En la base de pruebas todos tienen la contraseña `Prueba2026*`, que se puede cambiar en **Mi cuenta** (mínimo 10 caracteres con letras y números). Las cuentas se crean y administran en **Usuarios** (solo ADMIN): la contraseña temporal que escribe el administrador se debe cambiar al entrar. El menú muestra solo lo que permite el rol, y los avisos son los de la persona conectada.
 
