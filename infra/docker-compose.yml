@@ -116,6 +116,9 @@ services:
       JWT_LLAVE_PRIVADA: /run/secrets/jwt-privada.pem
       # F9: el refresh token va en una cookie Secure (solo HTTPS). false únicamente mientras no haya HTTPS.
       COOKIE_SEGURA: ${COOKIE_SEGURA:-true}
+      # F13: verificación en dos pasos. Llave AES de los secretos (32 bytes en Base64) y roles que deben usarla.
+      MFA_CLAVE_CIFRADO: ${MFA_CLAVE_CIFRADO:-}
+      MFA_OBLIGATORIO_ROLES: ${MFA_OBLIGATORIO_ROLES:-}
       # Clave de cada servicio para pedir su token (infra/.env, generadas en el servidor, nunca en git)
       SERVICIOS_CLAVES: procesos=${CLAVE_SVC_PROCESOS:-},gabinete=${CLAVE_SVC_GABINETE:-},notificaciones=${CLAVE_SVC_NOTIFICACIONES:-},vigilancia=${CLAVE_SVC_VIGILANCIA:-},asistente-ia=${CLAVE_SVC_ASISTENTE:-}
     volumes:

@@ -25,6 +25,8 @@ export class UsuariosComponent implements OnInit {
   readonly etiqueta = etiqueta;
 
   cuentas: Cuenta[] = [];
+  /** Cuentas con la verificación en dos pasos activa (F13). */
+  conMfa = new Set<number>();
   filtro = '';
   creando = false;
   nueva: CuentaSolicitud = this.vacia();
@@ -58,6 +60,7 @@ export class UsuariosComponent implements OnInit {
 
   cargar(): void {
     this.api.cuentas().subscribe({ next: c => this.cuentas = c, error: e => this.error = mensajeDeError(e) });
+    this.api.cuentasConMfa().subscribe({ next: ids => this.conMfa = new Set(ids), error: () => {} });
   }
 
   alternarRol(lista: string[], rol: string): void {
@@ -109,6 +112,12 @@ export class UsuariosComponent implements OnInit {
 
   desbloquear(c: Cuenta): void {
     this.enviar(this.api.desbloquearCuenta(c.idUsuario), act => this.mensaje = `Cuenta ${act.usuario} desbloqueada.`);
+  }
+
+  /** Para quien perdió el teléfono y los códigos de recuperación: al entrar la configura de nuevo. */
+  reiniciarMfa(c: Cuenta): void {
+    if (!confirm(`¿Reiniciar la verificación en dos pasos de ${c.nombre}? Se cerrarán sus sesiones y deberá configurarla de nuevo. Hágalo solo si confirmó su identidad.`)) return;
+    this.enviar(this.api.reiniciarMfa(c.idUsuario), () => this.mensaje = `Verificación en dos pasos de ${c.usuario} reiniciada.`);
   }
 
   private enviar<T>(peticion: import('rxjs').Observable<T>, alTerminar: (r: T) => void): void {

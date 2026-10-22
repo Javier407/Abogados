@@ -2,7 +2,7 @@
 
 Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-dominio.md`) con lo que el código hace hoy. Sirve para decidir las fases siguientes.
 
-> Escrito al cerrar F5, **actualizado con F6 a F12**. F12 agregó las reglas de términos editables y validadas por un socio con su historial, el historial del vigía con la pantalla "Servidor" y la cobertura de pruebas sobre 70 % en todos los servicios. F11 agregó el vigía del servidor con avisos por Telegram, la cobertura y la auditoría de dependencias en el CI, los abogados de apoyo, la edición de sedes, cargos y áreas y los reportes en PDF. F10 agregó el expediente digital, los borradores de demanda y recurso, la consulta inicial y la copia diaria de los respaldos al PC. F9 agregó el portal del cliente con sus avisos, sesiones renovables y revocables, verificación del token en cada servicio, outbox y HTTPS. F8 agregó administración de cuentas, anulación de pagos, liquidación, gastos, cartera y reportes. F7 trajo audiencias en la agenda con aviso, pruebas con perito y términos sugeridos.
+> Escrito al cerrar F5, **actualizado con F6 a F13**. F13 agregó la verificación en dos pasos (código de una app autenticadora) y que identidad revise los tokens revocados. F12 agregó las reglas de términos editables y validadas por un socio con su historial, el historial del vigía con la pantalla "Servidor" y la cobertura de pruebas sobre 70 % en todos los servicios. F11 agregó el vigía del servidor con avisos por Telegram, la cobertura y la auditoría de dependencias en el CI, los abogados de apoyo, la edición de sedes, cargos y áreas y los reportes en PDF. F10 agregó el expediente digital, los borradores de demanda y recurso, la consulta inicial y la copia diaria de los respaldos al PC. F9 agregó el portal del cliente con sus avisos, sesiones renovables y revocables, verificación del token en cada servicio, outbox y HTTPS. F8 agregó administración de cuentas, anulación de pagos, liquidación, gastos, cartera y reportes. F7 trajo audiencias en la agenda con aviso, pruebas con perito y términos sugeridos.
 > Actualización de F6 (rama `feature/f6-expediente`, 2026-10-17): partes y conflicto de intereses, actuaciones, providencia manual, sentencia, recursos, otras instancias y copias de seguridad.
 
 **Estados:**
@@ -124,6 +124,7 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | JWT, roles, bloqueo y auditoría | ✅ | F5 |
 | HTTPS / `tailscale serve` | ✅ F9 | https://docker-server.tail76e9a3.ts.net (solo tailnet), redirección, HSTS y cookie Secure. |
 | Refresh token y revocación | ✅ F9 | Token de 15 min, refresh token rotatorio en cookie HttpOnly, lista de revocados en el gateway. |
+| Verificación en dos pasos (MFA) | ✅ F13 | Código TOTP de una app autenticadora, códigos de recuperación, roles que la exigen (`MFA_OBLIGATORIO_ROLES`). |
 | Validar el JWT en cada servicio | ✅ F9 | `FiltroToken` (Java) y `MiddlewareToken` (Python); tokens de servicio entre ellos. |
 | Outbox de eventos | ✅ F9 | `procesos` y `vigilancia`. |
 | Copias de seguridad de PostgreSQL y documentos | ✅ F10 | `pg_dump` y paquete de documentos diarios en la VM (14 días) y copia al PC con SHA-256 verificado (tarea programada, 30 días). |
@@ -143,4 +144,5 @@ Ordenadas por valor para la firma y por dependencias:
 | **F9. Portal del cliente y endurecimiento** ✅ | Portal, avisos al cliente, HTTPS, refresh token, JWT en cada servicio, outbox. | El portal expone datos fuera del equipo: requiere primero las prioridades 1 a 3 de seguridad. |
 | **F10. Documentos y redacción** ✅ | Expediente digital con archivos y control de acceso, borradores de demanda y recurso, consulta inicial, copias fuera de la VM. (El resumen del auto en el aviso se decidió no hacerlo.) | Lo que más trabajo ahorra ahora que el núcleo está completo. |
 | **F11. Operación** ✅ | Vigía con avisos por Telegram, análisis de dependencias y cobertura en el CI, sedes/áreas/cargos editables, abogados de apoyo, PDF en reportes. | Lo que faltaba para operar con tranquilidad. |
+| **F13. Verificación en dos pasos** ✅ | TOTP con códigos de recuperación, roles que la exigen, reinicio por el administrador; identidad revisa los revocados. | Una contraseña robada ya no basta para entrar. |
 | **F12. Reglas validadas y calidad** ✅ | Reglas de términos editables y validadas por un socio con historial, historial del vigía con pantalla "Servidor", cobertura ≥ 70 % en todos los servicios. | Las sugerencias de términos necesitaban el respaldo de un abogado y el código, pruebas. |

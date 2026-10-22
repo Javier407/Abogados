@@ -68,6 +68,11 @@ class SeguridadTest {
 		assertThat(permitido("POST", "/api/abogados", "SOCIO")).isTrue();
 		assertThat(permitido("POST", "/api/asistente/borradores", "ADMINISTRATIVO")).isFalse();
 		assertThat(permitido("PUT", "/api/vigilancia/radicados/1", "DEPENDIENTE")).isTrue();
+		// F13: cada quien configura su verificación en dos pasos; reiniciarla es del administrador
+		assertThat(permitido("POST", "/api/auth/mfa/inicio", "CLIENTE")).isTrue();
+		assertThat(permitido("GET", "/api/auth/mfa", "DEPENDIENTE")).isTrue();
+		assertThat(permitido("POST", "/api/usuarios/7/mfa/reinicio", "SOCIO")).isFalse();
+		assertThat(permitido("POST", "/api/usuarios/7/mfa/reinicio", "ADMIN")).isTrue();
 		// F12: reglas de términos (las valida un socio) y estado del servidor (solo el administrador)
 		assertThat(permitido("GET", "/api/reglas-termino", "DEPENDIENTE")).isTrue();
 		assertThat(permitido("POST", "/api/reglas-termino/4/validacion", "SOCIO")).isTrue();
@@ -155,6 +160,10 @@ class SeguridadTest {
 	void renovarYSalirNoPidenToken() {
 		web.post().uri("/api/auth/renovar").exchange().expectStatus().value(s -> assertThat(s).isNotIn(401, 403));
 		web.post().uri("/api/auth/salir").exchange().expectStatus().value(s -> assertThat(s).isNotIn(401, 403));
+		// F13: el segundo paso del login tampoco (aún no hay token)
+		web.post().uri("/api/auth/login/mfa").exchange().expectStatus().value(s -> assertThat(s).isNotIn(401, 403));
+		web.post().uri("/api/auth/login/mfa/activacion").exchange().expectStatus().value(s -> assertThat(s).isNotIn(401, 403));
+		web.post().uri("/api/auth/mfa/inicio").exchange().expectStatus().isUnauthorized();
 	}
 
 	@Test

@@ -53,6 +53,8 @@ public class ConfiguracionSeguridad {
 				.authorizeExchange(a -> a
 						.pathMatchers(HttpMethod.OPTIONS).permitAll()                 // preflight de CORS
 						.pathMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/renovar", "/api/auth/salir").permitAll()
+						// F13: segundo paso del login; aún no hay token, identidad valida el desafío firmado
+						.pathMatchers(HttpMethod.POST, "/api/auth/login/mfa", "/api/auth/login/mfa/**").permitAll()
 						.pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
 						.pathMatchers("/api/**").access(politica)
 						.anyExchange().denyAll())

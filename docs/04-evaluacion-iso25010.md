@@ -150,3 +150,13 @@ Mantenibilidad sube de 8 a 9 (cobertura medida y dependencias vigiladas, falta l
 | Fiabilidad (operación) | El vigía guarda la historia: disponibilidad medida y cada incidente con su duración. |
 
 Mantenibilidad sube de 9 a 10 (cobertura sobre la meta en todos los servicios, protegida en el CI). Total estimado: **9,0**. Lo que queda para subir más está fuera del código: un segundo servidor (Fiabilidad) y MFA (Seguridad).
+
+## 9. Avance tras F13 (2026-10-22)
+
+| Brecha | Estado tras F13 |
+|---|---|
+| Sin segundo factor (MFA) | **Resuelta.** Verificación en dos pasos con código TOTP, códigos de recuperación de un solo uso, secretos cifrados con AES-256-GCM y roles que pueden exigirla. Los códigos incorrectos cuentan para el bloqueo. |
+| Defensa en profundidad | identidad también rechaza los tokens revocados, no solo el gateway. |
+| Disponibilidad de las sesiones | El bloqueo por intentos fallidos ya no permite cerrar las sesiones de otra persona. |
+
+Seguridad sube de 9 a 10 en lo que depende del código. Total estimado: **9,1**. Lo que queda está fuera del código: un segundo servidor (Fiabilidad), exigir la verificación a los roles con más permisos (decisión de la firma) y respaldar las llaves de `infra/.env`.

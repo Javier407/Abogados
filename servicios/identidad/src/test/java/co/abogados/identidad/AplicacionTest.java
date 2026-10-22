@@ -45,6 +45,9 @@ class AplicacionTest {
 	@MockBean
 	SesionesServicio sesiones;   // evita que la limpieza programada intente conectarse a la base
 
+	@MockBean
+	co.abogados.identidad.dominio.puertos.SesionesRepositorio repoSesiones;   // F13: el filtro consulta los revocados
+
 	String token(Set<String> roles, boolean temporal) {
 		return emisor.acceso(new Usuario(52345678L, "cgomez", "Catalina", "cgomez@firma.co", "h", true, roles, 0, null),
 				temporal, Instant.now()).token();
@@ -72,6 +75,14 @@ class AplicacionTest {
 				.header("X-Usuario-Roles", "ADMIN"))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.error").value("Solo el administrador puede gestionar las cuentas"));
+	}
+
+	@Test
+	void unTokenRevocadoNoSirveEnIdentidad() throws Exception {
+		org.mockito.BDDMockito.given(repoSesiones.revocado(org.mockito.ArgumentMatchers.anyString(),
+				org.mockito.ArgumentMatchers.any())).willReturn(true);
+		mvc.perform(get("/auth/yo").header("Authorization", "Bearer " + token(Set.of("SOCIO"), false)))
+				.andExpect(status().isUnauthorized());
 	}
 
 	@Test

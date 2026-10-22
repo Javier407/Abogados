@@ -27,6 +27,11 @@ public interface SesionesRepositorio {
 	/** jti de los tokens de acceso revocados que aún no vencen. */
 	List<String> revocados(Instant ahora);
 
+	/** ¿Ese token de acceso fue revocado? (F13: identidad también lo revisa, no solo el gateway). */
+	default boolean revocado(String jti, Instant ahora) {
+		return revocados(ahora).contains(jti);
+	}
+
 	/** Borra los refresh tokens y revocaciones ya vencidos. */
 	void limpiar(Instant ahora);
 

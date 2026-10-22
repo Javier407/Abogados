@@ -23,13 +23,15 @@ import co.abogados.identidad.infraestructura.EmisorJwtRsa;
 @ConditionalOnProperty(name = "seguridad.tokens.verificar", havingValue = "true", matchIfMissing = true)
 public class ConfiguracionTokens {
 
-	static final List<String> PUBLICAS = List.of("/auth/login", "/auth/renovar", "/auth/salir", "/.well-known/jwks.json",
+	static final List<String> PUBLICAS = List.of("/auth/login", "/auth/login/mfa", "/auth/login/mfa/**", "/auth/renovar", "/auth/salir", "/.well-known/jwks.json",
 			"/interno/token", "/interno/revocados", "/actuator/health", "/actuator/health/**");
 
 	@Bean
-	FilterRegistrationBean<FiltroToken> filtroToken(EmisorJwtRsa emisor) {
+	FilterRegistrationBean<FiltroToken> filtroToken(EmisorJwtRsa emisor,
+			co.abogados.identidad.dominio.puertos.SesionesRepositorio sesiones, java.time.Clock reloj) {
 		VerificadorToken verificador = new VerificadorToken(
-				new ImmutableJWKSet<SecurityContext>(new JWKSet(emisor.publica())), EmisorJwtRsa.EMISOR);
+				new ImmutableJWKSet<SecurityContext>(new JWKSet(emisor.publica())), EmisorJwtRsa.EMISOR,
+				jti -> sesiones.revocado(jti, java.time.Instant.now(reloj)));
 		FilterRegistrationBean<FiltroToken> registro = new FilterRegistrationBean<>(
 				new FiltroToken(verificador, PUBLICAS, List.of("/auth/yo", "/auth/clave")));
 		registro.setOrder(Ordered.HIGHEST_PRECEDENCE + 10);

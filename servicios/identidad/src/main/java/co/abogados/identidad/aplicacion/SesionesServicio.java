@@ -83,7 +83,9 @@ public class SesionesServicio {
 			throw new SesionInvalidaException("La sesión se cerró por seguridad; inicie sesión de nuevo");
 		}
 		Usuario u = usuarios.porId(r.idUsuario()).orElse(null);
-		if (u == null || !u.activo() || u.bloqueado(ahora)) {
+		// F13: el bloqueo por intentos fallidos no corta las sesiones ya abiertas; si no, cualquiera que conozca el
+		// usuario podría cerrarle la sesión a otra persona fallando 5 veces su contraseña.
+		if (u == null || !u.activo()) {
 			sesiones.revocarFamilia(r.familia(), "CUENTA_INACTIVA", ahora);
 			throw new SesionInvalidaException(VENCIDA);
 		}

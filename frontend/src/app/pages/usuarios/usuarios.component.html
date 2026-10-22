@@ -142,11 +142,13 @@
               @else if (bloqueada(c)) { <span class="badge badge-danger">Bloqueada</span> }
               @else { <span class="badge badge-success">Activa</span> }
               @if (c.debeCambiarClave) { <br><small>Clave temporal</small> }
+              @if (conMfa.has(c.idUsuario)) { <br><small>Verificación en dos pasos</small> }
             </td>
             <td class="fecha-celda">{{ c.ultimoIngreso ? (c.ultimoIngreso | date:'dd/MM/yyyy HH:mm') : 'Nunca' }}</td>
             <td class="acciones-celda">
               <button class="btn btn-secondary btn-sm" type="button" (click)="editar(c)">Editar</button>
               @if (bloqueada(c)) { <button class="btn btn-secondary btn-sm" type="button" (click)="desbloquear(c)">Desbloquear</button> }
+              @if (conMfa.has(c.idUsuario)) { <button class="btn btn-secondary btn-sm" type="button" (click)="reiniciarMfa(c)">Reiniciar 2 pasos</button> }
             </td>
           </tr>
         }

@@ -223,15 +223,17 @@ class ReglasServiciosTest {
 	}
 
 	@Test
-	void unaCuentaBloqueadaOBorradaNoRenuevaYSeCierraLaSesion() {
+	void unaCuentaBorradaNoRenuevaPeroUnaBloqueadaSi() {
 		Sesion admin = sesiones.abrir(usuarios.datos.get(ADMIN), "1.2.3.4");
 		Sesion socia = sesiones.abrir(usuarios.datos.get(SOCIA), "1.2.3.4");
+		// F13: alguien falla 5 veces la contraseña del administrador; su sesión abierta no se corta por eso.
 		usuarios.guardarFallo(ADMIN, 0, AutenticacionTest.AHORA.plus(Duration.ofMinutes(15)));
 		usuarios.datos.remove(SOCIA);
 
-		assertThatThrownBy(() -> sesiones.renovar(admin.refresco(), "1.2.3.4")).isInstanceOf(SesionInvalidaException.class);
+		assertThat(sesiones.renovar(admin.refresco(), "1.2.3.4").token()).isNotBlank();
 		assertThatThrownBy(() -> sesiones.renovar(socia.refresco(), "1.2.3.4")).isInstanceOf(SesionInvalidaException.class);
-		assertThat(repoSesiones.filas.values()).allSatisfy(f -> assertThat(f.motivo()).isEqualTo("CUENTA_INACTIVA"));
+		assertThat(repoSesiones.filas.values()).filteredOn(f -> f.motivo() != null)
+				.allSatisfy(f -> assertThat(f.motivo()).isEqualTo("CUENTA_INACTIVA")).isNotEmpty();
 	}
 
 	@Test

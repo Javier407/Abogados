@@ -2,6 +2,7 @@ package co.abogados.identidad.infraestructura;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import co.abogados.identidad.aplicacion.AutenticacionServicio;
 import co.abogados.identidad.aplicacion.SesionesServicio;
+import co.abogados.identidad.dominio.MfaRequeridoException;
 import co.abogados.identidad.dominio.Sesion;
 import co.abogados.identidad.dominio.SesionInvalidaException;
 import co.abogados.identidad.dominio.Usuario;
@@ -59,10 +61,15 @@ public class AuthRecurso {
 
 	/** Lo que ve la interfaz: nunca el refresh token (va en la cookie). */
 	public record SesionRespuesta(String token, Instant expira, long idUsuario, String usuario, String nombre,
-			Set<String> roles, boolean debeCambiarClave, Integer idCliente) {
+			Set<String> roles, boolean debeCambiarClave, Integer idCliente, List<String> codigosRecuperacion) {
 		static SesionRespuesta de(Sesion s) {
+			return de(s, null);
+		}
+
+		/** codigos: los de recuperación, solo al activar la verificación en dos pasos al entrar (F13). */
+		static SesionRespuesta de(Sesion s, List<String> codigos) {
 			return new SesionRespuesta(s.token(), s.expira(), s.idUsuario(), s.usuario(), s.nombre(), s.roles(),
-					s.debeCambiarClave(), s.idCliente());
+					s.debeCambiarClave(), s.idCliente(), codigos);
 		}
 	}
 
@@ -89,7 +96,16 @@ public class AuthRecurso {
 					.header("Retry-After", String.valueOf(LimiteIntentosPorIp.VENTANA.toSeconds()))
 					.body(Map.of("error", "Demasiados intentos desde esta dirección. Espere unos minutos."));
 		}
-		return conCookie(servicio.iniciarSesion(ingreso.usuario(), ingreso.clave(), ip));
+		try {
+			return conCookie(servicio.iniciarSesion(ingreso.usuario(), ingreso.clave(), ip));
+		} catch (MfaRequeridoException e) {
+			// F13: contraseña correcta, falta el código (o activar la verificación). No hay sesión todavía.
+			return ResponseEntity.ok(new SegundoPaso(true, e.configurar(), e.desafio()));
+		}
+	}
+
+	/** Respuesta del login cuando falta el segundo paso: con el desafío se envía el código a /auth/login/mfa. */
+	public record SegundoPaso(boolean mfaRequerido, boolean configurarMfa, String desafio) {
 	}
 
 	/** Token de acceso nuevo a cambio del refresh token de la cookie (que se gasta y se reemplaza). */
@@ -152,12 +168,22 @@ public class AuthRecurso {
 	}
 
 	private ResponseCookie cookie(String valor, Duration vida) {
-		return ResponseCookie.from(COOKIE, valor).httpOnly(true).secure(cookieSegura).sameSite("Strict")
+		return cookie(valor, vida, cookieSegura);
+	}
+
+	static ResponseCookie cookie(String valor, Duration vida, boolean segura) {
+		return ResponseCookie.from(COOKIE, valor).httpOnly(true).secure(segura).sameSite("Strict")
 				.path(RUTA_COOKIE).maxAge(vida.isNegative() ? Duration.ZERO : vida).build();
 	}
 
+	/** La cookie con el refresh token de la sesión (vacía si no hay). */
+	static ResponseCookie cookieDe(Sesion s, boolean segura) {
+		Duration vida = s.refrescoExpira() == null ? Duration.ZERO : Duration.between(Instant.now(), s.refrescoExpira());
+		return cookie(s.refresco() == null ? "" : s.refresco(), vida, segura);
+	}
+
 	/** IP del cliente: el gateway agrega X-Forwarded-For. */
-	private static String ip(HttpServletRequest p) {
+	static String ip(HttpServletRequest p) {
 		String reenviada = p.getHeader("X-Forwarded-For");
 		return reenviada != null && !reenviada.isBlank() ? reenviada.split(",")[0].strip() : p.getRemoteAddr();
 	}

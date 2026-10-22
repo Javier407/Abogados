@@ -15,6 +15,24 @@ export interface Sesion {
   debeCambiarClave?: boolean;
   /** Solo en las cuentas del portal del cliente. */
   idCliente?: number;
+  /** Solo al activar la verificación en dos pasos al entrar: se muestran una vez. */
+  codigosRecuperacion?: string[];
+}
+
+/** Respuesta del login cuando falta el segundo paso (F13): con el desafío se envía el código. */
+export interface SegundoPaso {
+  mfaRequerido: true;
+  /** La cuenta debe activar la verificación en dos pasos antes de entrar. */
+  configurarMfa: boolean;
+  desafio: string;
+}
+
+/** Secreto para la app autenticadora: uri para el código QR y el texto por si se escribe a mano. */
+export interface InicioMfa { secreto: string; uri: string; }
+export interface EstadoMfa { activo: boolean; desde?: string; codigosRestantes: number; obligatorio: boolean; }
+
+export function esSegundoPaso(r: Sesion | SegundoPaso): r is SegundoPaso {
+  return (r as SegundoPaso).mfaRequerido === true;
 }
 
 const CLAVE = 'gj.sesion';
@@ -58,8 +76,37 @@ export class AuthService {
     this.programarRenovacion();
   }
 
-  iniciar(usuario: string, clave: string): Observable<Sesion> {
-    return this.http.post<Sesion>('/api/auth/login', { usuario, clave }).pipe(tap(s => this.guardar(s)));
+  /** Con la verificación en dos pasos, la contraseña correcta devuelve un SegundoPaso en lugar de la sesión. */
+  iniciar(usuario: string, clave: string): Observable<Sesion | SegundoPaso> {
+    return this.http.post<Sesion | SegundoPaso>('/api/auth/login', { usuario, clave })
+      .pipe(tap(r => { if (!esSegundoPaso(r)) this.guardar(r); }));
+  }
+
+  // ---------------------------------------------------------------- verificación en dos pasos (F13)
+
+  /** Segundo paso del login: código de la app (6 dígitos) o de recuperación. */
+  completarMfa(desafio: string, codigo: string): Observable<Sesion> {
+    return this.http.post<Sesion>('/api/auth/login/mfa', { desafio, codigo }).pipe(tap(s => this.guardar(s)));
+  }
+
+  iniciarMfaAlEntrar(desafio: string): Observable<InicioMfa> {
+    return this.http.post<InicioMfa>('/api/auth/login/mfa/inicio', { desafio });
+  }
+
+  activarMfaAlEntrar(desafio: string, codigo: string): Observable<Sesion> {
+    return this.http.post<Sesion>('/api/auth/login/mfa/activacion', { desafio, codigo }).pipe(tap(s => this.guardar(s)));
+  }
+
+  estadoMfa(): Observable<EstadoMfa> { return this.http.get<EstadoMfa>('/api/auth/mfa'); }
+  iniciarMfa(): Observable<InicioMfa> { return this.http.post<InicioMfa>('/api/auth/mfa/inicio', {}); }
+  activarMfa(codigo: string): Observable<{ codigos: string[] }> {
+    return this.http.post<{ codigos: string[] }>('/api/auth/mfa/activacion', { codigo });
+  }
+  regenerarCodigos(clave: string): Observable<{ codigos: string[] }> {
+    return this.http.post<{ codigos: string[] }>('/api/auth/mfa/codigos', { clave });
+  }
+  desactivarMfa(clave: string, codigo: string): Observable<unknown> {
+    return this.http.post('/api/auth/mfa/desactivacion', { clave, codigo });
   }
 
   /**
@@ -122,6 +169,9 @@ export class AuthService {
   }
 
   private guardar(s: Sesion): void {
+    const { codigosRecuperacion, ...sinCodigos } = s;   // los códigos no se guardan en el navegador
+    void codigosRecuperacion;
+    s = sinCodigos;
     try { sessionStorage.setItem(CLAVE, JSON.stringify(s)); } catch { /* sin almacenamiento: solo en memoria */ }
     this.sesion.set(s);
     this.programarRenovacion();

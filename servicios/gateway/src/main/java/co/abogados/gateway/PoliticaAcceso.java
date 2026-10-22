@@ -53,6 +53,7 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			// identidad: el propio perfil y la propia contraseña
 			r(GET, "/api/auth/yo", TODOS),
 			r(HttpMethod.POST, "/api/auth/clave", TODOS),
+			r(null, "/api/auth/mfa/**", TODOS),                  // la propia verificación en dos pasos (F13)
 			// portal del cliente: solo lectura y solo lo suyo
 			r(GET, "/api/portal/**", Set.of("CLIENTE")),
 			r(null, "/api/usuarios/**", Set.of("ADMIN")),        // administración de cuentas

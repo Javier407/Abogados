@@ -87,6 +87,47 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Perfil" }
         "401": { description: Sin token }
+  /auth/login/mfa:
+    post:
+      summary: Segundo paso del inicio de sesión (F13)
+      description: |
+        Si la cuenta tiene la verificación en dos pasos, /auth/login con la contraseña correcta responde 200 con
+        { mfaRequerido: true, configurarMfa, desafio } y sin token ni cookie. Aquí se envía el desafío (5 min) con el
+        código de la app (6 dígitos) o uno de recuperación (xxxx-xxxx). Un código no sirve dos veces; los incorrectos
+        cuentan para el bloqueo de la cuenta (5 fallos).
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [desafio, codigo], properties: { desafio: { type: string }, codigo: { type: string } } } } } }
+      responses:
+        '200': { description: 'Sesión, como /auth/login (token y cookie)' }
+        '401': { description: Código incorrecto o desafío vencido }
+        '423': { description: Cuenta bloqueada }
+        '429': { description: Demasiados intentos desde la IP }
+  /auth/login/mfa/inicio:
+    post:
+      summary: 'Con configurarMfa: true, genera el secreto (secreto, uri otpauth) con el desafío, sin token'
+  /auth/login/mfa/activacion:
+    post:
+      summary: 'Activa con el desafío y el código; abre la sesión y devuelve codigosRecuperacion (una sola vez)'
+  /auth/mfa:
+    get:
+      summary: 'Estado de la propia verificación: { activo, desde, codigosRestantes, obligatorio }'
+  /auth/mfa/inicio:
+    post:
+      summary: 'Genera el secreto sin activar: { secreto (Base32), uri (otpauth://totp/...) }. 409 si ya está activa.'
+  /auth/mfa/activacion:
+    post:
+      summary: 'Confirma con { codigo } y devuelve { codigos } de recuperación (10, una sola vez). 422 si el código no coincide.'
+  /auth/mfa/codigos:
+    post:
+      summary: 'Con { clave }, reemplaza los códigos de recuperación'
+  /auth/mfa/desactivacion:
+    post:
+      summary: 'Con { clave, codigo } la desactiva. 422 si el rol la exige (MFA_OBLIGATORIO_ROLES).'
+  /usuarios/mfa:
+    get:
+      summary: 'Documentos de las cuentas con la verificación activa (solo ADMIN)'
+  /usuarios/{id}/mfa/reinicio:
+    post:
+      summary: 'El administrador la quita (teléfono y códigos perdidos) y corta las sesiones de la persona (solo ADMIN)'
   /auth/clave:
     post:
       summary: Cambia la contraseña de la persona conectada

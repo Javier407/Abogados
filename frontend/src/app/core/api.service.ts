@@ -106,6 +106,12 @@ export class ApiService {
     return this.http.put<{ reglasSinValidar: number }>(`${API}/catalogos/tipos/${idTipo}/contestacion`, { dias });
   }
 
+  /** Cuentas con la verificación en dos pasos activa (F13, solo ADMIN). */
+  cuentasConMfa(): Observable<number[]> { return this.http.get<number[]>(`${API}/usuarios/mfa`); }
+  reiniciarMfa(idUsuario: number): Observable<void> {
+    return this.http.post<void>(`${API}/usuarios/${idUsuario}/mfa/reinicio`, {});
+  }
+
   /** Estado del servidor según el vigía (F12, solo ADMIN). */
   estadoServidor(dias: number): Observable<EstadoServidor> {
     return this.http.get<EstadoServidor>(`${API}/notificaciones/servidor`, { params: filtros({ dias }) });

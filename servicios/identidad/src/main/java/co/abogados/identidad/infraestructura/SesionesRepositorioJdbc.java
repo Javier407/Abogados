@@ -83,6 +83,16 @@ public class SesionesRepositorioJdbc implements SesionesRepositorio {
 	}
 
 	@Override
+	public boolean revocado(String jti, Instant ahora) {
+		try {
+			return jdbc.sql("SELECT EXISTS (SELECT 1 FROM identidad.tokens_revocados WHERE jti = :jti AND expira > :ahora)")
+					.param("jti", UUID.fromString(jti)).param("ahora", Timestamp.from(ahora)).query(Boolean.class).single();
+		} catch (IllegalArgumentException e) {
+			return true;   // un jti que no es UUID no lo emitió identidad
+		}
+	}
+
+	@Override
 	public List<String> revocados(Instant ahora) {
 		return jdbc.sql("SELECT jti::text FROM identidad.tokens_revocados WHERE expira > :ahora")
 				.param("ahora", Timestamp.from(ahora)).query(String.class).list();

@@ -7,11 +7,13 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import co.abogados.identidad.dominio.CredencialesInvalidasException;
 import co.abogados.identidad.dominio.CuentaBloqueadaException;
+import co.abogados.identidad.dominio.MfaRequeridoException;
 import co.abogados.identidad.dominio.PoliticaClave;
 import co.abogados.identidad.dominio.RecursoNoEncontradoException;
 import co.abogados.identidad.dominio.ReglaNegocioException;
@@ -26,6 +28,8 @@ import co.abogados.identidad.dominio.puertos.UsuarioRepositorio;
  * - Si el usuario no existe se verifica igual un hash ficticio, para que el tiempo de respuesta no lo delate.
  * - 5 fallos seguidos bloquean la cuenta 15 minutos. Cada intento queda en la bitácora identidad.ingresos.
  * - Al entrar se abre una sesión renovable (SesionesServicio); cambiar la contraseña corta las demás sesiones.
+ * - Si la cuenta usa la verificación en dos pasos (F13), la contraseña correcta no abre la sesión: MfaServicio
+ *   entrega un desafío (MfaRequeridoException) y la sesión se abre con el código.
  */
 @Service
 public class AutenticacionServicio {
@@ -38,17 +42,26 @@ public class AutenticacionServicio {
 	private final SesionesServicio sesiones;
 	private final Clock reloj;
 	private final String hashFicticio;
+	private final MfaServicio mfa;
 
 	public AutenticacionServicio(UsuarioRepositorio usuarios, Cifrador cifrador, SesionesServicio sesiones, Clock reloj) {
+		this(usuarios, cifrador, sesiones, reloj, null);
+	}
+
+	@Autowired
+	public AutenticacionServicio(UsuarioRepositorio usuarios, Cifrador cifrador, SesionesServicio sesiones, Clock reloj,
+			MfaServicio mfa) {
 		this.usuarios = usuarios;
 		this.cifrador = cifrador;
 		this.sesiones = sesiones;
 		this.reloj = reloj;
+		this.mfa = mfa;
 		this.hashFicticio = cifrador.cifrar("clave-de-relleno-para-igualar-tiempos");
 	}
 
 	/** Los fallos deben quedar guardados aunque el método termine con excepción: no se deshacen. */
-	@Transactional(noRollbackFor = { CredencialesInvalidasException.class, CuentaBloqueadaException.class })
+	@Transactional(noRollbackFor = { CredencialesInvalidasException.class, CuentaBloqueadaException.class,
+			MfaRequeridoException.class })
 	public Sesion iniciarSesion(String usuarioOEmail, String clave, String ip) {
 		String texto = usuarioOEmail == null ? "" : usuarioOEmail.strip().toLowerCase(Locale.ROOT);
 		Instant ahora = Instant.now(reloj);
@@ -79,6 +92,9 @@ public class AutenticacionServicio {
 			// Después de verificar la contraseña: solo quien la conoce sabe que la cuenta está inactiva.
 			usuarios.registrarIntento(recortar(texto), u.idUsuario(), false, "INACTIVO", ip);
 			throw new CredencialesInvalidasException("La cuenta está desactivada; hable con el administrador");
+		}
+		if (mfa != null) {
+			mfa.exigirSiCorresponde(u);   // lanza MfaRequeridoException si falta el segundo paso
 		}
 		usuarios.guardarIngreso(u.idUsuario(), ahora);
 		usuarios.registrarIntento(recortar(texto), u.idUsuario(), true, null, ip);

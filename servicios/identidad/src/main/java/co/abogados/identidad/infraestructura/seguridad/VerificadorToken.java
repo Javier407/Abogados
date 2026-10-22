@@ -31,8 +31,15 @@ public class VerificadorToken {
 	}
 
 	private final DefaultJWTProcessor<SecurityContext> procesador = new DefaultJWTProcessor<>();
+	private final java.util.function.Predicate<String> revocado;
 
 	public VerificadorToken(JWKSource<SecurityContext> llaves, String emisor) {
+		this(llaves, emisor, jti -> false);
+	}
+
+	/** revocado: consulta la lista de tokens revocados por su jti (F13). */
+	public VerificadorToken(JWKSource<SecurityContext> llaves, String emisor, java.util.function.Predicate<String> revocado) {
+		this.revocado = revocado;
 		procesador.setJWSKeySelector(new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, llaves));
 		procesador.setJWTClaimsSetVerifier(new DefaultJWTClaimsVerifier<>(
 				new JWTClaimsSet.Builder().issuer(emisor).build(), Set.of("sub", "exp", "iat", "jti")));
@@ -44,6 +51,9 @@ public class VerificadorToken {
 		}
 		try {
 			JWTClaimsSet c = procesador.process(token, null);
+			if (revocado.test(c.getJWTID())) {
+				return Optional.empty();
+			}
 			List<String> roles = c.getStringListClaim("roles");
 			Long cliente = c.getLongClaim("idCliente");
 			Boolean temporal = c.getBooleanClaim("clave_temporal");

@@ -173,6 +173,8 @@ done
 
 Desde ahí http://IP:8090 redirige a HTTPS, el navegador recibe HSTS y la cookie de la sesión solo viaja cifrada. Mientras no haya HTTPS, `COOKIE_SEGURA=false` (si no, el navegador no guarda la cookie y la sesión dura 15 minutos).
 
+**Verificación en dos pasos (F13).** Cada persona la activa en **Mi cuenta** con una app autenticadora. `MFA_OBLIGATORIO_ROLES` en `infra/.env` (p. ej. `ADMIN,SOCIO`) la exige a esos roles. Los secretos se cifran con `MFA_CLAVE_CIFRADO` (se genera una vez en el servidor, ver `.env.example`, y se respalda con las demás llaves). Quien pierda el teléfono y los códigos de recuperación pide al administrador que la reinicie en **Usuarios**.
+
 **Historial del servidor (F12).** El vigía guarda cada revisión (90 días) y cada incidente en el esquema `operacion`; el administrador los ve en la pantalla **Servidor**. **Reglas de términos (F12):** pantalla **Reglas**; solo un socio las cambia o valida.
 
 **Vigía del servidor (F11).** `infra/monitoreo/vigia.sh` revisa cada 5 minutos contenedores, disco, memoria, respaldos, outbox, colas de RabbitMQ y HTTPS, y avisa por Telegram a los administradores que vincularon Telegram en la app (problema nuevo, resuelto y un resumen diario). Se instala como timer de systemd con `sh infra/monitoreo/instalar.sh` (`quitar` para desinstalarlo). Para revisar a mano: `sh infra/monitoreo/vigia.sh estado`.
