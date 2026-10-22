@@ -35,6 +35,15 @@ export class ReportesComponent implements OnInit {
     this.cargar();
   }
 
+  /** Fecha y hora que salen en el informe impreso. */
+  ahora = new Date();
+
+  /** El navegador imprime solo el informe (sin menú); "Guardar como PDF" lo deja en un archivo. */
+  imprimir(): void {
+    this.ahora = new Date();
+    setTimeout(() => window.print());
+  }
+
   cargar(): void {
     this.cargando = true;
     this.error = '';

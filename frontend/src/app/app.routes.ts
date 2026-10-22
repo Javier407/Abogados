@@ -53,6 +53,8 @@ export const routes: Routes = [
       { path: 'pagos', redirectTo: 'honorarios' },
       { path: 'usuarios', component: UsuariosComponent, title: 'Usuarios', canActivate: [conRol('ADMIN')] },
       { path: 'reportes', component: ReportesComponent, title: 'Reportes', canActivate: [conRol(...DIRECCION)] },
+      { path: 'firma', loadComponent: () => import('./pages/firma/firma.component').then(m => m.FirmaComponent),
+        title: 'La firma', canActivate: [conRol(...DIRECCION)] },
       { path: 'peritos', component: PeritosComponent, title: 'Peritos', canActivate: [personal] },
       { path: '**', redirectTo: '' }
     ]

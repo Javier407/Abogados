@@ -68,6 +68,12 @@ class SeguridadTest {
 		assertThat(permitido("POST", "/api/abogados", "SOCIO")).isTrue();
 		assertThat(permitido("POST", "/api/asistente/borradores", "ADMINISTRATIVO")).isFalse();
 		assertThat(permitido("PUT", "/api/vigilancia/radicados/1", "DEPENDIENTE")).isTrue();
+		// F11: catálogos de la firma y equipo del proceso
+		assertThat(permitido("POST", "/api/gabinete/sedes", "SOCIO")).isTrue();
+		assertThat(permitido("PUT", "/api/gabinete/cargos/2", "ABOGADO")).isFalse();
+		assertThat(permitido("GET", "/api/gabinete/areas", "DEPENDIENTE")).isTrue();
+		assertThat(permitido("POST", "/api/procesos/34/asignaciones", "ABOGADO")).isTrue();
+		assertThat(permitido("POST", "/api/procesos/34/asignaciones", "DEPENDIENTE")).isFalse();
 		// F10: documentos y consultas iniciales
 		assertThat(permitido("POST", "/api/procesos/34/documentos", "DEPENDIENTE")).isTrue();
 		assertThat(permitido("DELETE", "/api/procesos/34/documentos/2", "DEPENDIENTE")).isFalse();

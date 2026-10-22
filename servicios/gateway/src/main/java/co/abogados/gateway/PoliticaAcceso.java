@@ -62,6 +62,7 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			r(GET, "/api/abogados/**", INTERNOS),
 			r(null, "/api/abogados/**", DIRECCION),
 			r(GET, "/api/gabinete/**", INTERNOS),
+			r(null, "/api/gabinete/**", DIRECCION),                    // sedes, cargos y áreas (F11)
 			r(GET, "/api/peritos/**", INTERNOS),
 			r(null, "/api/peritos/**", JURIDICO),
 			r(GET, "/api/honorarios/cartera", MANEJAN_FINANZAS),

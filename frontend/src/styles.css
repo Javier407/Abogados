@@ -234,3 +234,16 @@ label.resumen-chip { display: inline-flex; align-items: center; gap: 8px; cursor
 .portal-datos dd { margin: 2px 0 0; font-weight: 500; }
 .portal-audiencia { margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-size: 13px; }
 .portal-resumen { white-space: pre-line; line-height: 1.6; font-size: 15px; margin: 0 0 8px; }
+
+/* ---------- Impresión (F11) ---------- */
+.solo-imprimir { display: none; }
+@media print {
+  @page { size: A4 landscape; margin: 14mm; }
+  body { background: #fff !important; }
+  .no-imprimir, .filtros, button, .btn { display: none !important; }
+  .solo-imprimir { display: block; }
+  .card { box-shadow: none !important; border: 1px solid #ccd; break-inside: avoid; }
+  .tabla { border-spacing: 0; }
+  .tabla td, .tabla th { border-bottom: 1px solid #dde; padding: 4px 6px; }
+  a { color: inherit; text-decoration: none; }
+}

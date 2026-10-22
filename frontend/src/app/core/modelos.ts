@@ -36,9 +36,9 @@ export interface Abogado {
   activo?: boolean;
 }
 
-export interface Sede { idSede: number; nombre: string; ciudad: string; esPrincipal: boolean; }
+export interface Sede { idSede: number; nombre: string; ciudad: string; direccion?: string; telefono?: string | null; esPrincipal: boolean; }
 export interface Cargo { idCargo: number; codigo: string; nombre: string; esAbogado: boolean; }
-export interface AreaPractica { idArea: number; codigoRama: string; nombre: string; }
+export interface AreaPractica { idArea: number; codigoRama: string; nombre: string; idDirector?: number; }
 
 // ---------- procesos ----------
 export const ESTADOS = ['ACTIVO', 'SUSPENDIDO', 'TERMINADO', 'ARCHIVADO'] as const;
@@ -525,6 +525,10 @@ export interface Consulta {
   idCliente: number | null;
 }
 export interface ConsultaConAvisos { consulta: Consulta; avisos: string[]; }
+
+// ---------- equipo del proceso (F11) ----------
+export type RolEquipo = 'RESPONSABLE' | 'APOYO' | 'DEPENDIENTE';
+export interface Integrante { idProceso: number; idPersona: number; rol: RolEquipo; desde: string; nombre: string | null; }
 
 /** Tamaño de archivo legible: 1,2 MB, 340 KB. */
 export function tamanoLegible(bytes: number): string {

@@ -10,6 +10,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | **F3. Vigilancia** | Enterarse de los autos sin entrar al portal | `vigilancia` con la interfaz `FuenteRamaJudicial`; consulta programada; evento `actuacion.detectada`; notificaciones por Telegram | Un auto nuevo en un radicado vigilado llega por Telegram y queda registrado en el proceso |
 | **F4. Asistente y administración** | Apoyo a la redacción y gestión de la firma | `asistente-ia` con Hermes (borradores y resúmenes); módulo de peritos; tarifas, honorarios pactados y pagos | Generar un borrador de contestación a partir de un proceso y registrar un pago de honorarios |
 | **F5. Seguridad y calidad** | Listo para uso real | `identidad` con JWT y roles; contraseñas con BCrypt; CI con GitHub Actions (build y pruebas por servicio); nueva evaluación ISO/IEC 25010 | Ningún servicio responde sin token; el pipeline pasa en verde; Seguridad ≥ 7 en la evaluación |
+| **F11. Operación** | Operar con tranquilidad: enterarse de los problemas antes que los usuarios y que la calidad no retroceda | Vigía del servidor con avisos por Telegram; Dependabot, auditoría de dependencias y cobertura mínima en el CI; abogados de apoyo; sedes, cargos y áreas editables; reportes en PDF | Un contenedor detenido llega como aviso por Telegram y su recuperación también; el CI falla si baja la cobertura o aparece una vulnerabilidad conocida; un abogado de apoyo ve el proceso en sus procesos; la dirección crea una sede sin romper la regla de una sola principal |
 | **F10. Documentos, redacción y consultas** | Que el expediente tenga sus archivos, que el asistente redacte demandas y recursos, que la firma registre a quien consulta y que los respaldos no dependan del servidor | Expediente digital con permisos (el cliente ve lo que se marque visible); borradores de demanda y recurso; consulta inicial con conflicto de intereses y paso a cliente; copia diaria de base y documentos al PC | Un PDF subido se descarga idéntico y uno falso se rechaza; el cliente solo descarga lo visible de sus procesos; una consulta contra un cliente avisa el conflicto y otra se convierte en cliente; los respaldos llegan al PC con su SHA-256 verificado |
 | **F9. Portal del cliente y endurecimiento** | Que el cliente vea lo suyo sin llamar a la firma, y que la app aguante datos reales | Portal (mis procesos, novedades, resumen publicado, pagos) y avisos al cliente; HTTPS con `tailscale serve`; token de 15 min con refresh token rotatorio y revocable; contraseña temporal exigida por la API; cada servicio verifica el token; outbox en `procesos` y `vigilancia` | Un cliente ve solo sus procesos y pagos; al publicar el abogado un resumen con RabbitMQ caído, el aviso le llega cuando RabbitMQ vuelve; un token revocado deja de servir; ningún servicio responde sin token aunque se le llame desde la red interna |
 | **F8. Administración y finanzas** | Que la firma se administre desde la app y los socios tengan información | Cuentas y roles desde la app (clave temporal que se cambia al entrar); anulación de pagos con motivo; liquidación de la cuota litis; gastos procesales; cartera; reportes de carga, términos y resultados con CSV | Crear una cuenta y que deba cambiar la clave al entrar; anular un pago y que quede en el historial sin contar; liquidar una cuota litis; registrar un gasto reembolsable y verlo en la cartera; reportes visibles solo para la dirección |
@@ -31,6 +32,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F8 | Terminada: en el servidor (23 comprobaciones), cuenta nueva con clave temporal que exige el cambio al entrar; el administrador no puede quitarse su rol; pago anulado que queda en el historial y deja de contar; cuota litis del 25 % sobre 40.000.000 liquidada en 10.000.000; gasto reembolsable registrado por un abogado y visible en la cartera; reportes 403 para abogados | 2026-10-18 |
 | F9 | Terminada: en el servidor (39 comprobaciones, repetidas por HTTPS el 2026-10-22 en https://docker-server.tail76e9a3.ts.net), Carolina Méndez ve solo su proceso y sus pagos (otro proceso responde 404); con RabbitMQ detenido el abogado publicó un resumen, el evento esperó en el outbox y el aviso le llegó al volver RabbitMQ; un refresh token reutilizado cerró la sesión y su token de acceso dejó de servir en 20 s; los 6 servicios responden 401 sin token desde la red interna aunque se envíen cabeceras falsas; con clave temporal la API niega todo menos cambiarla | 2026-10-18 |
 | F10 | Terminada: en el servidor (27 comprobaciones por HTTPS), un PDF subido se descargó con el mismo SHA-256 y uno falso, un HTML y uno de 20,5 MB se rechazaron; Carolina Méndez solo descargó el documento marcado visible y otro cliente recibió 404; una consulta contra "CONSTRUCTORA ALTAMIRA S.A.S." avisó el conflicto con el cliente 2 y otra se convirtió en cliente; el recurso citó la providencia elegida; la tarea del PC copió 8 respaldos verificando su SHA-256 | 2026-10-22 |
+| F11 | Terminada: en el servidor (24 comprobaciones por HTTPS), al detener Mailpit llegó el aviso por Telegram y al encenderlo el de "resuelto"; Laura Pineda agregada como apoyo vio el proceso en sus procesos; marcar una sede nueva como principal dejó una sola principal; la auditoría encontró y se corrigieron vulnerabilidades en Angular, Starlette y PyJWT | 2026-10-22 |
 
 ## F1: qué quedó y qué falta
 
@@ -283,3 +285,28 @@ Pendiente o decidido para después:
 - Los documentos no se revisan con antivirus: solo se aceptan tipos de archivo pasivos, comprobados por su contenido.
 - Las copias en el PC no van cifradas (el disco es del PC de Javier). Si el PC se comparte, conviene cifrarlas.
 - Si el PC no se enciende en varios días, la copia en el PC se atrasa (en la VM se guardan 14 días).
+
+## F11: qué quedó y qué falta
+
+Hecho:
+
+1. **Vigía del servidor** (`infra/monitoreo/vigia.sh`, timer de systemd `abogados-vigia` cada 5 minutos, instalado con `infra/monitoreo/instalar.sh`):
+   - Revisa que cada contenedor esté corriendo y sano, el disco (85 %), la memoria disponible (500 MB), la edad del último respaldo (26 h), eventos atascados en los outbox (10 min), las colas de RabbitMQ (sin consumidor o con más de 100 mensajes) y la app por HTTPS.
+   - Avisa por Telegram a las cuentas ADMIN que vincularon Telegram, solo cuando algo cambia: el problema nuevo y, después, "resuelto". Compara por una clave estable, así que no repite el aviso porque cambie un número (por ejemplo, el % de disco).
+   - Cada día, después de las 7:00, manda un resumen aunque todo esté bien, para saber que el vigía sigue vivo.
+   - El token del bot se lee de `infra/.env` y no aparece en la línea de comandos. `vigia.sh estado` muestra la revisión sin avisar y `vigia.sh probar` envía un mensaje de prueba.
+2. **Calidad en el CI:**
+   - **Cobertura:** JaCoCo en los servicios Java y coverage.py en los Python, con resumen en cada ejecución. Hoy: identidad 59 %, gabinete 64 %, procesos 49 %, gateway 95 %, notificaciones 73 %, vigilancia 65 % y asistente-ia 84 %. Cada servicio tiene un mínimo un poco por debajo de lo actual: la cobertura ya no puede bajar. La meta es 70 %.
+   - **Vulnerabilidades:** `pip-audit` en los servicios Python y `npm audit` (altas y críticas, dependencias de producción) en el frontend; el CI falla si aparece una.
+   - **Dependabot** (`.github/dependabot.yml`) propone cada semana las actualizaciones de Maven, pip y npm (agrupadas) y cada mes las de Docker y GitHub Actions.
+   - Al activarlo se encontraron y corrigieron: Angular 21.2.12 → 21.2.25 (XSS), Starlette 0.41.3 → 1.7.0 (con FastAPI 0.142.2), PyJWT 2.9.0 → 2.15.1 y aiosmtplib 3.0.2 → 5.1.3. Se eligieron versiones publicadas hace al menos dos semanas.
+3. **Equipo del proceso:** tarjeta "Equipo" en el expediente para agregar abogados de apoyo y dependientes (personal activo) y quitarlos. El responsable se cambia editando el proceso. Quien está en el equipo ve el proceso en "solo mis procesos".
+4. **La firma** (pantalla nueva, solo ADMIN y SOCIO): crear, cambiar y borrar sedes, cargos y áreas de práctica. Siempre hay una sola sede principal; los códigos no se repiten; el director de un área debe ser personal activo; no se borra lo que tiene clientes o personal.
+5. **Reportes en PDF:** botón "Imprimir o guardar PDF" con una hoja de impresión (A4 horizontal, sin menú ni botones, con el periodo y la fecha de generación).
+6. Pruebas nuevas: equipo (3), catálogos (4) y permisos del gateway (5).
+
+Pendiente o decidido para después:
+
+- Subir la cobertura de procesos, identidad, gabinete y vigilancia hasta el 70 %.
+- El vigía no avisa por correo (el correo de la firma aún va a Mailpit) y no guarda historia de métricas: para eso haría falta una herramienta como Prometheus o Uptime Kuma.
+- El PDF de los reportes lo genera el navegador; no hay PDF generado en el servidor (por ejemplo, para enviarlo por correo).

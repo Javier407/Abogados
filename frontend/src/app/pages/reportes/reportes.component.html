@@ -2,7 +2,8 @@
 
   <div class="page-header">
     <h1>Reportes</h1>
-    <p>Carga del equipo, cumplimiento de términos, resultados y cartera. Cada tabla se puede descargar para Excel.</p>
+    <p class="no-imprimir">Carga del equipo, cumplimiento de términos, resultados y cartera. Cada tabla se puede descargar para Excel, y el informe completo se imprime o se guarda en PDF.</p>
+    <p class="solo-imprimir">Rodríguez & Asociados · Periodo {{ desde | date:'dd/MM/yyyy' }} a {{ hasta | date:'dd/MM/yyyy' }} · Generado el {{ ahora | date:'dd/MM/yyyy HH:mm' }}</p>
   </div>
 
   @if (error) { <div class="alerta alerta-error" role="alert">{{ error }}</div> }
@@ -12,6 +13,7 @@
     <input id="rDesde" class="form-input" type="date" [(ngModel)]="desde" aria-label="Desde" />
     <input class="form-input" type="date" [(ngModel)]="hasta" aria-label="Hasta" />
     <button class="btn btn-primary" type="button" (click)="cargar()" [disabled]="cargando">Actualizar</button>
+    <button class="btn btn-secondary" type="button" (click)="imprimir()" [disabled]="cargando">Imprimir o guardar PDF</button>
     <span class="form-ayuda">El periodo aplica a términos y resultados; la carga y la cartera son de hoy.</span>
   </div>
 

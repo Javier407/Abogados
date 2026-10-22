@@ -41,6 +41,7 @@
         <a routerLink="/peritos" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-flask"/></svg>Peritos</a>
         @if (auth.tiene('ADMIN', 'SOCIO')) {
           <a routerLink="/reportes" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-grafica"/></svg>Reportes</a>
+          <a routerLink="/firma" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-panel"/></svg>Firma</a>
         }
         @if (auth.tiene('ADMIN')) {
           <a routerLink="/usuarios" routerLinkActive="activo" class="nav-btn"><svg><use href="#i-llave"/></svg>Usuarios</a>

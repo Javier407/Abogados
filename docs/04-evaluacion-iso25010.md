@@ -130,3 +130,13 @@ Cambios sobre las brechas de la sección 1 y el plan de la sección 4:
 | 7 · IP real del cliente | **Resuelta.** Por `tailscale serve` se registra la IP del equipo en la VPN; una IP falsa en `X-Forwarded-For` se ignora (comprobado). |
 
 Con esto, Seguridad pasa de 8 a 9 (falta MFA y el análisis de dependencias) y Fiabilidad de 7 a 8 (falta un segundo servidor). Adecuación funcional sube a 10 con el portal del cliente. Total estimado: **8,6**.
+
+## 7. Avance tras F11 (2026-10-22)
+
+| Prioridad del plan | Estado tras F11 |
+|---|---|
+| 4 · Análisis de dependencias | **Resuelta.** Dependabot, `pip-audit` y `npm audit` en el CI. Al activarlos se corrigieron vulnerabilidades reales en Angular (XSS), Starlette y PyJWT. |
+| 7 · Cobertura no medida | **Medida y protegida.** JaCoCo y coverage.py en el CI con un mínimo por servicio (no puede bajar). Cuatro servicios siguen por debajo de la meta de 70 %. |
+| Fiabilidad (operación) | Vigía con avisos por Telegram: un contenedor caído, el disco lleno, un respaldo atrasado o eventos atascados se avisan en máximo 5 minutos. |
+
+Mantenibilidad sube de 8 a 9 (cobertura medida y dependencias vigiladas, falta llegar al 70 %) y Fiabilidad de 8 a 9 (vigilancia activa; sigue un único servidor). Total estimado: **8,8**.

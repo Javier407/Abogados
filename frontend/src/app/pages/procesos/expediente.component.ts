@@ -15,6 +15,7 @@ import { TerminosProcesoComponent } from './terminos-proceso.component';
 import { AsistenteProcesoComponent } from './asistente-proceso.component';
 import { GastosProcesoComponent } from './gastos-proceso.component';
 import { DocumentosProcesoComponent } from './documentos-proceso.component';
+import { EquipoProcesoComponent } from './equipo-proceso.component';
 
 type Filtro = 'TODO' | 'ACTUACION' | 'PROVIDENCIA' | 'TERMINO';
 
@@ -26,7 +27,7 @@ type Filtro = 'TODO' | 'ACTUACION' | 'PROVIDENCIA' | 'TERMINO';
   selector: 'app-expediente',
   standalone: true,
   imports: [FormsModule, DatePipe, RouterLink, TerminosProcesoComponent, AsistenteProcesoComponent, GastosProcesoComponent,
-    DocumentosProcesoComponent],
+    DocumentosProcesoComponent, EquipoProcesoComponent],
   templateUrl: './expediente.component.html',
   styleUrl: './expediente.component.css'
 })

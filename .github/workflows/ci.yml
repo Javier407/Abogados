@@ -1,5 +1,7 @@
 # Compila y prueba cada servicio por separado en cada push y pull request.
 # Un servicio que falla no oculta a los demás (fail-fast: false).
+# F11: cada servicio mide su cobertura (JaCoCo / coverage.py) y falla si baja del mínimo; las dependencias de
+# Python y del frontend se auditan contra las bases de vulnerabilidades conocidas.
 name: CI
 
 on:
@@ -33,10 +35,23 @@ jobs:
           java-version: "17"
           cache: maven
           cache-dependency-path: servicios/${{ matrix.servicio }}/pom.xml
-      - name: Compilar y probar
+      - name: Compilar, probar y medir la cobertura
         run: |
           set -o pipefail
           mvn -B -ntp verify 2>&1 | tee build.log
+      - name: Resumen de cobertura
+        if: always()
+        run: |
+          f=target/site/jacoco/jacoco.csv
+          [ -f "$f" ] || exit 0
+          awk -F, 'NR>1 {lf+=$8; lc+=$9; bf+=$6; bc+=$7} END {printf "### Cobertura · %s\nLíneas: %.1f %% · Ramas: %.1f %%\n", s, 100*lc/(lf+lc), 100*bc/(bf+bc)}' \
+            s=${{ matrix.servicio }} "$f" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cobertura-${{ matrix.servicio }}
+          path: servicios/${{ matrix.servicio }}/target/site/jacoco/
+          if-no-files-found: ignore
       # Los registros de Actions solo se ven con sesión en GitHub: los errores se publican como anotaciones,
       # que cualquiera puede leer (también por la API pública).
       - name: Publicar errores como anotaciones
@@ -49,7 +64,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        servicio: [notificaciones, vigilancia, asistente-ia]
+        include:
+          # minimo: cobertura (líneas y ramas) por debajo de la cual falla; la meta es 70.
+          - { servicio: notificaciones, minimo: 71 }
+          - { servicio: vigilancia, minimo: 63 }
+          - { servicio: asistente-ia, minimo: 82 }
     defaults:
       run:
         working-directory: servicios/${{ matrix.servicio }}
@@ -62,10 +81,15 @@ jobs:
           cache-dependency-path: servicios/${{ matrix.servicio }}/requirements*.txt
       - name: Instalar dependencias
         run: pip install -r requirements.txt -r requirements-dev.txt
-      - name: Probar
+      - name: Probar y medir la cobertura
         run: |
           set -o pipefail
-          python -m pytest -q 2>&1 | tee pruebas.log
+          python -m pytest -q --cov=app --cov-branch --cov-report=term --cov-fail-under=${{ matrix.minimo }} 2>&1 | tee pruebas.log
+          grep TOTAL pruebas.log | awk '{print "### Cobertura · ${{ matrix.servicio }}\n" $NF}' >> "$GITHUB_STEP_SUMMARY"
+      - name: Auditar dependencias (vulnerabilidades conocidas)
+        run: |
+          pip install pip-audit==2.7.3
+          pip-audit -r requirements.txt --progress-spinner off
       - name: Publicar errores como anotaciones
         if: failure()
         run: grep -E "Error|FAILED|assert|error" pruebas.log | head -30 | while IFS= read -r l; do echo "::error title=${{ matrix.servicio }}::$l"; done
@@ -84,6 +108,8 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --no-audit --no-fund
+      - name: Auditar dependencias de producción (vulnerabilidades altas o críticas)
+        run: npm audit --omit=dev --audit-level=high
       - name: Probar
         run: npx ng test --watch=false
       - name: Compilar para producción

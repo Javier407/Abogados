@@ -11,7 +11,7 @@ import {
   Audiencia, Prueba, PruebaSolicitud, SugerenciaTermino,
   CambioCuenta, CargaAbogado, CarteraCliente, Cuenta, CuentaSolicitud, CumplimientoTerminos, Gasto, GastoSolicitud,
   ResultadoRama, ProcesoPortal, DetallePortal, FinanzasPortal, ResumenPublicado,
-  CategoriaDocumento, Consulta, ConsultaConAvisos, Documento, EstadoConsulta
+  CategoriaDocumento, Consulta, ConsultaConAvisos, Documento, EstadoConsulta, Integrante, RolEquipo
 } from './modelos';
 
 /**
@@ -54,6 +54,15 @@ export class ApiService {
   sedes(): Observable<Sede[]> { return this.http.get<Sede[]>(`${API}/gabinete/sedes`); }
   cargos(): Observable<Cargo[]> { return this.http.get<Cargo[]>(`${API}/gabinete/cargos`); }
   areas(): Observable<AreaPractica[]> { return this.http.get<AreaPractica[]>(`${API}/gabinete/areas`); }
+  /** Sedes, cargos y áreas (F11, solo la dirección): sin id crea; con id cambia. */
+  guardarCatalogo<T>(tipo: 'sedes' | 'cargos' | 'areas', id: number | null, datos: T): Observable<T> {
+    return id === null
+      ? this.http.post<T>(`${API}/gabinete/${tipo}`, datos)
+      : this.http.put<T>(`${API}/gabinete/${tipo}/${id}`, datos);
+  }
+  borrarCatalogo(tipo: 'sedes' | 'cargos' | 'areas', id: number): Observable<void> {
+    return this.http.delete<void>(`${API}/gabinete/${tipo}/${id}`);
+  }
 
   // ---------- procesos ----------
   procesos(f: { estado?: string; rama?: string; idCliente?: number; idAbogado?: number; q?: string } = {}):
@@ -197,6 +206,17 @@ export class ApiService {
   }
   publicarResumen(idProceso: number, texto: string): Observable<ResumenPublicado> {
     return this.http.post<ResumenPublicado>(`${API}/procesos/${idProceso}/resumen-cliente`, { texto });
+  }
+
+  // ---------- equipo del proceso (F11) ----------
+  equipo(idProceso: number): Observable<Integrante[]> {
+    return this.http.get<Integrante[]>(`${API}/procesos/${idProceso}/asignaciones`);
+  }
+  agregarIntegrante(idProceso: number, idPersona: number, rol: RolEquipo): Observable<Integrante> {
+    return this.http.post<Integrante>(`${API}/procesos/${idProceso}/asignaciones`, { idPersona, rol });
+  }
+  quitarIntegrante(idProceso: number, idPersona: number): Observable<void> {
+    return this.http.delete<void>(`${API}/procesos/${idProceso}/asignaciones/${idPersona}`);
   }
 
   // ---------- expediente digital (F10) ----------

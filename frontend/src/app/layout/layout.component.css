@@ -88,3 +88,10 @@
   .usuario small { display: none; }
   .top-tools { width: 100%; justify-content: flex-end; }
 }
+
+/* Impresión (F11): solo el contenido, sin menú ni barra superior (Reportes → "Imprimir o guardar PDF"). */
+@media print {
+  .side, .topbar, .aviso-flotante { display: none !important; }
+  .shell { display: block; box-shadow: none; border: 0; border-radius: 0; background: #fff; min-height: 0; }
+  .view { padding: 0; }
+}
