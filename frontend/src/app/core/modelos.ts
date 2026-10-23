@@ -646,3 +646,62 @@ export interface EstadoServidor {
   vigiaActivo: boolean; revisiones: number; disponibilidad: number | null;
   serie: PuntoServidor[]; incidentes: IncidenteServidor[];
 }
+
+// ------------------------------------------------------------------ F14: facturación electrónica
+
+export type TipoLineaFactura = 'SERVICIO' | 'REEMBOLSO';
+export type EstadoFactura = 'ACEPTADA' | 'RECHAZADA' | 'ANULADA';
+export type FormaPagoFactura = 'CONTADO' | 'CREDITO';
+
+export interface LineaFacturaSolicitud {
+  tipo: TipoLineaFactura; descripcion?: string; cantidad?: number; valorUnitario?: number;
+  idHonorario?: number | null; idGasto?: number | null;
+}
+
+export interface FacturaSolicitud {
+  idCliente: number; idProceso?: number | null; formaPago: FormaPagoFactura; retencionPct?: number | null;
+  observaciones?: string; lineas: LineaFacturaSolicitud[];
+}
+
+export interface LineaFactura {
+  linea: number; tipo: TipoLineaFactura; descripcion: string; cantidad: number; valorUnitario: number;
+  ivaPct: number; valor: number; iva: number; idHonorario?: number; idGasto?: number;
+}
+
+export interface TotalesFactura {
+  subtotal: number; iva: number; reembolsos: number; total: number; retencionPct: number; retencion: number; neto: number;
+}
+
+export interface NotaCredito {
+  idNota: number; prefijo: string; numero: number; motivo: string; valor: number; emitida: string; cude?: string;
+}
+
+export interface Factura {
+  idFactura: number; prefijo: string; numero: number; resolucion: string; ambiente: 'PRUEBAS' | 'PRODUCCION';
+  idCliente: number; idProceso?: number; emitida: string; vence: string; formaPago: FormaPagoFactura;
+  totales: TotalesFactura; observaciones?: string; cufe?: string; estado: EstadoFactura; respuesta?: string;
+  emitidaPor: number;
+  adquirente: { nombre: string; tipoDocumento: string; numeroDocumento: string; direccion: string; ciudad: string; email: string };
+  lineas: LineaFactura[]; notaCredito?: NotaCredito;
+}
+
+export interface EmisorFactura { nit: string; razonSocial: string; direccion?: string; ciudad?: string; telefono?: string; email?: string; }
+
+export interface ConfigFacturacion {
+  responsableIva: boolean; tarifaIva: number; retencionJuridica: number; retencionNatural: number; diasCredito: number;
+  resolucion: string; prefijo: string; rangoDesde: number; rangoHasta: number; siguiente: number;
+  vigenteDesde: string; vigenteHasta: string; prefijoNota: string; siguienteNota: number;
+  ambiente: 'PRUEBAS' | 'PRODUCCION'; proveedor: string; validadaPor?: number; validadaEn?: string;
+}
+
+export interface DetalleFactura {
+  factura: Factura; emisor: EmisorFactura; config: ConfigFacturacion; textoQr: string; urlConsulta: string;
+}
+
+export interface EstadoConfigFacturacion { config: ConfigFacturacion; restantes: number; impedimento?: string; proveedor: string; }
+
+export interface PendienteFacturar {
+  tipo: TipoLineaFactura; descripcion: string; valor: number; idHonorario?: number; idGasto?: number; idProceso?: number;
+}
+
+export interface VistaPreviaFactura { lineas: LineaFactura[]; totales: TotalesFactura; retencionSugerida: number; }

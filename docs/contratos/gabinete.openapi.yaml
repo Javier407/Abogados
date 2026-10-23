@@ -217,6 +217,37 @@ paths:
       responses:
         '200': { description: Acuerdo con valorBase, valorLiquidado y fechaLiquidacion }
         '422': { description: El acuerdo no lleva porcentaje o no está vigente }
+  /facturas:
+    get:
+      summary: Facturas electrónicas (F14), filtros idCliente y estado (ACEPTADA, RECHAZADA, ANULADA). Sin líneas.
+    post:
+      summary: 'Emite la factura (MANEJAN_FINANZAS): toma el siguiente número, la guarda y la envía al proveedor'
+      description: |
+        Cuerpo { idCliente, idProceso?, formaPago (CONTADO | CREDITO), retencionPct? (null = sugerida), observaciones?,
+        lineas: [{ tipo: SERVICIO | REEMBOLSO, descripcion, cantidad?, valorUnitario, idHonorario?, idGasto? }] }.
+        Un REEMBOLSO toma concepto y valor del gasto (idGasto), sin IVA. 201 con { factura, emisor, config, textoQr, urlConsulta }.
+        422: cliente sin correo o dirección, resolución vencida o agotada, gasto que no es un reembolso pendiente del cliente.
+        409: el gasto ya está en una factura.
+  /facturas/{id}:
+    get:
+      summary: 'La factura con líneas, nota crédito, emisor, resolución y el texto del código QR'
+  /facturas/pendientes:
+    get:
+      summary: 'Lo que se puede facturar a un cliente (?idCliente=): saldo de honorarios por facturar y gastos reembolsables sin cobrar'
+  /facturas/vista-previa:
+    post:
+      summary: 'Calcula líneas y totales (IVA, reembolsos, retención, neto) sin guardar nada'
+  /facturas/{id}/anulacion:
+    post:
+      summary: 'Anula con una nota crédito por el total ({ motivo }); libera los gastos. 409 si ya está anulada; 422 si no fue aceptada.'
+  /facturacion/config:
+    get:
+      summary: '{ config, restantes, impedimento, proveedor }'
+    put:
+      summary: 'Solo DIRECCION. Cambiar el IVA o las retenciones los deja sin validar; PRODUCCION exige un proveedor real.'
+  /facturacion/config/validacion:
+    post:
+      summary: 'El contador (MANEJAN_FINANZAS) valida el IVA y las retenciones'
   /honorarios/cartera:
     get:
       summary: Por cliente, saldo de honorarios con total conocido, gastos por reembolsar y días desde el último pago

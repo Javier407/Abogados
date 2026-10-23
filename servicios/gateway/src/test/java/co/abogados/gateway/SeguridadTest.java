@@ -68,6 +68,16 @@ class SeguridadTest {
 		assertThat(permitido("POST", "/api/abogados", "SOCIO")).isTrue();
 		assertThat(permitido("POST", "/api/asistente/borradores", "ADMINISTRATIVO")).isFalse();
 		assertThat(permitido("PUT", "/api/vigilancia/radicados/1", "DEPENDIENTE")).isTrue();
+		// F14: facturación
+		assertThat(permitido("GET", "/api/facturas/5", "ABOGADO")).isTrue();
+		assertThat(permitido("POST", "/api/facturas", "ABOGADO")).isFalse();
+		assertThat(permitido("POST", "/api/facturas", "ADMINISTRATIVO")).isTrue();
+		assertThat(permitido("POST", "/api/facturas/5/anulacion", "ADMINISTRATIVO")).isTrue();
+		assertThat(permitido("GET", "/api/facturas", "DEPENDIENTE")).isFalse();
+		assertThat(permitido("PUT", "/api/facturacion/config", "ADMINISTRATIVO")).isFalse();
+		assertThat(permitido("PUT", "/api/facturacion/config", "SOCIO")).isTrue();
+		assertThat(permitido("POST", "/api/facturacion/config/validacion", "ADMINISTRATIVO")).isTrue();
+		assertThat(permitido("GET", "/api/facturacion/config", "ABOGADO")).isFalse();
 		// F13: cada quien configura su verificación en dos pasos; reiniciarla es del administrador
 		assertThat(permitido("POST", "/api/auth/mfa/inicio", "CLIENTE")).isTrue();
 		assertThat(permitido("GET", "/api/auth/mfa", "DEPENDIENTE")).isTrue();

@@ -72,6 +72,12 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			// consultas iniciales (F10): las registra el personal; convertirlas en cliente, quien crea clientes
 			r(HttpMethod.POST, "/api/consultas/*/contratacion", Set.of("ADMIN", "SOCIO", "ABOGADO", "ADMINISTRATIVO")),
 			r(null, "/api/consultas/**", INTERNOS),
+			// facturación electrónica (F14): la ven quienes ven finanzas; la emiten y anulan quienes las manejan;
+			// la configuración (resolución, IVA, retenciones) la cambia la dirección y la valida finanzas (el contador)
+			r(GET, "/api/facturas/**", VEN_FINANZAS),
+			r(null, "/api/facturas/**", MANEJAN_FINANZAS),
+			r(HttpMethod.PUT, "/api/facturacion/config", DIRECCION),
+			r(null, "/api/facturacion/**", MANEJAN_FINANZAS),
 			r(GET, "/api/gastos/**", VEN_FINANZAS),
 			r(HttpMethod.POST, "/api/gastos", VEN_FINANZAS),               // quien incurre en el gasto lo registra
 			r(null, "/api/gastos/**", MANEJAN_FINANZAS),                   // reembolsos y borrado: administración

@@ -18,7 +18,7 @@ spring:
         - id: gabinete
           uri: ${GABINETE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/clientes/**,/api/abogados/**,/api/gabinete/**,/api/peritos/**,/api/honorarios/**,/api/gastos/**,/api/portal/finanzas/**,/api/consultas/**
+            - Path=/api/clientes/**,/api/abogados/**,/api/gabinete/**,/api/peritos/**,/api/honorarios/**,/api/gastos/**,/api/portal/finanzas/**,/api/consultas/**,/api/facturas/**,/api/facturacion/**
           filters:
             - StripPrefix=1
         - id: procesos

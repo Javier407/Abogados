@@ -12,7 +12,9 @@ import {
   CambioCuenta, CargaAbogado, CarteraCliente, Cuenta, CuentaSolicitud, CumplimientoTerminos, Gasto, GastoSolicitud,
   ResultadoRama, ProcesoPortal, DetallePortal, FinanzasPortal, ResumenPublicado,
   CategoriaDocumento, Consulta, ConsultaConAvisos, Documento, EstadoConsulta, Integrante, RolEquipo,
-  CambioRegla, EstadoServidor, PruebaPatron, ReglaSolicitud, ReglaTermino
+  CambioRegla, EstadoServidor, PruebaPatron, ReglaSolicitud, ReglaTermino,
+  ConfigFacturacion, DetalleFactura, EstadoConfigFacturacion, EstadoFactura, Factura, FacturaSolicitud, PendienteFacturar,
+  VistaPreviaFactura
 } from './modelos';
 
 /**
@@ -104,6 +106,32 @@ export class ApiService {
   }
   cambiarContestacion(idTipo: number, dias: number | null): Observable<{ reglasSinValidar: number }> {
     return this.http.put<{ reglasSinValidar: number }>(`${API}/catalogos/tipos/${idTipo}/contestacion`, { dias });
+  }
+
+  // ---------------------------------------------------------------- facturación electrónica (F14)
+
+  facturas(idCliente?: number | null, estado?: EstadoFactura | ''): Observable<Factura[]> {
+    return this.http.get<Factura[]>(`${API}/facturas`, { params: filtros({ idCliente, estado }) });
+  }
+  factura(id: number): Observable<DetalleFactura> { return this.http.get<DetalleFactura>(`${API}/facturas/${id}`); }
+  pendientesFacturar(idCliente: number): Observable<PendienteFacturar[]> {
+    return this.http.get<PendienteFacturar[]>(`${API}/facturas/pendientes`, { params: filtros({ idCliente }) });
+  }
+  vistaPreviaFactura(s: FacturaSolicitud): Observable<VistaPreviaFactura> {
+    return this.http.post<VistaPreviaFactura>(`${API}/facturas/vista-previa`, s);
+  }
+  emitirFactura(s: FacturaSolicitud): Observable<DetalleFactura> { return this.http.post<DetalleFactura>(`${API}/facturas`, s); }
+  anularFactura(id: number, motivo: string): Observable<DetalleFactura> {
+    return this.http.post<DetalleFactura>(`${API}/facturas/${id}/anulacion`, { motivo });
+  }
+  configFacturacion(): Observable<EstadoConfigFacturacion> {
+    return this.http.get<EstadoConfigFacturacion>(`${API}/facturacion/config`);
+  }
+  guardarConfigFacturacion(c: ConfigFacturacion): Observable<EstadoConfigFacturacion> {
+    return this.http.put<EstadoConfigFacturacion>(`${API}/facturacion/config`, c);
+  }
+  validarConfigFacturacion(): Observable<EstadoConfigFacturacion> {
+    return this.http.post<EstadoConfigFacturacion>(`${API}/facturacion/config/validacion`, {});
   }
 
   /** Cuentas con la verificación en dos pasos activa (F13, solo ADMIN). */

@@ -10,6 +10,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | **F3. Vigilancia** | Enterarse de los autos sin entrar al portal | `vigilancia` con la interfaz `FuenteRamaJudicial`; consulta programada; evento `actuacion.detectada`; notificaciones por Telegram | Un auto nuevo en un radicado vigilado llega por Telegram y queda registrado en el proceso |
 | **F4. Asistente y administración** | Apoyo a la redacción y gestión de la firma | `asistente-ia` con Hermes (borradores y resúmenes); módulo de peritos; tarifas, honorarios pactados y pagos | Generar un borrador de contestación a partir de un proceso y registrar un pago de honorarios |
 | **F5. Seguridad y calidad** | Listo para uso real | `identidad` con JWT y roles; contraseñas con BCrypt; CI con GitHub Actions (build y pruebas por servicio); nueva evaluación ISO/IEC 25010 | Ningún servicio responde sin token; el pipeline pasa en verde; Seguridad ≥ 7 en la evaluación |
+| **F14. Facturación lista para la DIAN** | Facturar honorarios y reembolsos con el flujo de la factura electrónica, sin depender todavía de un proveedor | Facturas con numeración de la resolución, IVA y retención configurables (validados por el contador), reembolsos sin IVA, CUFE, nota crédito para anular, representación gráfica con QR, proveedor SIMULADO detrás de una interfaz | Una factura toma el siguiente número sin saltos y su CUFE coincide con la fórmula del Anexo Técnico; un gasto no se cobra dos veces; anularla emite una nota crédito y libera el gasto |
 | **F13. Verificación en dos pasos** | Que una contraseña robada no baste para entrar | Código TOTP de una app autenticadora (activarlo, entrar, códigos de recuperación, reinicio por el administrador), roles que la exigen, secretos cifrados; identidad revisa los tokens revocados; el bloqueo por intentos no cierra sesiones abiertas | Con la verificación activa, la contraseña sola no da token; un código no sirve dos veces; 5 códigos malos bloquean la cuenta; un rol que la exige debe activarla para entrar |
 | **F12. Reglas validadas y calidad** | Que las sugerencias de términos tengan respaldo de un abogado y que el código esté probado | Reglas de términos editables, validadas por un socio, con historial; días de contestación editables; historial del vigía con pantalla "Servidor"; cobertura de pruebas ≥ 70 % en todos los servicios | Un socio valida una regla y queda a su nombre; cambiarla la deja sin validar; un contenedor detenido queda como incidente con su duración; el CI exige la cobertura alcanzada |
 | **F11. Operación** | Operar con tranquilidad: enterarse de los problemas antes que los usuarios y que la calidad no retroceda | Vigía del servidor con avisos por Telegram; Dependabot, auditoría de dependencias y cobertura mínima en el CI; abogados de apoyo; sedes, cargos y áreas editables; reportes en PDF | Un contenedor detenido llega como aviso por Telegram y su recuperación también; el CI falla si baja la cobertura o aparece una vulnerabilidad conocida; un abogado de apoyo ve el proceso en sus procesos; la dirección crea una sede sin romper la regla de una sola principal |
@@ -37,6 +38,7 @@ Cada fase termina con algo que se puede usar y probar. No se empieza una fase si
 | F11 | Terminada: en el servidor (24 comprobaciones por HTTPS), al detener Mailpit llegó el aviso por Telegram y al encenderlo el de "resuelto"; Laura Pineda agregada como apoyo vio el proceso en sus procesos; marcar una sede nueva como principal dejó una sola principal; la auditoría encontró y se corrigieron vulnerabilidades en Angular, Starlette y PyJWT | 2026-10-22 |
 | F12 | Terminada: en el servidor (20 comprobaciones por HTTPS), un socio creó, validó, editó y desactivó una regla y el historial lo contó todo; cambiar los días de contestación del verbal dejó sin validar la regla de contestar; al detener Mailpit quedó un incidente abierto y al encenderlo se cerró con su duración; cobertura de líneas: procesos 85 %, gabinete 85 %, identidad 78 %, vigilancia 99 %, notificaciones 74 % | 2026-10-22 |
 | F13 | Terminada: en el servidor (30 comprobaciones por HTTPS), Laura activó la verificación con un código calculado como lo hace la app; después la contraseña sola ya no dio token; el mismo código y el mismo código de recuperación no sirvieron dos veces; 5 códigos malos bloquearon la cuenta sin cerrar su sesión abierta; el reinicio del administrador sí la cerró; con el rol DEPENDIENTE exigido, Pedro tuvo que activarla para entrar y no pudo desactivarla | 2026-10-22 |
+| F14 | Terminada: en el servidor (24 comprobaciones por HTTPS), se facturaron a Constructora Altamira honorarios con IVA y un gasto reembolsable sin IVA: total 1.310.000, retención 11 %, a recibir 1.200.000; número SETP990000000 y CUFE igual al calculado aparte con la fórmula de la DIAN; el mismo gasto no se pudo cobrar dos veces; la anulación emitió la nota NC1 y el gasto volvió a quedar pendiente | 2026-10-22 |
 
 ## F1: qué quedó y qué falta
 
@@ -374,3 +376,25 @@ Pendiente o decidido para después:
 
 - **Respaldar la llave `MFA_CLAVE_CIFRADO`** junto con las demás de `infra/.env` y `infra/secretos/` (no van en el respaldo diario de la base). Si se pierde, el administrador debe reiniciar la verificación de cada cuenta.
 - Llaves físicas (WebAuthn / passkeys) y aviso por correo al activar o reiniciar la verificación.
+
+## F14: qué quedó y qué falta
+
+Hecho (pantalla **Facturación**, `/facturas` y `/facturacion` en gabinete, migración `011`):
+
+1. **Facturas electrónicas de venta** a un cliente:
+   - El sistema sugiere lo **pendiente por facturar**: el saldo de cada acuerdo de honorarios (lo ya facturado se descuenta), la cuota de los acuerdos mensuales y los gastos reembolsables que la firma adelantó y aún no cobró.
+   - **SERVICIO** (honorarios u otros) lleva IVA si la firma es responsable; **REEMBOLSO** (gastos del cliente) va sin IVA ni retención, con el concepto y el valor del gasto registrado. Un gasto solo se cobra en una factura.
+   - **Retención en la fuente** estimada (11 % sugerido si el cliente es persona jurídica, editable): no cambia el total facturado, cambia lo que se espera recibir.
+   - **Numeración sin saltos** de la resolución vigente (la configuración se bloquea al tomar el número); avisa cuando quedan menos de 100 números o la resolución vence.
+   - Los datos del cliente se copian al emitir; el cliente debe tener **correo y dirección** (la DIAN exige el correo del adquirente).
+2. **CUFE** (SHA-384 de los campos del Anexo Técnico) y **representación gráfica** imprimible o en PDF con el código QR de consulta en la DIAN, la resolución, el adquirente y los totales. En ambiente de pruebas dice "Documento de prueba · sin validez fiscal".
+3. **Anulación con nota crédito** por el total (prefijo NC, con su CUDE): la factura queda ANULADA y sus gastos vuelven a quedar pendientes.
+4. **Configuración** (solo la dirección la cambia): responsabilidad de IVA, tarifa, retenciones sugeridas, días de crédito, resolución (prefijo, rango, vigencia), ambiente. **El contador valida** el IVA y las retenciones (como las reglas de términos en F12); cambiarlos los deja sin validar. No se puede pasar a PRODUCCION con el proveedor simulado.
+5. **Proveedor tecnológico detrás de una interfaz** (`ProveedorFacturacion`). Hoy solo existe el **SIMULADO**: revisa los datos obligatorios, calcula el CUFE con la clave técnica pública del set de pruebas y responde "aceptada". Arranca con el rango del set de pruebas de la DIAN (SETP 990000000 a 995000000).
+6. Pruebas: servicio (14), SQL sobre H2 (4), API (4) y permisos del gateway. Cobertura de gabinete 87,8 %.
+
+Pendiente (lo que no es código o requiere decisiones de la firma):
+
+- **Contratar un proveedor tecnológico** autorizado (Alegra, Siigo, The Factory HKA…) y escribir su adaptador de `ProveedorFacturacion` con las credenciales en `infra/.env`. Con él, hacer la habilitación ante la DIAN (set de pruebas) y pedir la resolución de numeración real.
+- **Que el contador valide** la responsabilidad de IVA, la tarifa y las retenciones. Otras retenciones (ICA, reteIVA) y la factura en moneda extranjera no están.
+- El cliente aún no ve sus facturas en el portal, y la factura no se envía por correo (en producción la entrega el proveedor).
