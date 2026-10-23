@@ -1,6 +1,10 @@
 spring:
   application:
     name: identidad
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/gabinete}
     username: ${DB_USER:svc_identidad}
@@ -34,9 +38,15 @@ servicios:
 management:
   endpoints.web.exposure.include: health
   endpoint.health.probes.enabled: true
+  # Sin RabbitMQ identidad sigue sirviendo (solo no salen los avisos de seguridad): no cuenta para la salud.
+  health.rabbit.enabled: false
 
 # Verificación en dos pasos (F13). obligatorio-roles: roles que deben activarla para entrar (p. ej. ADMIN,SOCIO).
 # clave-cifrado: llave AES de 32 bytes en Base64 para guardar los secretos cifrados (solo en infra/.env).
 mfa:
   obligatorio-roles: ${MFA_OBLIGATORIO_ROLES:}
   clave-cifrado: ${MFA_CLAVE_CIFRADO:}
+
+# Exchange compartido de eventos: identidad publica cuenta.seguridad (F15).
+eventos:
+  exchange: gabinete.eventos

@@ -13,6 +13,7 @@ EVENTOS_TERMINO = ("termino.por_vencer", "termino.vencido")
 EVENTO_ACTUACION = "actuacion.detectada"
 EVENTO_AUDIENCIA = "audiencia.proxima"
 EVENTO_RESUMEN = "portal.resumen_publicado"
+EVENTO_SEGURIDAD = "cuenta.seguridad"
 DIAS_SEMANA = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 LARGO_MENSAJE = 1000
 
@@ -188,6 +189,63 @@ class AvisoResumen:
 
 
 @dataclass(frozen=True)
+class AvisoSeguridad:
+    """Evento cuenta.seguridad (F15): cambió algo de la seguridad de la cuenta de una persona (lo publica identidad)."""
+    tipo: str
+    id_usuario: int
+    usuario: str
+    email: str | None
+    momento: datetime
+
+    @staticmethod
+    def desde_mensaje(cuerpo: dict) -> "AvisoSeguridad":
+        try:
+            tipo = str(cuerpo["tipo"])
+            if tipo not in TEXTOS_SEGURIDAD:
+                raise ValueError(f"tipo desconocido {tipo}")
+            momento = datetime.fromisoformat(str(cuerpo["momento"]).replace("Z", "+00:00"))
+            return AvisoSeguridad(tipo, int(cuerpo["idUsuario"]), str(cuerpo["usuario"]), cuerpo.get("email") or None, momento)
+        except (KeyError, TypeError, ValueError) as e:
+            raise EventoInvalido(f"Mensaje cuenta.seguridad incompleto o mal formado: {e}") from e
+
+
+# Título y explicación de cada aviso de seguridad. Todos terminan diciendo qué hacer si no fue la persona.
+NO_FUE_USTED = " Si no fue usted, avise de inmediato al administrador de la firma."
+TEXTOS_SEGURIDAD = {
+    "CLAVE_CAMBIADA": ("Se cambió la contraseña de su cuenta",
+                       "La contraseña de su cuenta {usuario} se cambió el {cuando}." + NO_FUE_USTED),
+    "CLAVE_RESTABLECIDA": ("El administrador restableció su contraseña",
+                           "El {cuando} el administrador le puso una contraseña temporal a su cuenta {usuario}; al entrar "
+                           "deberá cambiarla. Se cerraron sus sesiones abiertas." + NO_FUE_USTED),
+    "CUENTA_BLOQUEADA": ("Su cuenta se bloqueó por intentos fallidos",
+                         "El {cuando} hubo 5 intentos fallidos de entrar con su cuenta {usuario} y quedó bloqueada 15 "
+                         "minutos. Si no fue usted, alguien conoce su usuario: cambie su contraseña y active la "
+                         "verificación en dos pasos en Mi cuenta."),
+    "MFA_ACTIVADA": ("Se activó la verificación en dos pasos",
+                     "Desde el {cuando}, al entrar con su cuenta {usuario} se pide además el código de su app "
+                     "autenticadora." + NO_FUE_USTED),
+    "MFA_DESACTIVADA": ("Se desactivó la verificación en dos pasos",
+                        "El {cuando} se desactivó la verificación en dos pasos de su cuenta {usuario}: ahora basta la "
+                        "contraseña para entrar." + NO_FUE_USTED),
+    "MFA_REINICIADA": ("El administrador reinició su verificación en dos pasos",
+                       "El {cuando} el administrador quitó la verificación en dos pasos de su cuenta {usuario} y cerró sus "
+                       "sesiones. Al entrar puede volver a activarla." + NO_FUE_USTED),
+    "CODIGOS_RENOVADOS": ("Se generaron nuevos códigos de recuperación",
+                          "El {cuando} se generaron nuevos códigos de recuperación para su cuenta {usuario}; los "
+                          "anteriores ya no sirven." + NO_FUE_USTED),
+}
+
+
+def contenido_seguridad(a: AvisoSeguridad) -> Contenido:
+    """La hora va en la de Colombia. Cada cambio se avisa una vez por canal (la clave lleva el momento)."""
+    from zoneinfo import ZoneInfo
+    cuando = a.momento.astimezone(ZoneInfo("America/Bogota")).strftime("%d/%m/%Y a las %H:%M")
+    titulo, plantilla = TEXTOS_SEGURIDAD[a.tipo]
+    return Contenido(EVENTO_SEGURIDAD, a.id_usuario, titulo, plantilla.format(usuario=a.usuario, cuando=cuando),
+                     {"tipo": a.tipo}, f"{EVENTO_SEGURIDAD}:{a.tipo}:{a.id_usuario}:{a.momento.isoformat()}:{{canal}}")
+
+
+@dataclass(frozen=True)
 class CuentaCliente:
     """Cuenta del portal de un cliente (identidad): a quién avisarle."""
     id_usuario: int
@@ -277,6 +335,8 @@ def enlace_de(n: NotificacionNueva, url_app: str) -> tuple[str, str]:
     if not url_app:
         return "", ""
     base = url_app.rstrip("/")
+    if n.evento == EVENTO_SEGURIDAD:
+        return f"{base}/cuenta", "Revisar mi cuenta"
     if n.referencia.get("portal") and n.referencia.get("id_proceso"):
         return f"{base}/portal/procesos/{n.referencia['id_proceso']}", "Ver su proceso"
     if n.evento in (EVENTO_ACTUACION, EVENTO_AUDIENCIA) and n.referencia.get("id_proceso"):

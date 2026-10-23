@@ -181,6 +181,8 @@ Desde ahí http://IP:8090 redirige a HTTPS, el navegador recibe HSTS y la cookie
 
 **Vigía del servidor (F11).** `infra/monitoreo/vigia.sh` revisa cada 5 minutos contenedores, disco, memoria, respaldos, outbox, colas de RabbitMQ y HTTPS, y avisa por Telegram a los administradores que vincularon Telegram en la app (problema nuevo, resuelto y un resumen diario). Se instala como timer de systemd con `sh infra/monitoreo/instalar.sh` (`quitar` para desinstalarlo). Para revisar a mano: `sh infra/monitoreo/vigia.sh estado`.
 
+**Respaldo de las llaves y recuperación (F15).** Las llaves del servidor (`infra/.env`, `infra/secretos/`) se respaldan cifradas en `llaves-*.p7m`. Solo las abre la llave privada del PC (`D:\respaldos\abogados\llave`). La copia diaria comprueba que se abren y el contenedor `respaldo` prueba cada domingo que la base se restaura. Cómo reconstruir todo: `docs/06-recuperacion.md`.
+
 **Copias fuera de la VM (F10).** Cada día el contenedor `respaldo` deja la base (`gabinete-*.dump`) y los documentos del expediente (`documentos-*.tar.gz`) en `infra/respaldos/`. En el PC de Javier, la tarea programada "Abogados - copia de respaldos" ejecuta `infra/respaldo/copiar-al-pc.ps1` a las 9:00 y al iniciar sesión. El script baja lo nuevo a `D:\respaldos\abogados`, comprueba el SHA-256 y guarda 30 días. Para ejecutarla a mano:
 
 ```powershell

@@ -94,6 +94,28 @@ const ANCHO = 600, ALTO = 120;
         @if (disco?.caidas?.length) { <p class="form-ayuda">Las franjas rojas marcan cuando la app no respondió por HTTPS.</p> }
 
         <section class="card">
+          <div class="card-header"><h2>Errores de los servicios</h2></div>
+          <div class="card-body">
+            @if (e.errores?.porServicio?.length) {
+              <div class="resumen-bar">
+                @for (s of e.errores!.porServicio; track s.servicio) {
+                  <button class="resumen-chip chip-servicio" type="button" [class.activo]="servicioErrores === s.servicio"
+                          [attr.aria-pressed]="servicioErrores === s.servicio" (click)="filtrarErrores(s.servicio)">
+                    {{ s.servicio }} <strong>{{ s.total }}</strong></button>
+                }
+              </div>
+              <ul class="lineas-error">
+                @for (l of erroresVisibles(e); track $index) {
+                  <li><span class="fecha-celda">{{ l.momento | date:'d MMM, h:mm a' }}</span> <strong>{{ l.servicio }}</strong>
+                    <code>{{ l.linea }}</code></li>
+                }
+              </ul>
+              <p class="form-ayuda">Las líneas con ERROR, FATAL o Traceback de los registros de cada contenedor, recogidas por el vigía cada 5 minutos (se guardan 30 días).</p>
+            } @else { <p class="empty-state">Sin errores en los registros en este periodo.</p> }
+          </div>
+        </section>
+
+        <section class="card">
           <div class="card-header"><h2>Incidentes</h2></div>
           <div class="card-body">
             <div class="tabla-wrapper"><table class="tabla">
@@ -128,6 +150,11 @@ const ANCHO = 600, ALTO = 120;
     .grafica .caida { fill: var(--mahogany); opacity: .35; }
     .eje { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
     .lista-problemas { margin: 6px 0 0; padding-left: 18px; }
+    .chip-servicio { border: 1px solid var(--line); background: #fff; cursor: pointer; }
+    .chip-servicio.activo { border-color: var(--blue); color: var(--blue); }
+    .lineas-error { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; max-height: 420px; overflow: auto; }
+    .lineas-error li { font-size: 13px; border-bottom: 1px solid var(--line); padding-bottom: 6px; overflow-wrap: anywhere; }
+    .lineas-error code { display: block; margin-top: 2px; color: var(--ink); white-space: pre-wrap; }
   `]
 })
 export class ServidorComponent implements OnInit, OnDestroy {
@@ -142,6 +169,16 @@ export class ServidorComponent implements OnInit, OnDestroy {
   disco: Grafica | null = null;
   memoria: Grafica | null = null;
   error = '';
+  servicioErrores: string | null = null;
+
+  filtrarErrores(servicio: string): void {
+    this.servicioErrores = this.servicioErrores === servicio ? null : servicio;
+  }
+
+  erroresVisibles(e: EstadoServidor): { momento: string; servicio: string; linea: string }[] {
+    const todas = e.errores?.recientes ?? [];
+    return this.servicioErrores ? todas.filter(l => l.servicio === this.servicioErrores) : todas;
+  }
 
   ngOnInit(): void {
     this.cargar();

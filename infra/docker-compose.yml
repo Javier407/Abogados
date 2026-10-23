@@ -119,6 +119,10 @@ services:
       # F13: verificación en dos pasos. Llave AES de los secretos (32 bytes en Base64) y roles que deben usarla.
       MFA_CLAVE_CIFRADO: ${MFA_CLAVE_CIFRADO:-}
       MFA_OBLIGATORIO_ROLES: ${MFA_OBLIGATORIO_ROLES:-}
+      # F15: avisos de seguridad de la cuenta (evento cuenta.seguridad). Sin RabbitMQ identidad funciona igual.
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       # Clave de cada servicio para pedir su token (infra/.env, generadas en el servidor, nunca en git)
       SERVICIOS_CLAVES: procesos=${CLAVE_SVC_PROCESOS:-},gabinete=${CLAVE_SVC_GABINETE:-},notificaciones=${CLAVE_SVC_NOTIFICACIONES:-},vigilancia=${CLAVE_SVC_VIGILANCIA:-},asistente-ia=${CLAVE_SVC_ASISTENTE:-}
     volumes:
@@ -127,6 +131,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_started
     healthcheck: *java-salud
     mem_limit: 384m
     logging: *logs

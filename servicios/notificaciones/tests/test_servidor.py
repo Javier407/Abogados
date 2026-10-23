@@ -31,6 +31,10 @@ class ServidorFalso:
                 {"momento": AHORA - timedelta(hours=1), "disco": 41, "memoriaMb": 900, "appOk": False,
                  "problemas": 2, "revisiones": 12, "sinApp": 3}]
 
+    async def errores(self, desde):
+        return {"porServicio": [{"servicio": "gateway", "total": 3, "ultimo": AHORA.isoformat()}],
+                "recientes": [{"momento": AHORA, "servicio": "gateway", "linea": "ERROR 500 Server Error"}]}
+
     async def incidentes(self, desde):
         return [{"clave": "https", "mensaje": "La app no responde por HTTPS", "inicio": AHORA - timedelta(minutes=50),
                  "fin": AHORA - timedelta(minutes=35)},
@@ -48,6 +52,17 @@ def test_resume_la_ultima_revision_la_disponibilidad_y_los_incidentes():
     https, disco = e["incidentes"]
     assert https["abierto"] is False and https["minutos"] == 15
     assert disco["abierto"] is True and disco["fin"] is None and disco["minutos"] == 20
+    assert e["errores"]["porServicio"][0]["total"] == 3
+    assert e["errores"]["recientes"][0]["momento"] == AHORA.isoformat()
+
+
+def test_sin_la_tabla_de_errores_la_pantalla_funciona_igual():
+    class SinErrores(ServidorFalso):
+        async def errores(self, desde):
+            raise RuntimeError("relation operacion.errores does not exist")
+
+    e = asyncio.run(ConsultaServidor(SinErrores(), ahora=lambda: AHORA).estado(1))
+    assert e["errores"] == {"porServicio": [], "recientes": []}
 
 
 def test_un_dia_se_ve_revision_por_revision_y_sin_revisiones_no_hay_disponibilidad():
@@ -140,6 +155,11 @@ def test_el_repositorio_lee_lo_que_escribe_el_vigia():
     assert "date_trunc('hour'" in con.sql[0][0] and con.sql[0][1] == (AHORA,)
     asyncio.run(repo.serie(AHORA, por_hora=False))
     assert "date_trunc" not in con.sql[1][0]
+
+    con = Conexion([("gateway", 2, AHORA)])
+    e = asyncio.run(RepositorioServidorPostgres(Pool(con)).errores(AHORA))
+    assert e["porServicio"] == [{"servicio": "gateway", "total": 2, "ultimo": AHORA.isoformat()}]
+    assert "operacion.errores" in con.sql[0][0] and "LIMIT 100" in con.sql[1][0]
 
     con = Conexion([("disco", "Disco al 91 %", AHORA, None)])
     assert asyncio.run(RepositorioServidorPostgres(Pool(con)).incidentes(AHORA)) == [

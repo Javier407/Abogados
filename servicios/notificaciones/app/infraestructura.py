@@ -320,7 +320,7 @@ class Mensajeria:
 
     COLA = "notificaciones.avisos"
     CLAVES = ("termino.por_vencer", "termino.vencido", "actuacion.detectada", "audiencia.proxima",
-              "portal.resumen_publicado")
+              "portal.resumen_publicado", "cuenta.seguridad")
 
     def __init__(self, cfg: Config):
         self.cfg = cfg
@@ -422,6 +422,19 @@ class RepositorioServidorPostgres:
             filas = await cur.fetchall()
         return [{"momento": m, "disco": d, "memoriaMb": mem, "appOk": ok, "problemas": p, "revisiones": n,
                  "sinApp": sin} for m, d, mem, ok, p, n, sin in filas]
+
+    async def errores(self, desde) -> dict:
+        """Cuántos errores tuvo cada servicio en el periodo y las 100 líneas más recientes (F15)."""
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                """SELECT servicio, count(*), max(momento) FROM operacion.errores WHERE momento >= %s
+                   GROUP BY servicio ORDER BY count(*) DESC""", (desde,))
+            por_servicio = [{"servicio": s, "total": n, "ultimo": m.isoformat()} for s, n, m in await cur.fetchall()]
+            cur = await con.execute(
+                """SELECT momento, servicio, linea FROM operacion.errores WHERE momento >= %s
+                   ORDER BY momento DESC, id_error DESC LIMIT 100""", (desde,))
+            recientes = [{"momento": m, "servicio": s, "linea": l} for m, s, l in await cur.fetchall()]
+        return {"porServicio": por_servicio, "recientes": recientes}
 
     async def incidentes(self, desde) -> list[dict]:
         async with self.pool.connection() as con:

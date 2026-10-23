@@ -5,6 +5,7 @@ import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,7 @@ import co.abogados.identidad.dominio.PoliticaClave;
 import co.abogados.identidad.dominio.RecursoNoEncontradoException;
 import co.abogados.identidad.dominio.ReglaNegocioException;
 import co.abogados.identidad.dominio.Usuario;
+import co.abogados.identidad.dominio.puertos.AvisosSeguridad;
 import co.abogados.identidad.dominio.puertos.Cifrador;
 import co.abogados.identidad.dominio.puertos.CuentasRepositorio;
 
@@ -51,6 +53,14 @@ public class CuentasServicio {
 	private final CuentasRepositorio cuentas;
 	private final Cifrador cifrador;
 	private final SesionesServicio sesiones;
+
+	private AvisosSeguridad avisos = AvisosSeguridad.NINGUNO;
+
+	/** F15: avisos de seguridad a la persona (opcional: sin mensajería no se avisa). */
+	@Autowired(required = false)
+	public void setAvisos(AvisosSeguridad avisos) {
+		this.avisos = avisos;
+	}
 
 	public CuentasServicio(CuentasRepositorio cuentas, Cifrador cifrador, SesionesServicio sesiones) {
 		this.cuentas = cuentas;
@@ -118,6 +128,8 @@ public class CuentasServicio {
 		cuentas.restablecerClave(idUsuario, cifrador.cifrar(claveTemporal));
 		sesiones.cerrarTodas(idUsuario, "CLAVE_RESTABLECIDA", null);
 		log.info("Contraseña de la cuenta {} restablecida por {}", idUsuario, administrador);
+		avisos.avisar(AvisosSeguridad.Tipo.CLAVE_RESTABLECIDA, new Usuario(idUsuario, actual.usuario(), actual.nombre(),
+				actual.email(), null, actual.activo(), actual.roles(), 0, null, actual.idCliente()));
 		return buscar(idUsuario);
 	}
 

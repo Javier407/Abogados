@@ -6,7 +6,9 @@
 #   vigia.sh probar    envía un mensaje de prueba
 #
 # Revisa: contenedores corriendo y sanos, disco, memoria, edad del último respaldo, eventos atascados en los
-# outbox, colas de RabbitMQ sin consumidor o acumuladas y la app por HTTPS. Una vez al día (después de las 7:00)
+# outbox, colas de RabbitMQ sin consumidor o acumuladas y la app por HTTPS. Desde F15 también el respaldo cifrado de
+# las llaves (y lo crea si cambiaron), la prueba semanal de restauración y los errores en los registros de cada
+# servicio (los guarda en operacion.errores). Una vez al día (después de las 7:00)
 # manda un resumen aunque todo esté bien, para saber que el vigía sigue vivo.
 #
 # Cada revisión queda en operacion.revisiones (90 días) y cada problema en operacion.incidentes, desde que aparece
@@ -26,6 +28,7 @@ UMBRAL_DISCO=85            # % de uso del disco raíz
 UMBRAL_MEMORIA_MB=500      # memoria disponible mínima
 UMBRAL_RESPALDO_HORAS=26   # el respaldo es diario a las 02:30
 UMBRAL_COLA=100            # mensajes esperando en una cola
+UMBRAL_ERRORES=20          # líneas de error de un servicio en una vuelta (F15)
 
 problemas=""
 # agregar CLAVE MENSAJE: la clave identifica el problema (el mensaje puede cambiar, p. ej. el % de disco).
@@ -105,6 +108,43 @@ if [ -n "$url" ]; then
   [ "$codigo" = "200" ] || { app_ok=false; agregar https "La app no responde por HTTPS ($url → ${codigo:-sin respuesta})"; }
 fi
 
+# F15: llaves respaldadas y cifradas (respaldo/respaldar-llaves.sh crea un paquete nuevo si cambiaron o cada 7 días).
+if [ ! -f secretos/respaldo-certificado.pem ]; then
+  agregar llaves "Falta el certificado para cifrar el respaldo de las llaves (ver docs/06-recuperacion.md)"
+else
+  [ "$MODO" = revisar ] && { sh respaldo/respaldar-llaves.sh > /dev/null 2>&1 || agregar llaves "No se pudo crear el respaldo cifrado de las llaves"; }
+  paquete=$(ls -1t respaldos/llaves-*.p7m 2>/dev/null | head -1)
+  if [ -z "$paquete" ] || [ -n "$(find "$paquete" -mtime +8)" ]; then
+    agregar llaves "El respaldo cifrado de las llaves tiene más de 8 días o no existe"
+  fi
+fi
+
+# F15: la prueba semanal de restauración de la base (la hace el contenedor respaldo los domingos).
+prueba=respaldos/prueba-restauracion.txt
+if [ ! -f "$prueba" ] || [ -n "$(find "$prueba" -mtime +8)" ]; then
+  agregar restauracion "La prueba de restauración de la base no se ha hecho en los últimos 8 días"
+elif grep -q ' FALLO ' "$prueba"; then
+  agregar restauracion "La última prueba de restauración de la base falló: $(cut -c1-150 "$prueba")"
+fi
+
+# F15: líneas de error de los registros de cada servicio desde la vuelta anterior (hasta 30 por servicio). Se guardan
+# en operacion.errores; una ráfaga (UMBRAL_ERRORES o más en una vuelta) es un problema.
+errores=""
+if [ "$MODO" = revisar ]; then
+  desde=$(cat "$ESTADO/errores-desde" 2>/dev/null || echo "5m")
+  ahora_iso=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  for s in $esperados; do
+    lineas=$(timeout 30 docker compose logs --since "$desde" --no-color --no-log-prefix "$s" 2>/dev/null \
+      | grep -E '(^|[ [])(ERROR|FATAL|CRITICAL)([] :]|$)|\[error\]|Traceback \(most recent' | cut -c1-400)
+    [ -z "$lineas" ] && continue
+    n=$(printf '%s\n' "$lineas" | wc -l)
+    [ "$n" -ge "$UMBRAL_ERRORES" ] && agregar "errores-$s" "El servicio $s registró $n errores en los últimos minutos"
+    errores="${errores}$(printf '%s\n' "$lineas" | tail -30 | sed "s/^/$s$TAB/")
+"
+  done
+  printf '%s\n' "$ahora_iso" > "$ESTADO/errores-desde"
+fi
+
 problemas=$(printf '%s' "$problemas" | sed '/^$/d' | sort)
 
 # ---------------------------------------------------------------- avisos
@@ -169,6 +209,14 @@ SELECT left(clave, 80), left(mensaje, 300) FROM actuales a
 WHERE NOT EXISTS (SELECT 1 FROM operacion.incidentes i WHERE i.fin IS NULL AND i.clave = left(a.clave, 80));
 DELETE FROM operacion.revisiones WHERE momento < now() - interval '90 days';
 DELETE FROM operacion.incidentes WHERE fin < now() - interval '365 days';
+SQL
+
+# Errores de los servicios (F15), aparte: si falla, la revisión ya quedó guardada.
+psql_v -v "errores=$errores" <<'SQL' || echo "No se pudieron guardar los errores de los servicios"
+INSERT INTO operacion.errores (servicio, linea)
+SELECT left(split_part(l, E'\t', 1), 40), left(substr(l, strpos(l, E'\t') + 1), 500)
+FROM unnest(string_to_array(:'errores', E'\n')) AS l WHERE l LIKE '%' || E'\t' || '%';
+DELETE FROM operacion.errores WHERE momento < now() - interval '30 days';
 SQL
 
 if [ -n "$(printf '%s' "$nuevos" | sed '/^$/d')" ]; then

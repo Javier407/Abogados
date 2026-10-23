@@ -19,6 +19,7 @@ import co.abogados.identidad.dominio.RecursoNoEncontradoException;
 import co.abogados.identidad.dominio.ReglaNegocioException;
 import co.abogados.identidad.dominio.Sesion;
 import co.abogados.identidad.dominio.Usuario;
+import co.abogados.identidad.dominio.puertos.AvisosSeguridad;
 import co.abogados.identidad.dominio.puertos.Cifrador;
 import co.abogados.identidad.dominio.puertos.UsuarioRepositorio;
 
@@ -43,6 +44,14 @@ public class AutenticacionServicio {
 	private final Clock reloj;
 	private final String hashFicticio;
 	private final MfaServicio mfa;
+
+	private AvisosSeguridad avisos = AvisosSeguridad.NINGUNO;
+
+	/** F15: avisos de seguridad a la persona (opcional: sin mensajería no se avisa). */
+	@Autowired(required = false)
+	public void setAvisos(AvisosSeguridad avisos) {
+		this.avisos = avisos;
+	}
 
 	public AutenticacionServicio(UsuarioRepositorio usuarios, Cifrador cifrador, SesionesServicio sesiones, Clock reloj) {
 		this(usuarios, cifrador, sesiones, reloj, null);
@@ -84,6 +93,7 @@ public class AutenticacionServicio {
 			if (fallo.bloquea()) {
 				log.warn("Cuenta {} bloqueada {} min por {} intentos fallidos (IP {})", u.usuario(),
 						Usuario.BLOQUEO.toMinutes(), Usuario.MAX_INTENTOS, ip);
+				avisos.avisar(AvisosSeguridad.Tipo.CUENTA_BLOQUEADA, u);
 				throw new CuentaBloqueadaException(Usuario.BLOQUEO.toMinutes());
 			}
 			throw new CredencialesInvalidasException(MENSAJE);
@@ -125,6 +135,7 @@ public class AutenticacionServicio {
 		}
 		usuarios.cambiarClave(idUsuario, cifrador.cifrar(nueva), Instant.now(reloj));
 		sesiones.cerrarTodas(idUsuario, "CLAVE_CAMBIADA", refrescoActual);
+		avisos.avisar(AvisosSeguridad.Tipo.CLAVE_CAMBIADA, u);
 	}
 
 	private static String recortar(String texto) {

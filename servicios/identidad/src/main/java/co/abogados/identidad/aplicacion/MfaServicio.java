@@ -22,6 +22,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,7 @@ import co.abogados.identidad.dominio.ReglaNegocioException;
 import co.abogados.identidad.dominio.Sesion;
 import co.abogados.identidad.dominio.Totp;
 import co.abogados.identidad.dominio.Usuario;
+import co.abogados.identidad.dominio.puertos.AvisosSeguridad;
 import co.abogados.identidad.dominio.puertos.Cifrador;
 import co.abogados.identidad.dominio.puertos.CifradorSecretos;
 import co.abogados.identidad.dominio.puertos.MfaRepositorio;
@@ -79,6 +81,14 @@ public class MfaServicio {
 	private final Set<String> rolesObligatorios;
 	/** Llave de los desafíos: nueva en cada arranque (un desafío pendiente vence si identidad se reinicia). */
 	private final byte[] llaveDesafios = new byte[32];
+
+	private AvisosSeguridad avisos = AvisosSeguridad.NINGUNO;
+
+	/** F15: avisos de seguridad a la persona (opcional: sin mensajería no se avisa). */
+	@Autowired(required = false)
+	public void setAvisos(AvisosSeguridad avisos) {
+		this.avisos = avisos;
+	}
 
 	public MfaServicio(MfaRepositorio mfa, UsuarioRepositorio usuarios, SesionesServicio sesiones,
 			CifradorSecretos secretos, Cifrador cifrador, Clock reloj,
@@ -131,6 +141,7 @@ public class MfaServicio {
 			usuarios.registrarIntento(u.usuario(), u.idUsuario(), false, motivo, ip);
 			if (fallo.bloquea()) {
 				log.warn("Cuenta {} bloqueada por códigos de verificación incorrectos (IP {})", u.usuario(), ip);
+				avisos.avisar(AvisosSeguridad.Tipo.CUENTA_BLOQUEADA, u);
 				throw new CuentaBloqueadaException(Usuario.BLOQUEO.toMinutes());
 			}
 			throw new CredencialesInvalidasException("El código no es correcto o ya se usó");
@@ -182,6 +193,7 @@ public class MfaServicio {
 		}
 		mfa.activar(idUsuario, ahora, paso.getAsLong());
 		log.info("Verificación en dos pasos activada en la cuenta {}", idUsuario);
+		avisos.avisar(AvisosSeguridad.Tipo.MFA_ACTIVADA, usuario(idUsuario));
 		return nuevosCodigos(idUsuario);
 	}
 
@@ -201,6 +213,7 @@ public class MfaServicio {
 			throw new ReglaNegocioException("La verificación en dos pasos no está activa");
 		}
 		log.info("Códigos de recuperación renovados en la cuenta {}", idUsuario);
+		avisos.avisar(AvisosSeguridad.Tipo.CODIGOS_RENOVADOS, u);
 		return nuevosCodigos(idUsuario);
 	}
 
@@ -219,15 +232,17 @@ public class MfaServicio {
 		}
 		mfa.desactivar(idUsuario);
 		log.info("Verificación en dos pasos desactivada por la cuenta {}", idUsuario);
+		avisos.avisar(AvisosSeguridad.Tipo.MFA_DESACTIVADA, u);
 	}
 
 	/** El administrador la quita a quien perdió el teléfono y los códigos; al entrar la configura de nuevo. */
 	@Transactional
 	public void reiniciar(long idAdministrador, long idUsuario) {
-		usuario(idUsuario);
+		Usuario u = usuario(idUsuario);
 		mfa.desactivar(idUsuario);
 		sesiones.cerrarTodas(idUsuario, "MFA_REINICIADO", null);
 		log.warn("Verificación en dos pasos de la cuenta {} reiniciada por el administrador {}", idUsuario, idAdministrador);
+		avisos.avisar(AvisosSeguridad.Tipo.MFA_REINICIADA, u);
 	}
 
 	@Transactional(readOnly = true)

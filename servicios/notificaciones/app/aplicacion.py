@@ -7,7 +7,8 @@ from datetime import date, datetime, timedelta
 from typing import Callable, Protocol
 from zoneinfo import ZoneInfo
 
-from .dominio import (EVENTO_ACTUACION, EVENTO_AUDIENCIA, EVENTO_RESUMEN, EVENTOS_TERMINO, AvisoActuacion,
+from .dominio import (EVENTO_ACTUACION, EVENTO_AUDIENCIA, EVENTO_RESUMEN, EVENTO_SEGURIDAD, EVENTOS_TERMINO, AvisoActuacion,
+                      AvisoSeguridad, contenido_seguridad,
                       AvisoAudiencia, AvisoResumen, AvisoTermino, Canal, Contenido, CuentaCliente, EventoInvalido,
                       NotificacionNueva, Preferencia, canales, contenido_actuacion, contenido_audiencia,
                       contenido_audiencia_cliente, contenido_resumen_cliente, contenido_termino, correo_de,
@@ -115,6 +116,10 @@ class ServicioNotificaciones:
             for cuenta in await self._cuentas(resumen.id_cliente):
                 creadas += await self._avisar(contenido_resumen_cliente(resumen, cuenta), correo_cliente=cuenta.email)
             return creadas
+        elif evento == EVENTO_SEGURIDAD:
+            a = AvisoSeguridad.desde_mensaje(cuerpo)
+            # El correo de la cuenta (identidad), por si la persona no configuró uno: es un aviso que debe llegar.
+            return await self._avisar(contenido_seguridad(a), correo_cliente=a.email)
         else:
             raise EventoInvalido(f"Evento no soportado: {evento}")
         return await self._avisar(contenido)
@@ -237,6 +242,7 @@ class RepositorioServidor(Protocol):
     async def ultima_revision(self) -> dict | None: ...
     async def serie(self, desde: datetime, por_hora: bool) -> list[dict]: ...
     async def incidentes(self, desde: datetime) -> list[dict]: ...
+    async def errores(self, desde: datetime) -> dict: ...   # F15: { porServicio: [...], recientes: [...] }
 
 
 VIGIA_DORMIDO = timedelta(minutes=15)   # el vigía revisa cada 5 minutos: tres vueltas sin revisión = algo pasa
@@ -274,4 +280,15 @@ class ConsultaServidor:
             "disponibilidad": round(100 * (total - sin_app) / total, 2) if total else None,
             "serie": [{k: (v.isoformat() if k == "momento" else v) for k, v in p.items()} for p in serie],
             "incidentes": incidentes,
+            "errores": await self._errores(desde),
         }
+
+    async def _errores(self, desde: datetime) -> dict:
+        """Errores de los registros de los servicios (F15). Si la tabla aún no existe, sin errores."""
+        try:
+            e = await self.repo.errores(desde)
+        except Exception:   # noqa: BLE001 - p. ej. sin la migración 012: la pantalla funciona igual
+            log.warning("No se pudieron leer los errores de los servicios")
+            return {"porServicio": [], "recientes": []}
+        return {"porServicio": e["porServicio"],
+                "recientes": [{**r, "momento": r["momento"].isoformat()} for r in e["recientes"]]}

@@ -645,6 +645,9 @@ export interface EstadoServidor {
             problemas: number; detalle: string[] } | null;
   vigiaActivo: boolean; revisiones: number; disponibilidad: number | null;
   serie: PuntoServidor[]; incidentes: IncidenteServidor[];
+  /** F15: errores de los registros de cada servicio en el periodo. */
+  errores?: { porServicio: { servicio: string; total: number; ultimo: string }[];
+              recientes: { momento: string; servicio: string; linea: string }[] };
 }
 
 // ------------------------------------------------------------------ F14: facturación electrónica
