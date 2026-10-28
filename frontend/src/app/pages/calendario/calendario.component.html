@@ -27,11 +27,11 @@
     <span><span class="muestra-inhabil"></span> No corren términos</span>
   </div>
 
-  <div class="mes" role="grid" [attr.aria-label]="titulo">
-    @for (d of diasSemana; track d) { <div class="encabezado" role="columnheader">{{ d }}</div> }
+  <div class="mes" role="group" [attr.aria-label]="titulo">
+    @for (d of diasSemana; track d) { <div class="encabezado" aria-hidden="true">{{ d }}</div> }
     @for (semana of semanas; track $index) {
       @for (dia of semana; track dia.fecha) {
-        <button type="button" class="dia" role="gridcell"
+        <button type="button" class="dia"
           [class.fuera]="!dia.delMes" [class.hoy]="dia.hoy"
           [class.inhabil]="dia.finDeSemana || dia.inhabil" [class.elegido]="seleccionado?.fecha === dia.fecha"
           (click)="seleccionado = dia" [attr.aria-label]="dia.fecha + (dia.audiencias.length ? ', ' + dia.audiencias.length + ' audiencia(s)' : '') + (dia.terminos.length ? ', ' + dia.terminos.length + ' término(s)' : '')">

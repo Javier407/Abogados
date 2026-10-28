@@ -87,8 +87,13 @@ El proyecto evoluciona hacia un sistema de microservicios para firmas de abogado
 | [`docs/01-dominio.md`](docs/01-dominio.md) | Problema, glosario, ramas y tipos de proceso, estructura del radicado (23 dígitos), etapas, términos y tarifas Conalbos 2026 |
 | [`docs/02-arquitectura.md`](docs/02-arquitectura.md) | Opciones evaluadas con pros y contras, microservicios (Java + Python), eventos, orden del repositorio y despliegue |
 | [`docs/03-roadmap.md`](docs/03-roadmap.md) | Fases F0–F5 |
-| [`docs/04-evaluacion-iso25010.md`](docs/04-evaluacion-iso25010.md) | Evaluación ISO/IEC 25010 de F5 (Seguridad 4 → 8; total 8,15) con brechas y plan de mejora |
+| [`docs/04-evaluacion-iso25010.md`](docs/04-evaluacion-iso25010.md) | Evaluación ISO/IEC 25010 por fases (8,15 en F5 → 9,40 en F16), su lugar en la familia ISO/IEC 25000, brechas y plan de mejora |
 | [`docs/05-mapa-procesos.md`](docs/05-mapa-procesos.md) | Mapa de procesos de la firma: qué está hecho, qué falta, dónde va el código y fases F6–F9 propuestas |
+| [`docs/07-casos-de-abuso.md`](docs/07-casos-de-abuso.md) | Casos de abuso (Gary McGraw): diagrama, 11 abusos con su control y la prueba que lo intenta |
+| [`docs/08-ia-riesgos.md`](docs/08-ia-riesgos.md) | Factores de riesgo de la IA (enfoque de Chema Alonso) y los controles del asistente |
+| [`docs/09-pruebas-carga.md`](docs/09-pruebas-carga.md) | Pruebas de carga con k6 y JMeter: 50 usuarios, p95 de 326 ms y 0 errores |
+| [`docs/10-accesibilidad.md`](docs/10-accesibilidad.md) | Auditoría WCAG 2.1 AA con axe-core (Axe DevTools): hallazgos, correcciones y prueba en CI |
+| [`docs/11-pruebas-usuario.md`](docs/11-pruebas-usuario.md) | Protocolo de pruebas con usuarios: tareas, métricas y cuestionario SUS |
 | [`docs/adr/`](docs/adr/) | Decisiones de arquitectura (políglota, RabbitMQ, PostgreSQL por esquemas, JWT propio, fuente Rama Judicial) |
 
 ### Base de datos de pruebas (PostgreSQL 16)

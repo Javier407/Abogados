@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections import deque
 from datetime import date
 from typing import AsyncIterator, Protocol
 
@@ -31,6 +32,29 @@ class Gabinete(Protocol):
 
 class ProcesoNoEncontrado(LookupError):
     pass
+
+
+class LimiteBorradores:
+    """
+    Borradores por usuario en una ventana deslizante (en memoria). Frena el abuso de recursos: cada borrador
+    ocupa el modelo varios minutos y Ollama atiende uno a la vez, así que un usuario no debe acapararlo.
+    Una sola instancia del servicio: si algún día hay varias, esto debe ir a un almacén compartido.
+    """
+
+    def __init__(self, maximo: int = 5, ventana_s: float = 600, reloj=time.monotonic):
+        self.maximo, self.ventana_s, self.reloj = maximo, ventana_s, reloj
+        self._pedidos: dict[str, deque[float]] = {}
+
+    def permitir(self, usuario: str | None) -> bool:
+        """Registra el pedido y dice si se permite (False = superó el límite en la ventana)."""
+        ahora = self.reloj()
+        cola = self._pedidos.setdefault(usuario or "desconocido", deque())
+        while cola and cola[0] <= ahora - self.ventana_s:
+            cola.popleft()
+        if len(cola) >= self.maximo:
+            return False
+        cola.append(ahora)
+        return True
 
 
 def _pesos(valor) -> str | None:
@@ -88,7 +112,8 @@ class ServicioAsistente:
         validar(tipo, caso, instrucciones)
         return caso
 
-    async def redactar(self, tipo: TipoBorrador, caso: Caso, instrucciones: str = "") -> AsyncIterator[dict]:
+    async def redactar(self, tipo: TipoBorrador, caso: Caso, instrucciones: str = "",
+                       usuario: str | None = None) -> AsyncIterator[dict]:
         """
         Eventos: inicio → texto (encabezado) → texto... (lo que redacta el modelo) → texto (firma) → fin.
         Si el modelo no está o falla a mitad, se avisa y se entrega la plantilla.
@@ -118,5 +143,7 @@ class ServicioAsistente:
                 return
         yield {"evento": "texto", "texto": firma(tipo, caso)}
         segundos = round(time.monotonic() - inicio)
-        log.info("Borrador %s redactado en %s s (%s caracteres)", tipo.value, segundos, escrito)
+        # Registro de uso sin el contenido: quién, qué tipo, cuánto tardó y cuánto escribió.
+        log.info("Borrador %s para el usuario %s redactado en %s s (%s caracteres)",
+                 tipo.value, usuario or "desconocido", segundos, escrito)
         yield {"evento": "fin", "conModelo": True, "segundos": segundos}

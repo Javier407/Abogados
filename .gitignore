@@ -38,3 +38,6 @@ infra/.env
 infra/secretos/
 infra/respaldos/
 *.pem
+
+# F16: resultados de las pruebas de carga
+perf/resultados/

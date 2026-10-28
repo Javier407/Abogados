@@ -11,7 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from .aplicacion import ProcesoNoEncontrado, ServicioAsistente
+from .aplicacion import LimiteBorradores, ProcesoNoEncontrado, ServicioAsistente
 from .seguridad import MiddlewareToken, TokenServicio, VerificadorTokens
 from .dominio import SolicitudInvalida, TipoBorrador
 
@@ -26,7 +26,9 @@ class PedidoBorrador(BaseModel):
     idProvidencia: int | None = Field(None, gt=0)    # solo RECURSO: la providencia que se recurre
 
 
-def crear_app(servicio: ServicioAsistente | None = None, verificador: VerificadorTokens | None = None) -> FastAPI:
+def crear_app(servicio: ServicioAsistente | None = None, verificador: VerificadorTokens | None = None,
+              limite: LimiteBorradores | None = None) -> FastAPI:
+    limite = limite or LimiteBorradores(int(os.environ.get("BORRADORES_POR_USUARIO", "5")))
 
     @asynccontextmanager
     async def ciclo_de_vida(app: FastAPI):
@@ -64,10 +66,13 @@ def crear_app(servicio: ServicioAsistente | None = None, verificador: Verificado
     async def borrador(request: Request, pedido: PedidoBorrador):
         """Redacta por partes (Server-Sent Events). Los errores del pedido llegan antes, como JSON normal."""
         s = srv(request)
+        usuario = request.headers.get("x-usuario-id")   # el middleware la reescribe desde el token
+        if not limite.permitir(usuario):
+            raise HTTPException(429, "Pidió demasiados borradores seguidos; espere unos minutos e intente de nuevo.")
         caso = await s.preparar(pedido.tipo, pedido.idProceso, pedido.instrucciones, pedido.idProvidencia)
 
         async def eventos():
-            async for ev in s.redactar(pedido.tipo, caso, pedido.instrucciones):
+            async for ev in s.redactar(pedido.tipo, caso, pedido.instrucciones, usuario):
                 if await request.is_disconnected():
                     break
                 yield f"event: {ev['evento']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"

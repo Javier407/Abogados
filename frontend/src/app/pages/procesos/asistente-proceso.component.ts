@@ -79,6 +79,10 @@ import { EstadoAsistente, Providencia, ResumenPublicado, TipoBorrador } from '..
         }
         @if (mensaje) { <div class="alerta alerta-exito" style="margin-top: 12px">{{ mensaje }}</div> }
         @if (texto || redactando || editando) {
+          @if (!editando) {
+            <p class="aviso-ia" role="note">Borrador generado con IA: puede equivocarse o inventar datos.
+              Revíselo completo antes de radicarlo o enviarlo al cliente.</p>
+          }
           <textarea class="form-input borrador" [(ngModel)]="texto" [readonly]="redactando" rows="22"
             aria-label="Borrador generado"></textarea>
           <div class="form-actions">
@@ -98,7 +102,8 @@ import { EstadoAsistente, Providencia, ResumenPublicado, TipoBorrador } from '..
       </div>
     </div>
   `,
-  styles: [`.borrador { margin-top: 14px; font-family: Georgia, 'Times New Roman', serif; font-size: 0.92rem; line-height: 1.55; white-space: pre-wrap; }`]
+  styles: [`.borrador { margin-top: 14px; font-family: Georgia, 'Times New Roman', serif; font-size: 0.92rem; line-height: 1.55; white-space: pre-wrap; }
+    .aviso-ia { margin: 14px 0 0; padding: 8px 12px; border-left: 4px solid #9a6b1f; background: #fbf6ec; color: #3d2f12; font-size: 0.88rem; }`]
 })
 export class AsistenteProcesoComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);

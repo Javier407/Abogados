@@ -13,7 +13,7 @@
 .dia:nth-child(7n + 1) { border-left: none; }
 .dia:hover { background: var(--parchment-2); }
 .dia.inhabil { background: var(--gray-soft); }
-.dia.fuera .numero { color: #b3bcc8; }
+.dia.fuera .numero { color: var(--muted); font-weight: 400; }   /* F16: contraste AA (antes #b3bcc8, 1,9:1) */
 .dia.hoy .numero { background: var(--mahogany); color: #fff; border-radius: 99px; padding: 0 7px; }
 .dia.elegido { outline: 2px solid var(--secondary); outline-offset: -2px; }
 .numero { font-weight: 700; font-size: 0.85rem; align-self: flex-start; }

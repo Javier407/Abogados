@@ -29,6 +29,7 @@ import co.abogados.identidad.dominio.PoliticaClave;
 import co.abogados.identidad.dominio.ReglaNegocioException;
 import co.abogados.identidad.dominio.Sesion;
 import co.abogados.identidad.dominio.Usuario;
+import co.abogados.identidad.dominio.puertos.Cifrador;
 import co.abogados.identidad.dominio.puertos.UsuarioRepositorio;
 import co.abogados.identidad.infraestructura.CifradorBCrypt;
 import co.abogados.identidad.infraestructura.EmisorJwtRsa;
@@ -90,6 +91,21 @@ class AutenticacionTest {
 		assertThatThrownBy(() -> servicio.iniciarSesion("arodriguez", "otra", null))
 				.isInstanceOf(CredencialesInvalidasException.class).hasMessage("Usuario o contraseña incorrectos");
 		assertThat(repo.intentos).extracting(i -> i.split("\\|")[3]).containsExactly("NO_EXISTE", "CLAVE_INCORRECTA");
+	}
+
+	/** Caso de abuso (F16): enumerar usuarios midiendo el tiempo. Sin la cuenta igual se compara un hash BCrypt. */
+	@Test
+	void unUsuarioInexistenteTambienPagaElCostoDeBCrypt() {
+		int[] comparaciones = { 0 };
+		Cifrador contador = new Cifrador() {
+			public String cifrar(String clave) { return CIFRADOR.cifrar(clave); }
+			public boolean coincide(String clave, String hash) { comparaciones[0]++; return CIFRADOR.coincide(clave, hash); }
+		};
+		var conContador = new AutenticacionServicio(repo, contador, new co.abogados.identidad.aplicacion.SesionesServicio(
+				new SesionesEnMemoria(), repo, emisor, reloj, Duration.ofHours(12), Duration.ofDays(7)), reloj);
+		assertThatThrownBy(() -> conContador.iniciarSesion("noexiste", "Prueba2026*", null))
+				.isInstanceOf(CredencialesInvalidasException.class);
+		assertThat(comparaciones[0]).isEqualTo(1);
 	}
 
 	@Test

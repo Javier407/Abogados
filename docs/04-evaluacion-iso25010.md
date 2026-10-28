@@ -160,3 +160,52 @@ Mantenibilidad sube de 9 a 10 (cobertura sobre la meta en todos los servicios, p
 | Disponibilidad de las sesiones | El bloqueo por intentos fallidos ya no permite cerrar las sesiones de otra persona. |
 
 Seguridad sube de 9 a 10 en lo que depende del código. Total estimado: **9,1**. Lo que queda está fuera del código: un segundo servidor (Fiabilidad), exigir la verificación a los roles con más permisos (decisión de la firma) y respaldar las llaves de `infra/.env`.
+
+## 10. Avance tras F16 (2026-10-27) y la familia ISO/IEC 25000
+
+### Dónde encaja esta evaluación en ISO/IEC 25000 (SQuaRE)
+
+ISO/IEC 25000 (*Systems and software Quality Requirements and Evaluation*, SQuaRE) es la familia de normas de calidad del software. Esta evaluación usa una parte de cada división:
+
+| División | Normas | Para qué sirve | Uso en este proyecto |
+|---|---|---|---|
+| 2500n · Gestión de la calidad | 25000, 25001 | Vocabulario y planificación de la evaluación | Marco general; la evaluación se repite por fase |
+| 2501n · Modelo de calidad | **25010** (producto), 25019 (en uso) | Qué es la calidad: 9 características y sus subcaracterísticas | Las características de las secciones 1 a 3 |
+| 2502n · Medición | **25023** (producto), 25022 (en uso) | Cómo medir cada característica | Las métricas con valor y umbral de las secciones 1 y 2 |
+| 2503n · Requisitos | 25030 | Escribir requisitos de calidad medibles | Los umbrales: 800 ms, 50 usuarios, WCAG AA, cobertura ≥ 70 % |
+| 2504n · Evaluación | **25040** | El proceso: propósito, especificar, diseñar, ejecutar y concluir | Pesos, escala de 0 a 10 y criterio de decisión del encabezado |
+
+La calidad **en uso** (ISO/IEC 25019: eficacia, eficiencia y satisfacción de personas reales) no se ha medido. Es lo que da el protocolo de pruebas con usuarios (`docs/11`).
+
+### Nuevas mediciones
+
+| Característica | Métrica | Antes | F16 | Cumple | Evidencia |
+|---|---|---|---|---|---|
+| Eficiencia de desempeño | Comportamiento temporal con 50 usuarios concurrentes (p95 del gateway) | No realizada | **326 ms** (k6, 48 peticiones/s), 0 % de errores | ✔ (< 800 ms, < 1 %) | `docs/09-pruebas-carga.md`, `perf/` |
+| Capacidad de interacción | Accesibilidad: violaciones WCAG 2.1 A/AA graves o críticas | Sin auditoría | **0** en 11 pantallas (había 109 elementos con fallas: 59 de contraste y 50 de ARIA en el calendario) | ✔ | `docs/10-accesibilidad.md`, `a11y.spec.ts` en CI |
+| Capacidad de interacción | Usabilidad medida con usuarios (eficacia, tiempo, SUS) | — | Protocolo listo, sesiones pendientes | ~ | `docs/11-pruebas-usuario.md` |
+| Seguridad | Casos de abuso con control y prueba automática | — | 11 de 11 | ✔ | `docs/07-casos-de-abuso.md` |
+| Seguridad / protección del asistente | Factores de riesgo de IA con control | — | 9 de 10 (jailbreak aceptado) | ✔ | `docs/08-ia-riesgos.md` |
+
+**Puntajes que cambian:**
+- **Eficiencia de desempeño pasa de 7 a 8.** La carga concurrente queda medida y holgada. No llega a 10 porque la IA local sigue siendo lenta en CPU.
+- **Capacidad de interacción pasa de 8 a 9.** WCAG AA queda auditado y protegido en el CI. Falta la medición con personas.
+
+**Resultado ponderado:**
+
+| Característica | Peso | F13 | F16 | Aporte |
+|---|---|---|---|---|
+| Adecuación funcional | 20 % | 10 | 10 | 2,00 |
+| Eficiencia de desempeño | 10 % | 7 | **8** | 0,80 |
+| Compatibilidad | 5 % | 9 | 9 | 0,45 |
+| Capacidad de interacción | 15 % | 8 | **9** | 1,35 |
+| Fiabilidad | 10 % | 9 | 9 | 0,90 |
+| Seguridad | 15 % | 10 | 10 | 1,50 |
+| Mantenibilidad | 15 % | 10 | 10 | 1,50 |
+| Flexibilidad | 10 % | 9 | 9 | 0,90 |
+| **Total** | 100 % | 9,15 | **9,40** | **Excelente** |
+
+Con esto se cierran las prioridades 9 y 10 del plan de mejora (sección 4). Lo que queda para subir más:
+- las sesiones con usuarios;
+- un segundo servidor (Fiabilidad);
+- un registro inalterable (no repudio).

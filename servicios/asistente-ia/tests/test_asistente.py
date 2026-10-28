@@ -6,7 +6,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app.aplicacion import ProcesoNoEncontrado, ServicioAsistente
+from app.aplicacion import LimiteBorradores, ProcesoNoEncontrado, ServicioAsistente
 from app.dominio import Caso, SolicitudInvalida, TipoBorrador, encabezado, mensajes, plantilla
 from app.infraestructura import ModeloOllama
 from app.main import crear_app
@@ -250,3 +250,24 @@ async def test_un_proceso_cerrado_no_admite_escritos():
     with pytest.raises(SolicitudInvalida, match="cerrado"):
         await s.preparar(TipoBorrador.RECURSO, 2, "", 4)
     assert await s.preparar(TipoBorrador.RESUMEN_CLIENTE, 2)
+
+
+def test_limite_de_borradores_por_usuario_en_ventana_deslizante():
+    ahora = [0.0]
+    limite = LimiteBorradores(maximo=2, ventana_s=600, reloj=lambda: ahora[0])
+    assert limite.permitir("ana") and limite.permitir("ana")
+    assert not limite.permitir("ana")
+    assert limite.permitir("beto")            # cada usuario tiene su propia cuenta
+    ahora[0] = 600.0
+    assert limite.permitir("ana")             # pasada la ventana se libera
+
+
+def test_api_responde_429_al_superar_el_limite_y_registra_al_usuario(caplog):
+    caplog.set_level("INFO")
+    pedido = {"idProceso": 2, "tipo": "CONTESTACION"}
+    with TestClient(crear_app(servicio(), limite=LimiteBorradores(maximo=1))) as c:
+        r = c.post("/asistente/borradores", json=pedido, headers={"x-usuario-id": "79123456"})
+        assert r.status_code == 200
+        r = c.post("/asistente/borradores", json=pedido, headers={"x-usuario-id": "79123456"})
+        assert r.status_code == 429 and "demasiados borradores" in r.json()["error"]
+    assert "para el usuario 79123456" in caplog.text
