@@ -1,0 +1,68 @@
+# Rutas: /api/<recurso>/** -> servicio dueño del recurso, quitando el prefijo /api.
+# Los servicios se encuentran por el DNS de Docker Compose (sin Eureka).
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      # El token del stream de avisos llega en la URL: se quita antes de reenviar (no debe quedar en logs).
+      default-filters:
+        - RemoveRequestParameter=access_token
+      routes:
+        - id: identidad
+          uri: ${IDENTIDAD_URL:http://localhost:8005}
+          predicates:
+            - Path=/api/auth/**,/api/usuarios/**
+          filters:
+            - StripPrefix=1
+        - id: gabinete
+          uri: ${GABINETE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/clientes/**,/api/abogados/**,/api/gabinete/**,/api/peritos/**,/api/honorarios/**,/api/gastos/**,/api/portal/finanzas/**,/api/consultas/**,/api/facturas/**,/api/facturacion/**
+          filters:
+            - StripPrefix=1
+        - id: procesos
+          uri: ${PROCESOS_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/procesos/**,/api/reglas-termino/**,/api/catalogos/**,/api/terminos/**,/api/calendario/**,/api/audiencias/**,/api/reportes/**,/api/portal/procesos/**
+          filters:
+            - StripPrefix=1
+        - id: notificaciones
+          uri: ${NOTIFICACIONES_URL:http://localhost:8000}
+          predicates:
+            - Path=/api/notificaciones/**
+          filters:
+            - StripPrefix=1
+        - id: asistente
+          uri: ${ASISTENTE_URL:http://localhost:8004}
+          predicates:
+            - Path=/api/asistente/**
+          filters:
+            - StripPrefix=1
+        - id: vigilancia
+          uri: ${VIGILANCIA_URL:http://localhost:8003}
+          predicates:
+            - Path=/api/vigilancia/**
+          filters:
+            - StripPrefix=1
+      # Solo para desarrollo con "ng serve" en el PC; en el servidor el frontend llega por el mismo origen (nginx).
+      globalcors:
+        cors-configurations:
+          '[/api/**]':
+            allowed-origins: ${CORS_ORIGINS:http://localhost:4200}
+            allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+            allowed-headers: "*"
+            max-age: 3600
+
+server:
+  port: 8080
+
+# Verificación de los tokens: llave pública del servicio identidad y emisor esperado.
+jwt:
+  jwks-uri: ${IDENTIDAD_URL:http://localhost:8005}/.well-known/jwks.json
+  emisor: gestion-juridica
+
+# Solo health: el gateway está publicado y /actuator/gateway mostraría las rutas internas.
+management:
+  endpoints.web.exposure.include: health
+  endpoint.health.probes.enabled: true

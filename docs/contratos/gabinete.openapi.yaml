@@ -1,0 +1,429 @@
+openapi: 3.0.3
+info:
+  title: Servicio gabinete
+  version: 0.1.0
+  description: |
+    La firma: clientes, abogados, catálogos (sedes, cargos, áreas de práctica), peritos, tarifas de
+    referencia, acuerdos de honorarios y pagos (F4). A través del gateway las rutas llevan el prefijo /api.
+
+    Errores: `{ "error": "mensaje" }` (y `campos` si falla la validación de la petición).
+    - 400: petición mal formada o campos inválidos
+    - 404: no existe
+    - 409: documento, cédula, correo o tarjeta profesional repetidos; cliente con procesos u honorarios
+    - 422: regla de negocio (persona jurídica sin NIT, cargo que no es de abogado, sede inexistente...)
+    - 503: el servicio procesos no responde (al eliminar un cliente)
+servers:
+  - url: http://localhost:8091/api
+    description: Gateway
+
+paths:
+  /clientes:
+    get:
+      summary: Lista clientes por nombre
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: Busca en nombre y número de documento }
+      responses:
+        '200': { description: Clientes, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Cliente' } } } } }
+    post:
+      summary: Registra un cliente
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ClienteSolicitud' } } } }
+      responses:
+        '201':
+          description: Creado
+          headers: { Location: { schema: { type: string, example: /clientes/30 } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/Cliente' } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /clientes/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer } } ]
+    get:
+      summary: Consulta un cliente
+      responses:
+        '200': { description: Cliente, content: { application/json: { schema: { $ref: '#/components/schemas/Cliente' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      summary: Actualiza un cliente (conserva la fecha de creación)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ClienteSolicitud' } } } }
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Cliente' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+    delete:
+      summary: Elimina un cliente sin procesos ni honorarios
+      description: Pregunta al servicio procesos si el cliente tiene procesos.
+      responses:
+        '204': { description: Eliminado }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  /abogados:
+    get:
+      summary: Lista los abogados (personal cuyo cargo exige tarjeta profesional)
+      parameters:
+        - { name: soloActivos, in: query, schema: { type: boolean, default: false } }
+      responses:
+        '200': { description: Abogados, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Abogado' } } } } }
+    post:
+      summary: Registra un abogado
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AbogadoSolicitud' } } } }
+      responses:
+        '201':
+          description: Creado
+          content: { application/json: { schema: { $ref: '#/components/schemas/Abogado' } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /abogados/{id}:
+    parameters: [ { name: id, in: path, required: true, description: Cédula, schema: { type: integer, format: int64 } } ]
+    get:
+      summary: Consulta un abogado (lo usa procesos para validar al responsable)
+      responses:
+        '200': { description: Abogado, content: { application/json: { schema: { $ref: '#/components/schemas/Abogado' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      summary: Actualiza un abogado (la cédula no cambia)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AbogadoSolicitud' } } } }
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Abogado' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+    delete:
+      summary: Desactiva al abogado
+      description: No se borra; sus procesos lo siguen referenciando. Deja de poder ser responsable de procesos nuevos.
+      responses:
+        '200': { description: Abogado inactivo, content: { application/json: { schema: { $ref: '#/components/schemas/Abogado' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /gabinete/sedes:
+    get:
+      summary: Sedes de la firma
+      responses:
+        '200': { description: Sedes, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Sede' } } } } }
+  /gabinete/cargos:
+    get:
+      summary: Cargos (esAbogado indica si exige tarjeta profesional)
+      responses:
+        '200': { description: Cargos, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Cargo' } } } } }
+  /gabinete/areas:
+    get:
+      summary: Áreas de práctica (una por rama)
+      responses:
+        '200': { description: Áreas, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AreaPractica' } } } } }
+
+  /gabinete/tarifas:
+    get:
+      summary: Tarifas de referencia (Conalbos y de la firma) con su valor en pesos
+      parameters: [ { name: anio, in: query, schema: { type: integer }, description: Año del salario mínimo; por defecto el actual (o el último cargado) } ]
+      responses:
+        '200': { description: Tarifas con desdePesos y hastaPesos = valor en SMMLV x salario mínimo }
+
+  /peritos:
+    get:
+      summary: Peritos (busca en nombre y especialidad con q)
+      parameters: [ { name: q, in: query, schema: { type: string } } ]
+      responses:
+        '200': { description: Peritos }
+    post:
+      summary: Registra un perito (nombre, especialidad, profesión y ciudad obligatorios; calificación 1 a 5)
+      responses:
+        '201': { description: Creado }
+        '400': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /peritos/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer } } ]
+    get:
+      summary: Consulta un perito
+      responses:
+        '200': { description: Perito }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      summary: Actualiza un perito (no se borran; las pruebas periciales los referencian)
+      responses:
+        '200': { description: Actualizado }
+
+  /honorarios:
+    get:
+      summary: Acuerdos de honorarios con lo pagado y el saldo
+      parameters:
+        - { name: idCliente, in: query, schema: { type: integer } }
+        - { name: idProceso, in: query, schema: { type: integer } }
+        - { name: estado, in: query, schema: { type: string, enum: [VIGENTE, CUMPLIDO, CANCELADO] } }
+      responses:
+        '200': { description: "Acuerdos. saldo = valor fijo - pagado en FIJO y MIXTO; null en MENSUAL y en los de solo porcentaje" }
+    post:
+      summary: Registra el acuerdo de un proceso (uno por proceso)
+      description: |
+        FIJO y MENSUAL llevan valorFijo; CUOTA_LITIS y PORCENTAJE_CUANTIA llevan porcentaje (máximo 50);
+        MIXTO lleva ambos. El proceso debe existir y ser del cliente (se pregunta al servicio procesos).
+      responses:
+        '201': { description: Creado }
+        '409': { description: El proceso ya tiene acuerdo }
+        '422': { description: Regla de negocio }
+        '503': { description: El servicio procesos no responde }
+  /honorarios/{id}/estado:
+    put:
+      summary: Cambia el estado (p. ej. CANCELADO)
+      parameters: [ { name: id, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        '200': { description: Actualizado }
+  /honorarios/{id}/pagos:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer } } ]
+    get:
+      summary: Pagos del acuerdo (del más reciente al más antiguo)
+      responses:
+        '200': { description: Pagos }
+    post:
+      summary: Registra un pago
+      description: |
+        Solo en acuerdos VIGENTES; fecha entre el acuerdo y hoy. En FIJO no puede superar el saldo y al
+        completarlo el acuerdo pasa a CUMPLIDO. En MENSUAL y MIXTO el valor fijo no es tope.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fecha, valor, medio]
+              properties:
+                fecha: { type: string, format: date }
+                valor: { type: number, minimum: 1 }
+                medio: { type: string, enum: [TRANSFERENCIA, EFECTIVO, TARJETA, CONSIGNACION] }
+                referencia: { type: string, maxLength: 40 }
+      responses:
+        '201': { description: Acuerdo actualizado con el nuevo saldo }
+        '422': { description: Regla de negocio (supera el saldo, fecha, acuerdo no vigente) }
+
+  # ---------------------------------------------------------------- F8: anulación, liquidación, gastos y cartera
+  /honorarios/{id}/pagos/{idPago}/anulacion:
+    post:
+      summary: Anula un pago (no lo borra); deja de contar y, si el acuerdo estaba CUMPLIDO, vuelve a VIGENTE
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: idPago, in: path, required: true, schema: { type: integer } }
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [motivo], properties: { motivo: { type: string, minLength: 5, maxLength: 200 } } } } } }
+      responses:
+        '200': { description: Acuerdo actualizado }
+        '409': { description: El pago ya estaba anulado }
+  /honorarios/{id}/liquidacion:
+    post:
+      summary: Liquida la parte variable (porcentaje × valorBase, más el fijo en MIXTO); desde entonces el saldo tiene tope
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [valorBase], properties: { valorBase: { type: number, minimum: 0 }, fecha: { type: string, format: date } } } } } }
+      responses:
+        '200': { description: Acuerdo con valorBase, valorLiquidado y fechaLiquidacion }
+        '422': { description: El acuerdo no lleva porcentaje o no está vigente }
+  /facturas:
+    get:
+      summary: Facturas electrónicas (F14), filtros idCliente y estado (ACEPTADA, RECHAZADA, ANULADA). Sin líneas.
+    post:
+      summary: 'Emite la factura (MANEJAN_FINANZAS): toma el siguiente número, la guarda y la envía al proveedor'
+      description: |
+        Cuerpo { idCliente, idProceso?, formaPago (CONTADO | CREDITO), retencionPct? (null = sugerida), observaciones?,
+        lineas: [{ tipo: SERVICIO | REEMBOLSO, descripcion, cantidad?, valorUnitario, idHonorario?, idGasto? }] }.
+        Un REEMBOLSO toma concepto y valor del gasto (idGasto), sin IVA. 201 con { factura, emisor, config, textoQr, urlConsulta }.
+        422: cliente sin correo o dirección, resolución vencida o agotada, gasto que no es un reembolso pendiente del cliente.
+        409: el gasto ya está en una factura.
+  /facturas/{id}:
+    get:
+      summary: 'La factura con líneas, nota crédito, emisor, resolución y el texto del código QR'
+  /facturas/pendientes:
+    get:
+      summary: 'Lo que se puede facturar a un cliente (?idCliente=): saldo de honorarios por facturar y gastos reembolsables sin cobrar'
+  /facturas/vista-previa:
+    post:
+      summary: 'Calcula líneas y totales (IVA, reembolsos, retención, neto) sin guardar nada'
+  /facturas/{id}/anulacion:
+    post:
+      summary: 'Anula con una nota crédito por el total ({ motivo }); libera los gastos. 409 si ya está anulada; 422 si no fue aceptada.'
+  /facturacion/config:
+    get:
+      summary: '{ config, restantes, impedimento, proveedor }'
+    put:
+      summary: 'Solo DIRECCION. Cambiar el IVA o las retenciones los deja sin validar; PRODUCCION exige un proveedor real.'
+  /facturacion/config/validacion:
+    post:
+      summary: 'El contador (MANEJAN_FINANZAS) valida el IVA y las retenciones'
+  /honorarios/cartera:
+    get:
+      summary: Por cliente, saldo de honorarios con total conocido, gastos por reembolsar y días desde el último pago
+      responses: { '200': { description: Cartera, ordenada de mayor a menor deuda } }
+  /gastos:
+    get:
+      summary: Gastos procesales (filtros opcionales idProceso, idCliente)
+      parameters:
+        - { name: idProceso, in: query, required: false, schema: { type: integer } }
+        - { name: idCliente, in: query, required: false, schema: { type: integer } }
+      responses: { '200': { description: Gastos } }
+    post:
+      summary: Registra un gasto; el cliente se toma del proceso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idProceso, fecha, concepto, valor, pagadoPor]
+              properties:
+                idProceso: { type: integer }
+                fecha: { type: string, format: date }
+                concepto: { type: string, maxLength: 150 }
+                valor: { type: number, exclusiveMinimum: 0 }
+                pagadoPor: { type: string, enum: [FIRMA, CLIENTE] }
+                reembolsable: { type: boolean, description: 'Solo si lo pagó la FIRMA' }
+                soporteUrl: { type: string, maxLength: 300 }
+      responses: { '201': { description: Registrado }, '422': { description: Datos inválidos } }
+  /gastos/{id}/reembolso:
+    post:
+      summary: Marca el gasto como reembolsado por el cliente (fecha opcional, por defecto hoy)
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: Reembolsado }, '409': { description: Ya estaba reembolsado } }
+  /gastos/{id}:
+    delete:
+      summary: Elimina un gasto no reembolsado
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { '204': { description: Eliminado } }
+
+  # ---------------------------------------------------------------- portal del cliente (F9)
+  /portal/finanzas:
+    get:
+      summary: Honorarios, pagos y gastos por reembolsar del cliente del token (solo rol CLIENTE)
+      description: |
+        Los pagos anulados no se muestran. El total de cada acuerdo es null mientras la parte variable no se
+        haya liquidado. Se expone como /api/portal/finanzas.
+      responses:
+        "200": { description: "{ acuerdos[], gastosPorReembolsar[], saldoHonorarios, totalGastosPorReembolsar }" }
+        "403": { description: No es una cuenta del portal }
+  # ---------------------------------------------------------------- consulta inicial (F10)
+  /consultas:
+    get:
+      summary: Consultas iniciales, de la más reciente a la más antigua (personal)
+      parameters:
+        - { in: query, name: estado, schema: { type: string, enum: [ABIERTA, CONTRATADA, NO_CONTRATADA, REMITIDA] } }
+      responses:
+        "200": { description: Lista de consultas }
+    post:
+      summary: Registra una consulta y revisa el conflicto de intereses (personal)
+      description: |
+        Responde { consulta, avisos }. avisos dice si la contraparte ya es cliente de la firma (mismo documento o
+        nombre, sin importar tildes, mayúsculas ni puntuación) o si quien consulta ya es cliente.
+      responses:
+        "201": { description: "{ consulta, avisos }" }
+        "422": { description: Datos inválidos (nombre y asunto obligatorios; documento con tipo y número) }
+  /consultas/{id}:
+    get:
+      summary: Una consulta con sus avisos de conflicto
+      responses:
+        "200": { description: "{ consulta, avisos }" }
+  /consultas/{id}/contratacion:
+    post:
+      summary: Contrató; crea su ficha de cliente o enlaza la existente con el mismo documento (ADMIN, SOCIO, ABOGADO, ADMINISTRATIVO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ciudad, idSede]
+              properties:
+                ciudad: { type: string, maxLength: 60 }
+                idSede: { type: integer }
+                direccion: { type: string, maxLength: 150 }
+      responses:
+        "200": { description: Consulta CONTRATADA con idCliente }
+        "409": { description: La consulta ya estaba cerrada }
+        "422": { description: La consulta no tiene documento }
+  /consultas/{id}/cierre:
+    post:
+      summary: No contrató o se remitió (con motivo)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [estado, motivo]
+              properties:
+                estado: { type: string, enum: [NO_CONTRATADA, REMITIDA] }
+                motivo: { type: string, maxLength: 300 }
+      responses:
+        "200": { description: Consulta cerrada }
+        "409": { description: La consulta ya estaba cerrada }
+components:
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string }
+              campos: { type: object, additionalProperties: { type: string } }
+  schemas:
+    ClienteSolicitud:
+      type: object
+      required: [tipoPersona, tipoDocumento, numeroDocumento, nombre, ciudad, idSede]
+      properties:
+        tipoPersona: { type: string, enum: [NATURAL, JURIDICA] }
+        tipoDocumento: { type: string, enum: [CC, CE, NIT, PAS], description: JURIDICA siempre con NIT; NATURAL nunca con NIT }
+        numeroDocumento: { type: string, description: 5 a 15 dígitos (pasaporte también letras), sin dígito de verificación }
+        nombre: { type: string, maxLength: 150 }
+        email: { type: string, format: email }
+        telefono: { type: string, maxLength: 20 }
+        direccion: { type: string, maxLength: 150 }
+        ciudad: { type: string, maxLength: 60 }
+        idSede: { type: integer }
+    Cliente:
+      allOf:
+        - $ref: '#/components/schemas/ClienteSolicitud'
+        - type: object
+          properties:
+            idCliente: { type: integer }
+            creado: { type: string, format: date }
+
+    AbogadoSolicitud:
+      type: object
+      required: [idPersona, nombres, apellidos, email, idCargo, idSede, tarjetaProfesional]
+      properties:
+        idPersona: { type: integer, format: int64, description: Cédula }
+        nombres: { type: string, maxLength: 60 }
+        apellidos: { type: string, maxLength: 60 }
+        email: { type: string, format: email, description: Único; se guarda en minúsculas }
+        telefono: { type: string }
+        idCargo: { type: integer, description: Debe ser un cargo de abogado }
+        idSede: { type: integer }
+        idArea: { type: integer, nullable: true }
+        tarjetaProfesional: { type: string, pattern: '^[0-9]{3,10}$', description: Única }
+        tarifaHora: { type: number, minimum: 0 }
+        fechaIngreso: { type: string, format: date, description: Por defecto, hoy }
+        activo: { type: boolean, default: true }
+    Abogado:
+      allOf:
+        - $ref: '#/components/schemas/AbogadoSolicitud'
+        - type: object
+          properties:
+            cargo: { type: string }
+            sede: { type: string }
+            area: { type: string }
+
+    Sede:
+      type: object
+      properties:
+        idSede: { type: integer }
+        nombre: { type: string }
+        ciudad: { type: string }
+        direccion: { type: string }
+        telefono: { type: string }
+        esPrincipal: { type: boolean }
+    Cargo:
+      type: object
+      properties: { idCargo: { type: integer }, codigo: { type: string }, nombre: { type: string }, esAbogado: { type: boolean } }
+    AreaPractica:
+      type: object
+      properties: { idArea: { type: integer }, codigoRama: { type: string }, nombre: { type: string }, idDirector: { type: integer, format: int64 } }

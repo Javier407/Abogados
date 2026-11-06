@@ -1,0 +1,143 @@
+<div class="modulo-container">
+
+  <div class="page-header">
+    <h1>Clientes</h1>
+    <p>Personas y empresas que la firma representa</p>
+  </div>
+
+  @if (mensaje) { <div class="alerta alerta-exito">{{ mensaje }}</div> }
+  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+
+  <div class="card">
+    <div class="card-header"><h2>{{ editandoId ? 'Editar cliente ' + editandoId : 'Registrar cliente' }}</h2></div>
+    <div class="card-body">
+      <form #form="ngForm" (ngSubmit)="guardar(form)" novalidate>
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label class="form-label" for="tipoPersona">Tipo de persona <span class="requerido">*</span></label>
+            <select id="tipoPersona" class="form-input" name="tipoPersona" [(ngModel)]="cliente.tipoPersona"
+              (ngModelChange)="cambioTipoPersona()" required>
+              <option value="NATURAL">Natural</option>
+              <option value="JURIDICA">Jurídica</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="tipoDocumento">Tipo de documento <span class="requerido">*</span></label>
+            <select id="tipoDocumento" class="form-input" name="tipoDocumento" [(ngModel)]="cliente.tipoDocumento" required>
+              @if (cliente.tipoPersona === 'JURIDICA') {
+                <option value="NIT">NIT</option>
+              } @else {
+                <option value="CC">Cédula de ciudadanía</option>
+                <option value="CE">Cédula de extranjería</option>
+                <option value="PAS">Pasaporte</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="numeroDocumento">Número de documento <span class="requerido">*</span></label>
+            <input id="numeroDocumento" class="form-input" name="numeroDocumento" [(ngModel)]="cliente.numeroDocumento"
+              #doc="ngModel" required [pattern]="cliente.tipoDocumento === 'PAS' ? '[A-Za-z0-9]{5,15}' : '[0-9]{5,15}'"
+              [class.input-error]="doc.invalid && (doc.touched || enviado)" placeholder="Sin puntos ni dígito de verificación" />
+            @if (doc.invalid && (doc.touched || enviado)) {
+              <span class="error-msg">Entre 5 y 15 {{ cliente.tipoDocumento === 'PAS' ? 'letras o números' : 'dígitos' }}</span>
+            }
+          </div>
+
+          <div class="form-group form-group-full">
+            <label class="form-label" for="nombre">{{ cliente.tipoPersona === 'JURIDICA' ? 'Razón social' : 'Nombre completo' }} <span class="requerido">*</span></label>
+            <input id="nombre" class="form-input" name="nombre" [(ngModel)]="cliente.nombre" #nombre="ngModel"
+              required maxlength="150" [class.input-error]="nombre.invalid && (nombre.touched || enviado)" />
+            @if (nombre.invalid && (nombre.touched || enviado)) { <span class="error-msg">El nombre es obligatorio</span> }
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="email">Correo</label>
+            <input id="email" class="form-input" type="email" name="email" [(ngModel)]="cliente.email" #email="ngModel" email
+              [class.input-error]="email.invalid && (email.touched || enviado)" />
+            @if (email.invalid && (email.touched || enviado)) { <span class="error-msg">Correo no válido</span> }
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="telefono">Teléfono</label>
+            <input id="telefono" class="form-input" name="telefono" [(ngModel)]="cliente.telefono" maxlength="20" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="direccion">Dirección</label>
+            <input id="direccion" class="form-input" name="direccion" [(ngModel)]="cliente.direccion" maxlength="150" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="ciudad">Ciudad <span class="requerido">*</span></label>
+            <input id="ciudad" class="form-input" name="ciudad" [(ngModel)]="cliente.ciudad" #ciudad="ngModel" required
+              [class.input-error]="ciudad.invalid && (ciudad.touched || enviado)" />
+            @if (ciudad.invalid && (ciudad.touched || enviado)) { <span class="error-msg">La ciudad es obligatoria</span> }
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="idSede">Sede que lo atiende <span class="requerido">*</span></label>
+            <select id="idSede" class="form-input" name="idSede" [(ngModel)]="cliente.idSede" required>
+              @for (s of sedes; track s.idSede) { <option [ngValue]="s.idSede">{{ s.nombre }}</option> }
+            </select>
+          </div>
+
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="guardando">
+            {{ guardando ? 'Guardando...' : (editandoId ? 'Guardar cambios' : 'Registrar cliente') }}
+          </button>
+          <button type="button" class="btn btn-secondary" (click)="cancelar(form)">
+            {{ editandoId ? 'Cancelar' : 'Limpiar' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Clientes registrados ({{ clientes.length }})</h2></div>
+    <div class="card-body">
+      <div class="filtros">
+        <input class="form-input" type="search" [(ngModel)]="busqueda" (keyup.enter)="cargar()"
+          placeholder="Buscar por nombre o documento y pulsar Enter" aria-label="Buscar clientes" />
+        <button class="btn btn-secondary" type="button" (click)="cargar()">Buscar</button>
+      </div>
+
+      @if (cargando) {
+        <div class="empty-state">Cargando clientes...</div>
+      } @else if (clientes.length === 0) {
+        <div class="empty-state">No hay clientes que coincidan.</div>
+      } @else {
+        <div class="tabla-wrapper">
+          <table class="tabla">
+            <thead>
+              <tr><th>Id</th><th>Nombre</th><th>Documento</th><th>Contacto</th><th>Ciudad</th><th>Sede</th><th>Desde</th><th></th></tr>
+            </thead>
+            <tbody>
+              @for (c of clientes; track c.idCliente) {
+                <tr>
+                  <td><span class="badge badge-primary">#{{ c.idCliente }}</span></td>
+                  <td class="titulo-celda">{{ c.nombre }}<br><span class="badge badge-muted">{{ etiqueta(c.tipoPersona) }}</span></td>
+                  <td class="mono">{{ c.tipoDocumento }} {{ c.numeroDocumento }}</td>
+                  <td>{{ c.email }}<br>{{ c.telefono }}</td>
+                  <td>{{ c.ciudad }}</td>
+                  <td>{{ nombreSede(c.idSede) }}</td>
+                  <td class="fecha-celda">{{ c.creado | date:'dd/MM/yyyy' }}</td>
+                  <td class="acciones-celda">
+                    <button class="btn btn-secondary btn-sm" type="button" (click)="editar(c)">Editar</button>
+                    <button class="btn btn-danger btn-sm" type="button" (click)="eliminar(c)">Eliminar</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+
+</div>

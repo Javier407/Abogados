@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: identidad
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gabinete}
+    username: ${DB_USER:svc_identidad}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 4
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+  shutdown: graceful
+  # Los errores nunca devuelven trazas ni mensajes internos
+  error:
+    include-stacktrace: never
+    include-message: never
+
+jwt:
+  llave-privada: ${JWT_LLAVE_PRIVADA:}
+  vigencia: PT15M               # token de acceso corto; la sesión sigue con el refresh token (F9)
+
+sesiones:
+  refresco: PT12H               # vida de cada refresh token (se renueva al usarlo)
+  maximo: P7D                   # duración máxima de una sesión aunque se renueve
+  cookie-segura: ${COOKIE_SEGURA:true}   # cookie solo por HTTPS; false únicamente para probar por HTTP
+
+# Claves de los servicios internos para pedir su token ("procesos=...,gabinete=..."). Vienen de infra/.env.
+servicios:
+  claves: ${SERVICIOS_CLAVES:}
+
+management:
+  endpoints.web.exposure.include: health
+  endpoint.health.probes.enabled: true
+  # Sin RabbitMQ identidad sigue sirviendo (solo no salen los avisos de seguridad): no cuenta para la salud.
+  health.rabbit.enabled: false
+
+# Verificación en dos pasos (F13). obligatorio-roles: roles que deben activarla para entrar (p. ej. ADMIN,SOCIO).
+# clave-cifrado: llave AES de 32 bytes en Base64 para guardar los secretos cifrados (solo en infra/.env).
+mfa:
+  obligatorio-roles: ${MFA_OBLIGATORIO_ROLES:}
+  clave-cifrado: ${MFA_CLAVE_CIFRADO:}
+
+# Exchange compartido de eventos: identidad publica cuenta.seguridad (F15).
+eventos:
+  exchange: gabinete.eventos

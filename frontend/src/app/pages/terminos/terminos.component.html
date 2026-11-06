@@ -1,0 +1,74 @@
+<div class="modulo-container">
+
+  <div class="page-header">
+    <h1>Términos</h1>
+    <p>Plazos de los procesos contados en días hábiles judiciales (sin fines de semana, festivos, Semana Santa ni vacancia)</p>
+  </div>
+
+  @if (mensaje) { <div class="alerta alerta-exito">{{ mensaje }}</div> }
+  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+
+  <div class="filtros">
+    <select class="form-input" [(ngModel)]="situacion" (ngModelChange)="cargar()" aria-label="Situación">
+      <option value="">Todas las situaciones</option>
+      @for (s of situaciones; track s) { <option [value]="s">{{ etiqueta(s) }}</option> }
+    </select>
+    <label class="resumen-chip">
+      <input type="checkbox" [(ngModel)]="soloMios" (ngModelChange)="cargar()" [disabled]="!sesion.idPersona()" />
+      Solo míos {{ sesion.persona() ? '(' + sesion.persona()!.nombres + ')' : '' }}
+    </label>
+    <button class="btn btn-primary" type="button" (click)="revisar()" [disabled]="revisando" aria-describedby="ayudaRevision">
+      {{ revisando ? 'Revisando...' : 'Enviar avisos ahora' }}
+    </button>
+    <span id="ayudaRevision" class="form-ayuda">La revisión se hace sola cada día hábil a las 7:00.</span>
+  </div>
+
+  <div class="resumen-bar">
+    <span class="resumen-chip"><span class="punto punto-vencido"></span> Vencidos: <strong>{{ contar('VENCIDO') }}</strong></span>
+    <span class="resumen-chip"><span class="punto punto-por-vencer"></span> Por vencer (≤ 5 días): <strong>{{ contar('POR_VENCER') }}</strong></span>
+    <span class="resumen-chip"><span class="punto punto-al-dia"></span> Al día: <strong>{{ contar('AL_DIA') }}</strong></span>
+    <span class="resumen-chip">Cumplidos: <strong>{{ contar('CUMPLIDO') }}</strong></span>
+  </div>
+
+  @if (cargando) {
+    <div class="empty-state">Cargando términos...</div>
+  } @else if (terminos.length === 0) {
+    <div class="empty-state">No hay términos con esos filtros.</div>
+  } @else {
+    <div class="tabla-wrapper">
+      <table class="tabla">
+        <thead>
+          <tr><th>Vence</th><th>Situación</th><th>Término</th><th>Proceso</th><th>Responsable</th><th>Notificado</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (t of terminos; track t.idTermino) {
+            <tr>
+              <td class="fecha-celda"><strong>{{ t.fechaVencimiento | date:'EEE dd/MM/yyyy' }}</strong></td>
+              <td>
+                <span class="badge"
+                  [class.badge-danger]="t.situacion === 'VENCIDO'"
+                  [class.badge-warning]="t.situacion === 'POR_VENCER'"
+                  [class.badge-success]="t.situacion === 'AL_DIA'"
+                  [class.badge-muted]="t.situacion === 'CUMPLIDO'">{{ etiqueta(t.situacion) }}</span>
+                @if (t.situacion !== 'CUMPLIDO') { <br><small>{{ textoRestantes(t.diasHabilesRestantes) }}</small> }
+              </td>
+              <td class="titulo-celda">{{ t.descripcion }}<br><small>{{ t.diasHabiles }} días hábiles</small></td>
+              <td>
+                <a class="mono" [routerLink]="['/procesos', t.idProceso, 'editar']">{{ t.radicadoLegible }}</a>
+                <br><small>{{ t.rama }} · {{ t.asunto }}</small>
+              </td>
+              <td>{{ nombre(t.idResponsable) }}</td>
+              <td class="fecha-celda">{{ t.fechaInicio | date:'dd/MM/yyyy' }}</td>
+              <td class="acciones-celda">
+                @if (t.estado === 'PENDIENTE') {
+                  <button class="btn btn-secondary btn-sm" type="button" (click)="cumplir(t)">Cumplido</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+</div>

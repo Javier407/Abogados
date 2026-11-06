@@ -1,0 +1,94 @@
+<div class="modulo-container">
+
+  <div class="page-header">
+    <h1>Peritos</h1>
+    <p>Expertos para los dictámenes de las pruebas periciales</p>
+  </div>
+
+  @if (mensaje) { <div class="alerta alerta-exito">{{ mensaje }}</div> }
+  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+
+  <div class="card">
+    <div class="card-header"><h2>{{ editandoId ? 'Editar perito' : 'Registrar perito' }}</h2></div>
+    <div class="card-body">
+      <form #form="ngForm" (ngSubmit)="guardar(form)" novalidate>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="pNombre">Nombre <span class="requerido">*</span></label>
+            <input id="pNombre" class="form-input" name="nombre" [(ngModel)]="perito.nombre" #n="ngModel" required maxlength="120"
+              [class.input-error]="n.invalid && (n.touched || enviado)" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pEsp">Especialidad <span class="requerido">*</span></label>
+            <input id="pEsp" class="form-input" name="especialidad" [(ngModel)]="perito.especialidad" #e="ngModel" required maxlength="80"
+              [class.input-error]="e.invalid && (e.touched || enviado)" placeholder="Ej: Avalúos inmobiliarios" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pProf">Profesión <span class="requerido">*</span></label>
+            <input id="pProf" class="form-input" name="profesion" [(ngModel)]="perito.profesion" #pr="ngModel" required maxlength="80"
+              [class.input-error]="pr.invalid && (pr.touched || enviado)" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pReg">Registro / matrícula</label>
+            <input id="pReg" class="form-input" name="registro" [(ngModel)]="perito.registro" maxlength="30" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pCiudad">Ciudad <span class="requerido">*</span></label>
+            <input id="pCiudad" class="form-input" name="ciudad" [(ngModel)]="perito.ciudad" #c="ngModel" required maxlength="60"
+              [class.input-error]="c.invalid && (c.touched || enviado)" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pTel">Teléfono</label>
+            <input id="pTel" class="form-input" name="telefono" [(ngModel)]="perito.telefono" maxlength="20" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pEmail">Correo</label>
+            <input id="pEmail" class="form-input" type="email" name="email" [(ngModel)]="perito.email" email maxlength="120" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pTarifa">Tarifa por dictamen (COP)</label>
+            <input id="pTarifa" class="form-input" type="number" name="tarifaDictamen" [(ngModel)]="perito.tarifaDictamen" min="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pCalif">Calificación</label>
+            <select id="pCalif" class="form-input" name="calificacion" [(ngModel)]="perito.calificacion">
+              <option [ngValue]="null">Sin calificar</option>
+              @for (n of [5, 4, 3, 2, 1]; track n) { <option [ngValue]="n">{{ estrellas(n) }} ({{ n }})</option> }
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">{{ editandoId ? 'Guardar cambios' : 'Registrar perito' }}</button>
+          <button type="button" class="btn btn-secondary" (click)="cancelar(form)">{{ editandoId ? 'Cancelar' : 'Limpiar' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="filtros">
+    <input class="form-input" type="search" [(ngModel)]="busqueda" (keyup.enter)="cargar()" placeholder="Nombre o especialidad (Enter)"
+      aria-label="Buscar peritos" />
+  </div>
+
+  <div class="tabla-wrapper">
+    <table class="tabla">
+      <thead><tr><th>Perito</th><th>Especialidad</th><th>Ciudad</th><th>Contacto</th><th>Dictamen</th><th>Calificación</th><th></th></tr></thead>
+      <tbody>
+        @for (p of peritos; track p.idPerito) {
+          <tr>
+            <td class="titulo-celda">{{ p.nombre }}<br><small>{{ p.profesion }}{{ p.registro ? ' · ' + p.registro : '' }}</small></td>
+            <td>{{ p.especialidad }}</td>
+            <td>{{ p.ciudad }}</td>
+            <td><small>{{ p.telefono }}<br>{{ p.email }}</small></td>
+            <td class="valor-celda">{{ p.tarifaDictamen != null ? (p.tarifaDictamen | currency:'COP':'symbol-narrow':'1.0-0') : '—' }}</td>
+            <td [attr.aria-label]="p.calificacion ? p.calificacion + ' de 5' : 'sin calificar'">{{ estrellas(p.calificacion) }}</td>
+            <td class="acciones-celda"><button class="btn btn-secondary btn-sm" type="button" (click)="editar(p)">Editar</button></td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" class="empty-state">No hay peritos con esa búsqueda.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+</div>

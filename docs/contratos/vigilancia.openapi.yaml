@@ -1,0 +1,134 @@
+openapi: 3.0.3
+info:
+  title: Servicio vigilancia
+  version: 0.1.0
+  description: |
+    Radicados que se consultan en la Rama Judicial (ADR 0005). Cada radicado tiene una fuente:
+    MANUAL (no se consulta), SIMULADA (pruebas) o PORTAL_HTTP (portal real, máximo cada 12 h).
+    Las actuaciones nuevas se publican como actuacion.detectada. A través del gateway las rutas llevan /api.
+
+    Errores: `{ "error": "mensaje" }` (y `campos` si falla la validación de la petición).
+    404 radicado no vigilado · 422 regla (radicado mal escrito, fuente no disponible, frecuencia) · 400 petición inválida.
+servers:
+  - url: http://localhost:8091/api
+    description: Gateway
+
+paths:
+  /vigilancia/fuentes:
+    get:
+      summary: Fuentes disponibles en este servidor
+      responses:
+        '200': { description: Fuentes, content: { application/json: { schema: { type: object, properties: { disponibles: { type: array, items: { $ref: '#/components/schemas/Fuente' } } } } } } }
+  /vigilancia/radicados:
+    get:
+      summary: Radicados vigilados (primero los que tienen fallos)
+      responses:
+        '200': { description: Radicados, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/RadicadoVigilado' } } } } }
+  /vigilancia/radicados/{radicado}:
+    put:
+      summary: Cambia la fuente, la frecuencia o si está activo
+      description: Al cambiar de fuente se reinicia la línea base (la siguiente consulta no avisa).
+      parameters: [ { $ref: '#/components/parameters/Radicado' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fuente]
+              properties:
+                fuente: { $ref: '#/components/schemas/Fuente' }
+                frecuenciaHoras: { type: integer, minimum: 1, maximum: 168, default: 24, description: PORTAL_HTTP mínimo 12 }
+                activo: { type: boolean, default: true }
+      responses:
+        '200': { description: Configurado, content: { application/json: { schema: { $ref: '#/components/schemas/RadicadoVigilado' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /vigilancia/radicados/{radicado}/consultar:
+    post:
+      summary: Consulta ya el radicado y publica las actuaciones nuevas
+      parameters: [ { $ref: '#/components/parameters/Radicado' } ]
+      responses:
+        '200':
+          description: Resultado (exitosa=false si la fuente falló o no encontró el radicado)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  radicado: { type: string }
+                  exitosa: { type: boolean }
+                  actuaciones: { type: integer }
+                  nuevas: { type: integer }
+                  lineaBase: { type: boolean, description: Primera consulta con esta fuente; no se avisa }
+                  error: { type: string }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /vigilancia/radicados/{radicado}/consultas:
+    get:
+      summary: Últimas 20 consultas del radicado
+      parameters: [ { $ref: '#/components/parameters/Radicado' } ]
+      responses:
+        '200': { description: Historial }
+  /vigilancia/radicados/{radicado}/simuladas:
+    post:
+      summary: Agrega una actuación a la fuente simulada (solo radicados con fuente SIMULADA)
+      parameters: [ { $ref: '#/components/parameters/Radicado' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fecha, actuacion]
+              properties:
+                fecha: { type: string, format: date }
+                actuacion: { type: string, minLength: 3, maxLength: 200 }
+                anotacion: { type: string, maxLength: 1000 }
+      responses:
+        '201': { description: Agregada }
+        '422': { $ref: '#/components/responses/Error' }
+  /vigilancia/sincronizar:
+    post:
+      summary: Agrega como MANUAL los procesos vigilados que aún no estén (también se hace al arrancar)
+      responses:
+        '200': { description: Cuántos se agregaron }
+
+components:
+  parameters:
+    Radicado:
+      name: radicado
+      in: path
+      required: true
+      schema: { type: string, example: '11001400301520260077700' }
+      description: 23 dígitos (se aceptan guiones)
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string }
+              campos: { type: object, additionalProperties: { type: string } }
+  schemas:
+    Fuente: { type: string, enum: [MANUAL, SIMULADA, PORTAL_HTTP] }
+    RadicadoVigilado:
+      type: object
+      properties:
+        radicado: { type: string }
+        radicadoLegible: { type: string }
+        idProceso: { type: integer }
+        fuente: { $ref: '#/components/schemas/Fuente' }
+        frecuenciaHoras: { type: integer }
+        activo: { type: boolean }
+        ultimaConsulta: { type: string, format: date-time, nullable: true }
+        fallosConsecutivos: { type: integer }
+        enAlerta: { type: boolean, description: 3 o más fallos seguidos }
+        despacho: { type: string, nullable: true }
+        ultimaActuacion: { type: string, format: date, nullable: true }
+        ultimoError: { type: string, nullable: true }
+        lineaBaseHecha: { type: boolean }

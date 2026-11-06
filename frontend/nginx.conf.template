@@ -1,0 +1,110 @@
+# Sirve la aplicación Angular y reenvía /api al gateway (mismo origen: no hace falta CORS).
+# Plantilla: la imagen oficial de nginx reemplaza ${URL_PUBLICA} al arrancar (variable de entorno).
+#
+# HTTPS (F9): el certificado lo pone "tailscale serve" en la VM, que recibe https://<vm>.ts.net y lo reenvía al
+# puerto 81 de este contenedor (publicado solo en 127.0.0.1). El puerto 80 (http://IP:8090) redirige a esa
+# dirección cuando URL_PUBLICA está definida; si está vacía, sigue sirviendo la app por HTTP (sin HTTPS aún).
+map "$server_port|${URL_PUBLICA}" $a_https {
+  default      0;
+  "~^80\|https" 1;
+}
+# Por el puerto 81 la petición llegó cifrada (tailscale serve): el gateway debe saber que el origen es https.
+map $server_port $proto_original {
+  81      https;
+  default $scheme;
+}
+# IP real del cliente. Por el puerto 81 solo llega tailscale serve (publicado en 127.0.0.1), que agrega la IP del
+# equipo de la VPN al final de X-Forwarded-For: se toma la ÚLTIMA (las anteriores las pudo escribir el cliente).
+# Por el puerto 80 la conexión llega enmascarada por Docker y se usa la dirección de la conexión.
+map $http_x_forwarded_for $xff_ultima {
+  "~(?<ultima>[^,\s]+)\s*$" $ultima;
+  default "";
+}
+map "$server_port|$xff_ultima" $ip_cliente {
+  "~^81\|(?<ip>.+)$" $ip;
+  default $remote_addr;
+}
+
+server {
+  listen 80;
+  listen 81;
+  server_name _;
+
+  # El gateway se resuelve en cada petición con el DNS de Docker (válido 10 s): si su contenedor se recrea y cambia
+  # de IP, nginx no sigue enviando al contenedor viejo (proxy_pass con un nombre fijo se resuelve solo al arrancar).
+  resolver 127.0.0.11 valid=10s ipv6=off;
+  set $gateway http://gateway:8080;
+
+  if ($a_https) {
+    return 301 ${URL_PUBLICA}$request_uri;
+  }
+  root /usr/share/nginx/html;
+  index index.html;
+
+  server_tokens off;              # no anunciar la versión de nginx
+  client_max_body_size 1m;        # la API solo recibe JSON pequeños
+  include /etc/nginx/seguridad.inc;
+
+  # Cabeceras hacia el gateway (proxy-api.inc, incluido en cada location porque nginx no hereda
+  # proxy_set_header si la location define los suyos):
+  # - Host con el puerto: el navegador manda Origin http://IP:8090 y el gateway compara ambos; sin el
+  #   puerto cree que es otro sitio y rechaza la petición por CORS (403).
+  # - La IP real del cliente reemplaza (no se agrega a) lo que traiga la petición: la bitácora de
+  #   ingresos de identidad no se puede falsificar enviando X-Forwarded-For.
+
+  # Avisos en vivo (Server-Sent Events): sin búfer y con conexión larga.
+  # El token viaja en la URL (EventSource no permite cabeceras): esta ruta no se registra en el log.
+  location /api/notificaciones/stream {
+    access_log off;
+    include /etc/nginx/proxy-api.inc;
+    proxy_pass $gateway;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 1h;
+  }
+
+  # Borradores del asistente: el modelo local escribe por partes y puede tardar varios minutos
+  location /api/asistente/ {
+    include /etc/nginx/proxy-api.inc;
+    proxy_pass $gateway;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_buffering off;
+    proxy_read_timeout 10m;
+  }
+
+  # Expediente digital (F10): solo esta ruta acepta archivos grandes (20 MB y un margen para el formulario).
+  location ~ ^/api/procesos/[0-9]+/documentos$ {
+    client_max_body_size 21m;
+    include /etc/nginx/proxy-api.inc;
+    proxy_pass $gateway;
+    proxy_request_buffering off;
+    proxy_read_timeout 120s;
+  }
+
+  location /api/ {
+    include /etc/nginx/proxy-api.inc;
+    proxy_pass $gateway;
+    proxy_read_timeout 30s;
+  }
+
+  # Rutas de Angular (/procesos, /clientes...): siempre index.html, que no se guarda en caché
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  location = /index.html {
+    include /etc/nginx/seguridad.inc;
+    add_header Cache-Control "no-cache";
+  }
+
+  # Archivos con hash en el nombre: se pueden guardar en caché mucho tiempo
+  location ~* \.(js|css|woff2?|ttf|svg|png|ico)$ {
+    include /etc/nginx/seguridad.inc;
+    expires 30d;
+    add_header Cache-Control "public, immutable";
+    try_files $uri =404;
+  }
+}

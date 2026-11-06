@@ -1,0 +1,264 @@
+openapi: 3.0.3
+info:
+  title: Servicio identidad
+  version: 0.1.0
+  description: |
+    Inicio de sesión y tokens (F5, ADR 0004). A través del gateway las rutas llevan el prefijo /api.
+
+    - POST /auth/login, /auth/renovar y /auth/salir son las únicas rutas sin token de acceso (las dos últimas
+      usan la cookie de la sesión).
+    - El token de acceso es un JWT RS256 de 15 minutos (F9) con los claims iss=gestion-juridica, sub=documento,
+      jti, usuario, nombre, roles, idCliente (solo cuentas del portal) y clave_temporal (debe cambiar la contraseña:
+      el gateway y los servicios solo le permiten /auth/yo y /auth/clave).
+    - El refresh token (F9) va en la cookie gj_refresco: HttpOnly, SameSite=Strict, Path=/api/auth y Secure con
+      HTTPS. Dura 12 h, se gasta al renovar (rotación) y la sesión dura como máximo 7 días. Si un refresh token ya
+      gastado se vuelve a presentar, se revoca la sesión completa, incluidos sus tokens de acceso vigentes.
+    - /auth/yo y /auth/clave usan la identidad del token (cabecera X-Usuario-Id, que el filtro del servicio
+      reescribe con el token verificado).
+
+    Errores: `{ "error": "mensaje" }` (y `campos` si falla la validación de la petición).
+servers:
+  - url: http://localhost:8091/api
+    description: Gateway
+
+paths:
+  /auth/login:
+    post:
+      summary: Inicia sesión con usuario (o correo) y contraseña
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuario, clave]
+              properties:
+                usuario: { type: string, maxLength: 120 }
+                clave: { type: string, maxLength: 200 }
+      responses:
+        "200":
+          description: Sesión iniciada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Sesion" }
+        "400": { description: Faltan datos }
+        "401": { description: Usuario o contraseña incorrectos (mensaje genérico, no dice cuál falló) }
+        "423":
+          description: Cuenta bloqueada tras 5 fallos seguidos
+          headers:
+            Retry-After: { schema: { type: integer }, description: Segundos hasta el desbloqueo }
+        "429":
+          description: Más de 100 intentos (configurable) desde la misma IP en 10 minutos
+          headers:
+            Retry-After: { schema: { type: integer } }
+  /auth/renovar:
+    post:
+      summary: Token de acceso nuevo a cambio del refresh token de la cookie (que se gasta y se reemplaza)
+      security: []
+      parameters:
+        - { in: header, name: X-Requested-With, required: true, schema: { type: string },
+            description: "Protección CSRF: otra página no puede enviarla sin permiso de CORS" }
+        - { in: cookie, name: gj_refresco, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Sesión renovada (Set-Cookie con el refresh token nuevo)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Sesion" }
+        "401": { description: La sesión no existe, venció, fue cerrada o el refresh token ya se había usado (se borra la cookie) }
+        "403": { description: Falta X-Requested-With }
+  /auth/salir:
+    post:
+      summary: Cierra la sesión en el servidor (refresh token y tokens de acceso vigentes dejan de servir)
+      security: []
+      parameters:
+        - { in: header, name: X-Requested-With, required: true, schema: { type: string } }
+        - { in: cookie, name: gj_refresco, required: false, schema: { type: string } }
+      responses:
+        "204": { description: Sesión cerrada (Set-Cookie con Max-Age=0); cerrar dos veces no es error }
+  /auth/yo:
+    get:
+      summary: Perfil de la persona conectada
+      responses:
+        "200":
+          description: Perfil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Perfil" }
+        "401": { description: Sin token }
+  /auth/login/mfa:
+    post:
+      summary: Segundo paso del inicio de sesión (F13)
+      description: |
+        Si la cuenta tiene la verificación en dos pasos, /auth/login con la contraseña correcta responde 200 con
+        { mfaRequerido: true, configurarMfa, desafio } y sin token ni cookie. Aquí se envía el desafío (5 min) con el
+        código de la app (6 dígitos) o uno de recuperación (xxxx-xxxx). Un código no sirve dos veces; los incorrectos
+        cuentan para el bloqueo de la cuenta (5 fallos).
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [desafio, codigo], properties: { desafio: { type: string }, codigo: { type: string } } } } } }
+      responses:
+        '200': { description: 'Sesión, como /auth/login (token y cookie)' }
+        '401': { description: Código incorrecto o desafío vencido }
+        '423': { description: Cuenta bloqueada }
+        '429': { description: Demasiados intentos desde la IP }
+  /auth/login/mfa/inicio:
+    post:
+      summary: 'Con configurarMfa: true, genera el secreto (secreto, uri otpauth) con el desafío, sin token'
+  /auth/login/mfa/activacion:
+    post:
+      summary: 'Activa con el desafío y el código; abre la sesión y devuelve codigosRecuperacion (una sola vez)'
+  /auth/mfa:
+    get:
+      summary: 'Estado de la propia verificación: { activo, desde, codigosRestantes, obligatorio }'
+  /auth/mfa/inicio:
+    post:
+      summary: 'Genera el secreto sin activar: { secreto (Base32), uri (otpauth://totp/...) }. 409 si ya está activa.'
+  /auth/mfa/activacion:
+    post:
+      summary: 'Confirma con { codigo } y devuelve { codigos } de recuperación (10, una sola vez). 422 si el código no coincide.'
+  /auth/mfa/codigos:
+    post:
+      summary: 'Con { clave }, reemplaza los códigos de recuperación'
+  /auth/mfa/desactivacion:
+    post:
+      summary: 'Con { clave, codigo } la desactiva. 422 si el rol la exige (MFA_OBLIGATORIO_ROLES).'
+  /usuarios/mfa:
+    get:
+      summary: 'Documentos de las cuentas con la verificación activa (solo ADMIN)'
+  /usuarios/{id}/mfa/reinicio:
+    post:
+      summary: 'El administrador la quita (teléfono y códigos perdidos) y corta las sesiones de la persona (solo ADMIN)'
+  /auth/clave:
+    post:
+      summary: Cambia la contraseña de la persona conectada
+      description: Mínimo 10 caracteres con letras y números; no puede contener el usuario ni el documento.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [actual, nueva]
+              properties:
+                actual: { type: string }
+                nueva: { type: string, maxLength: 72 }
+      responses:
+        "204": { description: "Contraseña cambiada. Las demás sesiones abiertas de la persona se cierran (la de esta cookie sigue)" }
+        "401": { description: La contraseña actual no coincide }
+        "422": { description: La nueva no cumple la política }
+  /.well-known/jwks.json:
+    get:
+      summary: Llave pública para verificar los tokens (solo la usa el gateway; no se publica por /api)
+      security: []
+      responses:
+        "200": { description: JWK Set con la llave RSA pública }
+
+  # ---------------------------------------------------------------- solo red interna (F9; el gateway no las enruta)
+  /interno/token:
+    post:
+      summary: Token de servicio (rol SERVICIO, solo lectura, 15 min) a cambio de la clave del servicio
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                servicio: { type: string, enum: [procesos, gabinete, notificaciones, vigilancia, asistente-ia] }
+                clave: { type: string, description: "infra/.env (CLAVE_SVC_*), nunca en git" }
+      responses:
+        "200": { description: "{ token, expira }" }
+        "401": { description: Servicio o clave incorrectos }
+  /interno/revocados:
+    get:
+      summary: jti de los tokens de acceso revocados que aún no vencen (el gateway la descarga cada 15 s)
+      security: []
+      responses:
+        "200": { description: Lista de jti }
+  /interno/clientes/{idCliente}/cuentas:
+    get:
+      summary: Cuentas activas del portal de un cliente (para avisarle). Solo con token de servicio
+      parameters:
+        - { in: path, name: idCliente, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: "[{ idUsuario, nombre, email }]" }
+        "403": { description: No es un token de servicio }
+
+  # ---------------------------------------------------------------- administración de cuentas (F8, solo ADMIN)
+  /usuarios:
+    get:
+      summary: Cuentas del sistema (sin contraseñas)
+      responses:
+        "200": { description: Cuentas }
+        "403": { description: No es administrador }
+    post:
+      summary: Crea una cuenta con contraseña temporal; la persona debe cambiarla al entrar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idUsuario, usuario, nombre, email, roles, claveTemporal]
+              properties:
+                idUsuario: { type: integer, format: int64, description: Documento }
+                usuario: { type: string, pattern: '^[a-z0-9._-]{3,30}$' }
+                nombre: { type: string, maxLength: 120 }
+                email: { type: string, format: email }
+                roles: { type: array, items: { type: string, enum: [ADMIN, SOCIO, ABOGADO, DEPENDIENTE, ADMINISTRATIVO, CLIENTE] } }
+                claveTemporal: { type: string, minLength: 10, maxLength: 72 }
+      responses:
+        "201": { description: Creada }
+        "409": { description: Ya existe una cuenta con ese documento, usuario o correo }
+        "422": { description: Datos o contraseña inválidos }
+  /usuarios/{id}:
+    put:
+      summary: Cambia datos, roles y estado. Nadie se quita su propio rol ADMIN; siempre queda un administrador activo
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer, format: int64 } }]
+      responses:
+        "200": { description: Actualizada }
+        "422": { description: Regla incumplida }
+  /usuarios/{id}/clave:
+    post:
+      summary: Restablece la contraseña (temporal), desbloquea y obliga a cambiarla
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer, format: int64 } }]
+      responses:
+        "200": { description: Restablecida }
+  /usuarios/{id}/desbloqueo:
+    post:
+      summary: Quita el bloqueo por intentos fallidos
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer, format: int64 } }]
+      responses:
+        "200": { description: Desbloqueada }
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Sesion:
+      type: object
+      properties:
+        token: { type: string }
+        expira: { type: string, format: date-time }
+        idUsuario: { type: integer, format: int64 }
+        usuario: { type: string }
+        nombre: { type: string }
+        roles:
+          type: array
+          items: { type: string, enum: [ADMIN, SOCIO, ABOGADO, DEPENDIENTE, ADMINISTRATIVO, CLIENTE] }
+        debeCambiarClave: { type: boolean, description: "Clave temporal (F8): el token solo sirve para cambiarla (F9)" }
+        idCliente: { type: integer, nullable: true, description: "Cuentas del portal: la ficha del cliente en gabinete (F9)" }
+    Perfil:
+      type: object
+      properties:
+        idUsuario: { type: integer, format: int64 }
+        usuario: { type: string }
+        nombre: { type: string }
+        email: { type: string }
+        roles: { type: array, items: { type: string } }
+security:
+  - bearer: []

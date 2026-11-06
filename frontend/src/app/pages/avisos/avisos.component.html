@@ -1,0 +1,73 @@
+<div class="modulo-container">
+
+  <div class="page-header">
+    <h1>Avisos</h1>
+    @if (auth.esCliente()) {
+      <p>Novedades de sus procesos y audiencias próximas. Llegan también a su correo; aquí aparecen en vivo.</p>
+    } @else {
+      <p>Términos por vencer y vencidos. Llegan también por correo; aquí aparecen en vivo.</p>
+    }
+  </div>
+
+  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+
+  @if (!sesion.idPersona()) {
+    <div class="empty-state">Los avisos son para el personal de la firma.</div>
+  } @else {
+    @if (telegram) {
+      <div class="card">
+        <div class="card-header"><h2>Avisos por Telegram</h2></div>
+        <div class="card-body">
+          @if (!telegram.configurado) {
+            <p class="form-ayuda">El bot de Telegram todavía no está configurado en el servidor (falta TELEGRAM_TOKEN).</p>
+          } @else if (telegram.vinculado) {
+            <p>Este abogado recibe los avisos también en Telegram (@{{ telegram.bot }}).</p>
+            <button class="btn btn-secondary btn-sm" type="button" (click)="desvincularTelegram()">Desvincular</button>
+          } @else if (vinculo) {
+            <p>Abra este enlace en el teléfono y pulse <strong>Iniciar</strong> en el chat del bot:</p>
+            @if (vinculo.enlace) { <p><a class="btn btn-primary" [href]="vinculo.enlace" target="_blank" rel="noopener">Abrir @{{ vinculo.bot }}</a></p> }
+            <p class="form-ayuda">O envíe al bot el mensaje <code>/start {{ vinculo.codigo }}</code>. El código sirve una vez y por 24 horas.</p>
+            <button class="btn btn-secondary btn-sm" type="button" (click)="cargarTelegram(sesion.idPersona())">Ya lo hice</button>
+          } @else {
+            <p>{{ auth.esCliente() ? 'Reciba estos avisos también en su Telegram.' : 'Reciba los avisos de términos y de actuaciones nuevas en su Telegram.' }}</p>
+            <button class="btn btn-primary btn-sm" type="button" (click)="vincularTelegram()">Vincular Telegram</button>
+          }
+        </div>
+      </div>
+    }
+
+    <div class="filtros">
+      <span class="resumen-chip">Sin leer: <strong>{{ sesion.noLeidos() }}</strong></span>
+      <button class="btn btn-secondary btn-sm" type="button" (click)="leerTodos()" [disabled]="sesion.noLeidos() === 0">
+        Marcar todos como leídos
+      </button>
+    </div>
+
+    @if (cargando && avisos.length === 0) {
+      <div class="empty-state">Cargando avisos...</div>
+    } @else if (avisos.length === 0) {
+      <div class="empty-state">No hay avisos para {{ sesion.persona()?.nombres }}.</div>
+    } @else {
+      <ul class="lista-avisos">
+        @for (a of avisos; track a.idNotificacion) {
+          <li class="aviso" [class.no-leido]="!a.leida" [class.urgente]="a.evento === 'termino.vencido'">
+            <div class="aviso-texto">
+              <strong>{{ a.titulo }}</strong>
+              <span>{{ a.mensaje }}</span>
+              <small>{{ a.creada | date:'EEEE d MMM, h:mm a' }}</small>
+            </div>
+            <div class="acciones-celda">
+              @if (a.referencia.id_proceso) {
+                <a class="btn btn-secondary btn-sm" [routerLink]="enlace(a)" (click)="leer(a)">Ver proceso</a>
+              }
+              @if (!a.leida) {
+                <button class="btn btn-primary btn-sm" type="button" (click)="leer(a)">Leído</button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  }
+
+</div>

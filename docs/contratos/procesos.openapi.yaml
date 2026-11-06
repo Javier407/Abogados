@@ -1,0 +1,821 @@
+openapi: 3.0.3
+info:
+  title: Servicio procesos
+  version: 0.1.0
+  description: |
+    Procesos judiciales identificados por su radicado de 23 dígitos, y los catálogos de ramas,
+    tipos de proceso y despachos. A través del gateway las rutas llevan el prefijo /api
+    (p. ej. GET /api/procesos).
+
+    Errores: el cuerpo siempre es `{ "error": "mensaje" }`; si falla la validación de la petición
+    trae además `campos` con el mensaje de cada campo.
+    - 400: petición mal formada o campos inválidos
+    - 404: el proceso no existe
+    - 409: radicado repetido, o proceso con providencias que se intenta eliminar
+    - 422: regla de negocio (radicado sin 23 dígitos, despacho no registrado, tipo inexistente,
+      fecha futura, cliente o abogado inexistente o inactivo, TERMINADO sin etapa CERRADO...)
+    - 503: el servicio gabinete no responde y no se pudo validar el cliente o el abogado
+servers:
+  - url: http://localhost:8091/api
+    description: Gateway
+
+paths:
+  /procesos:
+    get:
+      summary: Lista procesos (del más reciente al más antiguo)
+      parameters:
+        - { name: estado, in: query, schema: { $ref: '#/components/schemas/EstadoProceso' } }
+        - { name: rama, in: query, schema: { type: string, example: LABORAL }, description: Código de la rama }
+        - { name: idCliente, in: query, schema: { type: integer } }
+        - { name: idAbogado, in: query, schema: { type: integer, format: int64 }, description: Responsable o de apoyo }
+        - { name: q, in: query, schema: { type: string }, description: Busca en radicado (con o sin guiones) y asunto }
+      responses:
+        '200':
+          description: Procesos
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Proceso' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+    post:
+      summary: Registra un proceso
+      description: |
+        Valida el radicado y su despacho, que el radicado no esté registrado y, consultando a gabinete,
+        que el cliente exista y el responsable sea un abogado activo. Guarda al responsable y al cliente
+        como parte del proceso y publica el evento proceso.creado.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ProcesoSolicitud' } } }
+      responses:
+        '201':
+          description: Creado
+          headers: { Location: { schema: { type: string, example: /procesos/31 } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/Proceso' } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  /procesos/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      summary: Consulta un proceso
+      responses:
+        '200': { description: Proceso, content: { application/json: { schema: { $ref: '#/components/schemas/Proceso' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      summary: Actualiza un proceso
+      description: Si cambia el responsable, el anterior queda como abogado de apoyo.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ProcesoSolicitud' } } }
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Proceso' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+    delete:
+      summary: Elimina un proceso sin providencias
+      description: Un proceso con providencias tiene historia judicial; se archiva en lugar de borrarse (409).
+      responses:
+        '204': { description: Eliminado }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /procesos/radicado/{numero}:
+    get:
+      summary: Analiza un radicado sin guardarlo
+      description: Para validar en la interfaz mientras se escribe. Acepta guiones, puntos y espacios.
+      parameters:
+        - { name: numero, in: path, required: true, schema: { type: string, example: 11001-31-03-032-2023-00977-01 } }
+      responses:
+        '200': { description: Desglose, content: { application/json: { schema: { $ref: '#/components/schemas/DesgloseRadicado' } } } }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /catalogos/ramas:
+    get:
+      summary: Ramas del derecho
+      responses:
+        '200': { description: Ramas, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Rama' } } } } }
+  /catalogos/tipos:
+    get:
+      summary: Tipos de proceso
+      parameters: [ { name: rama, in: query, schema: { type: string } } ]
+      responses:
+        '200': { description: Tipos, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/TipoProceso' } } } } }
+  /catalogos/despachos:
+    get:
+      summary: Despachos judiciales (códigos de radicado de ejemplo, a validar con el CSJ)
+      parameters: [ { name: rama, in: query, schema: { type: string } } ]
+      responses:
+        '200': { description: Despachos, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Despacho' } } } } }
+
+  /terminos:
+    get:
+      summary: Agenda de términos con la situación de hoy (F2)
+      parameters:
+        - { name: situacion, in: query, schema: { $ref: '#/components/schemas/Situacion' } }
+        - { name: idResponsable, in: query, schema: { type: integer, format: int64 } }
+        - { name: idProceso, in: query, schema: { type: integer } }
+        - { name: desde, in: query, schema: { type: string, format: date }, description: Vencimiento desde }
+        - { name: hasta, in: query, schema: { type: string, format: date }, description: Vencimiento hasta }
+      responses:
+        '200': { description: Términos ordenados por vencimiento, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Termino' } } } } }
+  /terminos/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer } } ]
+    get:
+      summary: Consulta un término
+      responses:
+        '200': { description: Término, content: { application/json: { schema: { $ref: '#/components/schemas/Termino' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      summary: Quita un término registrado por error
+      responses:
+        '204': { description: Eliminado }
+        '404': { $ref: '#/components/responses/Error' }
+  /terminos/{id}/cumplir:
+    post:
+      summary: Marca el término como cumplido (deja de generar avisos)
+      parameters: [ { name: id, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        '200': { description: Cumplido, content: { application/json: { schema: { $ref: '#/components/schemas/Termino' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /terminos/revision:
+    post:
+      summary: Ejecuta ya la revisión diaria de vencimientos
+      description: |
+        Publica termino.por_vencer (vence en 5 días hábiles o menos) y termino.vencido (venció hace 3 días
+        hábiles o menos) por cada término pendiente. La tarea programada la hace cada día hábil a las 7:00.
+      responses:
+        '200':
+          description: Cuántos avisos se publicaron
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { fecha: { type: string, format: date }, porVencer: { type: integer }, vencidos: { type: integer } }
+  /procesos/{idProceso}/terminos:
+    post:
+      summary: Registra un término; el vencimiento se calcula en días hábiles
+      parameters: [ { name: idProceso, in: path, required: true, schema: { type: integer } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descripcion, fechaInicio, diasHabiles]
+              properties:
+                descripcion: { type: string, maxLength: 150 }
+                fechaInicio: { type: string, format: date, description: Notificación (estado electrónico); no futura }
+                diasHabiles: { type: integer, minimum: 1, maximum: 365 }
+                idProvidencia: { type: integer, description: Debe ser del mismo proceso }
+                idResponsable: { type: integer, format: int64, description: Por defecto, el responsable del proceso }
+      responses:
+        '201': { description: Creado, content: { application/json: { schema: { $ref: '#/components/schemas/Termino' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /calendario:
+    get:
+      summary: Días en que no corren términos (festivos, vacancia judicial, Semana Santa)
+      parameters:
+        - { name: desde, in: query, required: true, schema: { type: string, format: date } }
+        - { name: hasta, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Días inhábiles (los fines de semana no se listan)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    fecha: { type: string, format: date }
+                    descripcion: { type: string }
+                    tipo: { type: string, enum: [FESTIVO, VACANCIA, SEMANA_SANTA] }
+  /calendario/vencimiento:
+    get:
+      summary: Calcula el vencimiento de un término sin guardarlo
+      parameters:
+        - { name: desde, in: query, required: true, schema: { type: string, format: date }, description: Fecha de notificación }
+        - { name: dias, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        '200':
+          description: Vencimiento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { fechaInicio: { type: string, format: date }, diasHabiles: { type: integer }, fechaVencimiento: { type: string, format: date } }
+        '422': { $ref: '#/components/responses/Error' }
+
+  # ---------------------------------------------------------------- expediente (F6)
+  /procesos/{idProceso}/expediente:
+    get:
+      summary: Línea de tiempo (actuaciones, providencias y términos, la más reciente primero) y otras instancias del radicado
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Expediente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lineaDeTiempo:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        fecha: { type: string, format: date }
+                        categoria: { type: string, enum: [ACTUACION, PROVIDENCIA, TERMINO] }
+                        tipo: { type: string, description: 'Tipo de actuación, AUTO/SENTENCIA o PENDIENTE/CUMPLIDO' }
+                        id: { type: integer }
+                        titulo: { type: string }
+                        detalle: { type: string, nullable: true }
+                        origen: { type: string, nullable: true, description: 'FIRMA, MANUAL o VIGILANCIA' }
+                  otrasInstancias:
+                    type: array
+                    items:
+                      type: object
+                      properties: { idProceso: { type: integer }, radicadoLegible: { type: string }, instancia: { type: integer }, despacho: { type: string }, estado: { type: string } }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /procesos/{idProceso}/partes:
+    get:
+      summary: Partes del proceso (primero el cliente)
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Partes, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Parte' } } } } }
+    post:
+      summary: Agrega la contraparte o un tercero y avisa si coincide con un cliente de la firma (conflicto de intereses)
+      description: No bloquea. Si el servicio gabinete no responde, guarda la parte con conflictosVerificados = false.
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ParteSolicitud' } } } }
+      responses:
+        '201': { description: Parte agregada, content: { application/json: { schema: { $ref: '#/components/schemas/ParteRegistrada' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /procesos/{idProceso}/partes/{idParte}:
+    put:
+      summary: Edita una parte (no la del cliente, que se cambia editando el proceso)
+      parameters:
+        - { name: idProceso, in: path, required: true, schema: { type: integer } }
+        - { name: idParte, in: path, required: true, schema: { type: integer } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ParteSolicitud' } } } }
+      responses:
+        '200': { description: Parte editada, content: { application/json: { schema: { $ref: '#/components/schemas/ParteRegistrada' } } } }
+        '422': { $ref: '#/components/responses/Error' }
+    delete:
+      summary: Quita una parte (nunca al cliente)
+      parameters:
+        - { name: idProceso, in: path, required: true, schema: { type: integer } }
+        - { name: idParte, in: path, required: true, schema: { type: integer } }
+      responses:
+        '204': { description: Quitada }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /procesos/{idProceso}/actuaciones:
+    get:
+      summary: Actuaciones de la firma, la más reciente primero
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Actuaciones, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Actuacion' } } } } }
+    post:
+      summary: Registra una actuación (también los dependientes)
+      description: |
+        - Un RECURSO exige idProvidencia, de este mismo proceso.
+        - idTerminoCumplido marca ese término como cumplido (no se permite con fecha futura).
+        - DEMANDA, CONTESTACION y RECURSO con fecha pasada mueven el proceso a esa etapa si es posterior a la actual.
+        - Quién la registró sale del token (cabecera X-Usuario-Id puesta por el gateway).
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tipo, fecha, descripcion]
+              properties:
+                tipo: { $ref: '#/components/schemas/TipoActuacion' }
+                fecha: { type: string, format: date, description: 'Futura = programada (p. ej., una audiencia)' }
+                descripcion: { type: string, maxLength: 200 }
+                idPersona: { type: integer, format: int64, nullable: true }
+                idProvidencia: { type: integer, nullable: true }
+                documentoUrl: { type: string, maxLength: 300, nullable: true, pattern: '^https?://' }
+                idTerminoCumplido: { type: integer, nullable: true }
+                hora: { type: string, format: time, nullable: true, description: 'Audiencias (F7): hora, p. ej. 09:30' }
+                lugar: { type: string, maxLength: 200, nullable: true, description: 'Audiencias (F7): sala o enlace' }
+      responses:
+        '201': { description: Registrada, content: { application/json: { schema: { $ref: '#/components/schemas/Actuacion' } } } }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /procesos/{idProceso}/actuaciones/{idActuacion}:
+    delete:
+      summary: Elimina una actuación registrada por error
+      parameters:
+        - { name: idProceso, in: path, required: true, schema: { type: integer } }
+        - { name: idActuacion, in: path, required: true, schema: { type: integer } }
+      responses:
+        '204': { description: Eliminada }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /procesos/{idProceso}/providencias:
+    get:
+      summary: Autos y sentencias del proceso (manuales y detectados por la vigilancia)
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Providencias }
+    post:
+      summary: Registra a mano un auto o una sentencia (fuente MANUAL)
+      description: La sentencia exige sentido (FAVORABLE, DESFAVORABLE o PARCIAL) y lleva el proceso a la etapa SENTENCIA. No se aceptan fechas futuras ni anteriores a la radicación.
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tipo, clase, fechaProvidencia, fechaEstado]
+              properties:
+                tipo: { type: string, enum: [AUTO, SENTENCIA] }
+                clase: { type: string, maxLength: 120 }
+                fechaProvidencia: { type: string, format: date }
+                fechaEstado: { type: string, format: date }
+                decision: { type: string, maxLength: 300, nullable: true }
+                sentido: { type: string, enum: [FAVORABLE, DESFAVORABLE, PARCIAL], nullable: true }
+      responses:
+        '201': { description: Registrada }
+        '422': { $ref: '#/components/responses/Error' }
+
+  # ---------------------------------------------------------------- agenda, pruebas y términos sugeridos (F7)
+  /procesos/{idProceso}/providencias/{idProvidencia}/sugerencias:
+    get:
+      summary: Términos que abre la providencia (reglas de referencia y plazos escritos en ella); no crea nada
+      description: |
+        El abogado crea el que quiera con POST /procesos/{id}/terminos indicando idProvidencia; así deja de sugerirse.
+        validada = false: la regla es de referencia y falta que un abogado la revise.
+      parameters:
+        - { name: idProceso, in: path, required: true, schema: { type: integer } }
+        - { name: idProvidencia, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Sugerencias, primero las principales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    descripcion: { type: string }
+                    diasHabiles: { type: integer }
+                    fechaInicio: { type: string, format: date }
+                    fechaVencimiento: { type: string, format: date }
+                    norma: { type: string }
+                    origen: { type: string, enum: [REGLA, PROVIDENCIA] }
+                    prioridad: { type: integer, description: '1 principal, 2 opcional (si procede)' }
+                    validada: { type: boolean }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /procesos/{idProceso}/pruebas:
+    get:
+      summary: Pruebas del proceso
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Pruebas, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Prueba' } } } } }
+    post:
+      summary: Registra una prueba; si está pendiente y tiene fechaEntrega, crea el término que vence ese día
+      parameters: [{ name: idProceso, in: path, required: true, schema: { type: integer } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PruebaSolicitud' } } } }
+      responses:
+        '201': { description: Registrada, content: { application/json: { schema: { $ref: '#/components/schemas/Prueba' } } } }
+        '422': { $ref: '#/components/responses/Error' }
+  /procesos/{idProceso}/pruebas/{idPrueba}:
+    put:
+      summary: Actualiza la prueba. PRACTICADA cumple su término; NEGADA lo borra; otra fecha de entrega lo reemplaza
+      parameters:
+        - { name: idProceso, in: path, required: true, schema: { type: integer } }
+        - { name: idPrueba, in: path, required: true, schema: { type: integer } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PruebaSolicitud' } } } }
+      responses:
+        '200': { description: Actualizada, content: { application/json: { schema: { $ref: '#/components/schemas/Prueba' } } } }
+        '422': { $ref: '#/components/responses/Error' }
+    delete:
+      summary: Elimina la prueba y su término pendiente
+      parameters:
+        - { name: idProceso, in: path, required: true, schema: { type: integer } }
+        - { name: idPrueba, in: path, required: true, schema: { type: integer } }
+      responses:
+        '204': { description: Eliminada }
+
+  /audiencias:
+    get:
+      summary: Agenda de audiencias (actuaciones de tipo AUDIENCIA) entre dos fechas, por fecha y hora
+      parameters:
+        - { name: desde, in: query, required: true, schema: { type: string, format: date } }
+        - { name: hasta, in: query, required: true, schema: { type: string, format: date } }
+        - { name: idAsistente, in: query, required: false, schema: { type: integer, format: int64 }, description: Solo las que atiende esa persona }
+      responses:
+        '200':
+          description: Audiencias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    idActuacion: { type: integer }
+                    idProceso: { type: integer }
+                    radicadoLegible: { type: string }
+                    asunto: { type: string }
+                    fecha: { type: string, format: date }
+                    hora: { type: string, format: time, nullable: true }
+                    descripcion: { type: string }
+                    lugar: { type: string, nullable: true }
+                    idAsistente: { type: integer, format: int64, nullable: true }
+        '422': { $ref: '#/components/responses/Error' }
+  /audiencias/avisos:
+    post:
+      summary: Publica ya audiencia.proxima para las audiencias del próximo día hábil (lo hace sola cada mañana)
+      responses:
+        '200': { description: Cuántas se avisaron, content: { application/json: { schema: { type: object, properties: { avisadas: { type: integer } } } } } }
+
+  # ---------------------------------------------------------------- reportes (F8, solo ADMIN y SOCIO)
+  /reportes/carga:
+    get:
+      summary: Por abogado responsable, procesos activos y suspendidos, términos pendientes y vencidos, audiencias de 30 días
+      responses: { '200': { description: Carga } }
+  /reportes/terminos:
+    get:
+      summary: Cumplimiento de los términos que vencían en el periodo (por defecto, el último año)
+      parameters:
+        - { name: desde, in: query, required: false, schema: { type: string, format: date } }
+        - { name: hasta, in: query, required: false, schema: { type: string, format: date } }
+      responses: { '200': { description: 'Por responsable: total, aTiempo, tarde, cumplidosSinFecha, vencidosSinCumplir, pendientes' } }
+  /reportes/resultados:
+    get:
+      summary: Sentencias del periodo por rama según su sentido (favorable, parcial, desfavorable, sin sentido)
+      parameters:
+        - { name: desde, in: query, required: false, schema: { type: string, format: date } }
+        - { name: hasta, in: query, required: false, schema: { type: string, format: date } }
+      responses: { '200': { description: Resultados por rama } }
+
+  # ---------------------------------------------------------------- portal del cliente (F9)
+  /procesos/{idProceso}/resumen-cliente:
+    get:
+      summary: Último resumen publicado para el cliente (204 si aún no hay)
+      parameters:
+        - { in: path, name: idProceso, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: "{ idResumen, idProceso, texto, publicadoPor, publicadoEn }" }
+        "204": { description: Sin resumen publicado }
+    post:
+      summary: El abogado publica en el portal un resumen revisado por él (ADMIN, SOCIO, ABOGADO)
+      description: Publica el evento portal.resumen_publicado (por el outbox) y notificaciones avisa al cliente.
+      parameters:
+        - { in: path, name: idProceso, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [texto]
+              properties:
+                texto: { type: string, minLength: 20, maxLength: 4000 }
+      responses:
+        "201": { description: Publicado }
+        "404": { description: No existe el proceso }
+        "422": { description: Texto muy corto o muy largo }
+  /portal/procesos:
+    get:
+      summary: Procesos del cliente del token (solo rol CLIENTE; el gateway lo expone como /api/portal/procesos)
+      description: Etapa, estado, nombre del abogado responsable, próxima audiencia y fecha de la última novedad.
+      responses:
+        "200": { description: Lista de ProcesoCliente }
+        "403": { description: No es una cuenta del portal }
+  /portal/procesos/{idProceso}:
+    get:
+      summary: Un proceso visto por el cliente
+      description: |
+        Novedades (actuaciones de la firma y providencias del juzgado), próximas audiencias y el último resumen
+        publicado. No incluye los términos (agenda interna de la firma). Un proceso de otro cliente responde 404.
+      parameters:
+        - { in: path, name: idProceso, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: "{ proceso, novedades, audiencias, resumen }" }
+        "404": { description: No existe (o no es de este cliente) }
+  # ---------------------------------------------------------------- expediente digital (F10)
+  /procesos/{idProceso}/documentos:
+    get:
+      summary: Documentos del proceso, del más reciente al más antiguo (personal)
+      parameters:
+        - { in: path, name: idProceso, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: "[{ idDocumento, nombre, tipoMime, tamano, sha256, categoria, descripcion, visibleCliente, subidoPor, subido }]" }
+    post:
+      summary: Sube un documento (ADMIN, SOCIO, ABOGADO, DEPENDIENTE)
+      description: |
+        PDF, Word (.docx), Excel (.xlsx), imagen (.jpg, .png) o texto (.txt), hasta 20 MB. El tipo se comprueba por el
+        contenido: una extensión que no corresponde se rechaza. Se guarda con un nombre aleatorio y su SHA-256.
+      parameters:
+        - { in: path, name: idProceso, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo, categoria]
+              properties:
+                archivo: { type: string, format: binary }
+                categoria: { type: string, enum: [PODER, DEMANDA, CONTESTACION, MEMORIAL, PRUEBA, PROVIDENCIA, CONTRATO, OTRO] }
+                descripcion: { type: string, maxLength: 300 }
+                visibleCliente: { type: boolean, default: false }
+      responses:
+        "201": { description: Documento guardado }
+        "400": { description: Falta el archivo o la categoría }
+        "413": { description: Pasa de 20 MB }
+        "422": { description: Tipo no permitido, contenido que no corresponde a la extensión o archivo vacío }
+  /procesos/{idProceso}/documentos/{idDocumento}:
+    put:
+      summary: Cambia categoría, descripción y si el cliente lo ve (ADMIN, SOCIO, ABOGADO)
+      responses:
+        "200": { description: Documento actualizado }
+    delete:
+      summary: Borra el documento y su archivo (ADMIN, SOCIO, ABOGADO)
+      responses:
+        "204": { description: Borrado }
+  /procesos/{idProceso}/documentos/{idDocumento}/archivo:
+    get:
+      summary: Descarga el archivo (personal). Siempre como adjunto, con X-Content-Type-Options nosniff y sin caché
+      responses:
+        "200": { description: El archivo }
+        "404": { description: No existe (o es de otro proceso) }
+  /portal/procesos/{idProceso}/documentos:
+    get:
+      summary: Documentos visibles para el cliente del token (solo rol CLIENTE; proceso de otro cliente = 404)
+      responses:
+        "200": { description: Lista de documentos visibles }
+  /portal/procesos/{idProceso}/documentos/{idDocumento}/archivo:
+    get:
+      summary: Descarga de un documento visible por el cliente del token
+      responses:
+        "200": { description: El archivo }
+        "404": { description: No existe, no es visible o es de otro cliente }
+  # ---------------------------------------------------------------- F12: reglas de términos
+  /reglas-termino:
+    get:
+      summary: Todas las reglas (activas o no), con quién las validó. Las ve el personal.
+      responses:
+        "200": { description: Reglas, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/ReglaTermino' } } } } }
+    post:
+      summary: Crea una regla (nace sin validar). Solo SOCIO.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ReglaSolicitud' } } } }
+      responses:
+        "201": { description: Creada (Location /reglas-termino/{id}) }
+        "400": { $ref: '#/components/responses/Error' }
+        "403": { $ref: '#/components/responses/Error' }
+        "422": { description: 'Patrón que no es una expresión regular, rama o tipo inexistente, tipo de otra rama, días fuera de 1–365' }
+  /reglas-termino/{idRegla}:
+    put:
+      summary: Edita la regla. Si cambia lo que dice (no solo activa), queda sin validar. Solo SOCIO.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ReglaSolicitud' } } } }
+      responses:
+        "200": { description: La regla guardada }
+        "403": { $ref: '#/components/responses/Error' }
+        "404": { $ref: '#/components/responses/Error' }
+  /reglas-termino/{idRegla}/validacion:
+    post:
+      summary: El socio del token valida la regla (queda a su nombre y con la fecha). Solo SOCIO.
+      responses:
+        "200": { description: La regla validada }
+        "409": { description: Ya estaba validada }
+        "422": { description: La regla está inactiva }
+  /reglas-termino/{idRegla}/historial:
+    get:
+      summary: Quién cambió qué y cuándo (CREADA, EDITADA, VALIDADA, ACTIVADA, DESACTIVADA), del más reciente al más antiguo
+      responses:
+        "200": { description: Cambios }
+  /reglas-termino/prueba:
+    get:
+      summary: ¿El patrón coincide con la clase de una providencia? Compara con el texto normalizado, como al sugerir.
+      parameters:
+        - { name: patron, in: query, required: true, schema: { type: string } }
+        - { name: clase, in: query, required: true, schema: { type: string } }
+      responses:
+        "200": { description: '{ coincide, claseNormalizada }' }
+        "422": { description: El patrón no es una expresión regular válida }
+  /catalogos/tipos/{idTipo}/contestacion:
+    put:
+      summary: Días hábiles para contestar en un tipo de proceso (null = no aplica). Deja sin validar las reglas que los usan. Solo SOCIO.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { dias: { type: integer, nullable: true, minimum: 1, maximum: 365 } } } } } }
+      responses:
+        "200": { description: '{ reglasSinValidar: n }' }
+        "404": { $ref: '#/components/responses/Error' }
+components:
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string }
+              campos: { type: object, additionalProperties: { type: string } }
+  schemas:
+    ReglaSolicitud:
+      type: object
+      required: [tipoProvidencia, patron, descripcion, norma]
+      properties:
+        tipoProvidencia: { type: string, enum: [AUTO, SENTENCIA] }
+        codigoRama: { type: string, nullable: true, description: 'null = todas; con idTipo se toma la de ese tipo' }
+        idTipo: { type: integer, nullable: true, description: 'null = todos los tipos de la rama' }
+        patron: { type: string, maxLength: 200, description: 'Expresión regular sobre la clase normalizada (sin tildes, minúsculas, sin puntuación)' }
+        lado: { type: string, enum: [DEMANDANTE, DEMANDADO], nullable: true }
+        descripcion: { type: string, maxLength: 150 }
+        dias: { type: integer, nullable: true, minimum: 1, maximum: 365, description: 'null = los días de contestación del tipo de proceso' }
+        norma: { type: string, maxLength: 120 }
+        prioridad: { type: integer, enum: [1, 2], default: 1 }
+        activa: { type: boolean, default: true }
+    ReglaTermino:
+      allOf:
+        - $ref: '#/components/schemas/ReglaSolicitud'
+        - type: object
+          properties:
+            idRegla: { type: integer }
+            validada: { type: boolean }
+            validadaPor: { type: integer, format: int64, nullable: true }
+            nombreValidador: { type: string, nullable: true }
+            validadaEn: { type: string, format: date-time, nullable: true }
+            modificadaPor: { type: integer, format: int64, nullable: true }
+            modificadaEn: { type: string, format: date-time, nullable: true }
+    EstadoProceso: { type: string, enum: [ACTIVO, SUSPENDIDO, TERMINADO, ARCHIVADO] }
+    EtapaProceso:
+      type: string
+      enum: [PODER, DEMANDA, ADMISION, NOTIFICACION, CONTESTACION, INVESTIGACION, PRUEBAS, AUDIENCIA, JUICIO, SENTENCIA, RECURSO, CERRADO]
+    RolCliente: { type: string, enum: [DEMANDANTE, DEMANDADO, VICTIMA, PROCESADO, ACCIONANTE, ACCIONADO] }
+    ClaseCuantia: { type: string, enum: [MINIMA, MENOR, MAYOR, SIN_CUANTIA] }
+    TipoServicio: { type: string, enum: [PRESENCIAL, VIRTUAL, REPRESENTACION] }
+    RolParte: { type: string, enum: [DEMANDANTE, DEMANDADO, VICTIMA, PROCESADO, ACCIONANTE, ACCIONADO, TERCERO, LLAMADO_GARANTIA] }
+    TipoActuacion: { type: string, enum: [PODER, DEMANDA, CONTESTACION, MEMORIAL, RECURSO, AUDIENCIA, ALEGATOS, NOTIFICACION, OTRO] }
+    PruebaSolicitud:
+      type: object
+      required: [tipo, descripcion]
+      properties:
+        tipo: { type: string, enum: [DOCUMENTAL, PERICIAL, TESTIMONIAL, INTERROGATORIO, INSPECCION, VIDEO, ANEXO] }
+        descripcion: { type: string, maxLength: 200 }
+        idPerito: { type: integer, nullable: true, description: 'Solo en PERICIAL; debe existir en gabinete' }
+        estado: { type: string, enum: [SOLICITADA, DECRETADA, PRACTICADA, NEGADA], default: SOLICITADA }
+        fechaEntrega: { type: string, format: date, nullable: true }
+    Prueba:
+      allOf:
+        - $ref: '#/components/schemas/PruebaSolicitud'
+        - type: object
+          properties: { idPrueba: { type: integer }, idProceso: { type: integer }, idTermino: { type: integer, nullable: true } }
+    ParteSolicitud:
+      type: object
+      required: [rol, nombre]
+      properties:
+        rol: { $ref: '#/components/schemas/RolParte' }
+        tipoDocumento: { type: string, enum: [CC, CE, NIT, PAS], nullable: true }
+        numeroDocumento: { type: string, maxLength: 15, nullable: true, description: 'Obligatorio si hay tipoDocumento; solo dígitos (PAS admite letras)' }
+        nombre: { type: string, maxLength: 150 }
+        apoderado: { type: string, maxLength: 120, nullable: true }
+    Parte:
+      allOf:
+        - $ref: '#/components/schemas/ParteSolicitud'
+        - type: object
+          properties: { idParte: { type: integer }, idProceso: { type: integer }, esCliente: { type: boolean } }
+    ParteRegistrada:
+      type: object
+      properties:
+        parte: { $ref: '#/components/schemas/Parte' }
+        conflictosVerificados: { type: boolean }
+        conflictos:
+          type: array
+          items:
+            type: object
+            properties: { idCliente: { type: integer }, nombre: { type: string }, numeroDocumento: { type: string }, motivo: { type: string } }
+    Actuacion:
+      type: object
+      properties:
+        idActuacion: { type: integer }
+        idProceso: { type: integer }
+        fecha: { type: string, format: date }
+        tipo: { $ref: '#/components/schemas/TipoActuacion' }
+        descripcion: { type: string }
+        idPersona: { type: integer, format: int64, nullable: true }
+        idProvidencia: { type: integer, nullable: true }
+        documentoUrl: { type: string, nullable: true }
+        registradoPor: { type: integer, format: int64, nullable: true }
+
+    ProcesoSolicitud:
+      type: object
+      required: [radicado, idTipo, idCliente, rolCliente, asunto, claseCuantia, tipoServicio, etapa, fechaRadicacion, idResponsable]
+      properties:
+        radicado: { type: string, example: 11001-31-03-032-2026-00501-00, description: 23 dígitos, con o sin separadores }
+        idTipo: { type: integer }
+        idDespachoActual: { type: integer, nullable: true, description: Solo en segunda instancia o superior; null = el de origen }
+        idCliente: { type: integer, description: gabinete.clientes }
+        rolCliente: { $ref: '#/components/schemas/RolCliente' }
+        asunto: { type: string, maxLength: 200 }
+        cuantia: { type: number, minimum: 0, nullable: true, description: Debe ser null si claseCuantia es SIN_CUANTIA }
+        claseCuantia: { $ref: '#/components/schemas/ClaseCuantia' }
+        tipoServicio: { $ref: '#/components/schemas/TipoServicio' }
+        estado: { $ref: '#/components/schemas/EstadoProceso' }
+        etapa: { $ref: '#/components/schemas/EtapaProceso' }
+        fechaRadicacion: { type: string, format: date, description: En primera instancia, su año debe ser el del radicado }
+        vigilado: { type: boolean, default: true }
+        idResponsable: { type: integer, format: int64, description: Cédula del abogado (gabinete) }
+
+    Proceso:
+      type: object
+      properties:
+        idProceso: { type: integer }
+        radicado: { type: string, example: '11001310303220230097701' }
+        radicadoLegible: { type: string, example: 11001-31-03-032-2023-00977-01 }
+        idTipo: { type: integer }
+        tipoProceso: { type: string }
+        codigoRama: { type: string }
+        rama: { type: string }
+        despachoOrigen: { type: string }
+        idDespachoActual: { type: integer }
+        despachoActual: { type: string }
+        instancia: { type: integer, description: 0 = primera, 1 = segunda... }
+        idCliente: { type: integer }
+        rolCliente: { $ref: '#/components/schemas/RolCliente' }
+        asunto: { type: string }
+        cuantia: { type: number }
+        claseCuantia: { $ref: '#/components/schemas/ClaseCuantia' }
+        tipoServicio: { $ref: '#/components/schemas/TipoServicio' }
+        estado: { $ref: '#/components/schemas/EstadoProceso' }
+        etapa: { $ref: '#/components/schemas/EtapaProceso' }
+        fechaRadicacion: { type: string, format: date }
+        vigilado: { type: boolean }
+        idResponsable: { type: integer, format: int64 }
+
+    DesgloseRadicado:
+      type: object
+      properties:
+        radicado: { type: string }
+        radicadoLegible: { type: string }
+        codDane: { type: string }
+        codEntidad: { type: string }
+        codEspecialidad: { type: string }
+        codDespacho: { type: string }
+        anio: { type: integer }
+        consecutivo: { type: integer }
+        instancia: { type: integer }
+        despacho: { $ref: '#/components/schemas/Despacho' }
+        idProcesoExistente: { type: integer, description: Ausente si el radicado está libre }
+
+    Situacion: { type: string, enum: [VENCIDO, POR_VENCER, AL_DIA, CUMPLIDO], description: POR_VENCER = 5 días hábiles o menos }
+    Termino:
+      type: object
+      properties:
+        idTermino: { type: integer }
+        idProceso: { type: integer }
+        radicado: { type: string }
+        radicadoLegible: { type: string }
+        rama: { type: string }
+        asunto: { type: string }
+        idProvidencia: { type: integer }
+        descripcion: { type: string }
+        fechaInicio: { type: string, format: date }
+        diasHabiles: { type: integer }
+        fechaVencimiento: { type: string, format: date }
+        estado: { type: string, enum: [PENDIENTE, CUMPLIDO] }
+        idResponsable: { type: integer, format: int64 }
+        diasHabilesRestantes: { type: integer, description: Negativo si ya venció }
+        situacion: { $ref: '#/components/schemas/Situacion' }
+
+    Rama:
+      type: object
+      properties: { codigo: { type: string }, nombre: { type: string }, norma: { type: string } }
+    TipoProceso:
+      type: object
+      properties:
+        idTipo: { type: integer }
+        codigoRama: { type: string }
+        nombre: { type: string }
+        terminoContestacionDias: { type: integer, description: Días hábiles de referencia (a validar) }
+    Despacho:
+      type: object
+      properties:
+        idDespacho: { type: integer }
+        nombre: { type: string }
+        ciudad: { type: string }
+        codDane: { type: string }
+        codEntidad: { type: string }
+        codEspecialidad: { type: string }
+        codDespacho: { type: string }
+        codigoRama: { type: string }

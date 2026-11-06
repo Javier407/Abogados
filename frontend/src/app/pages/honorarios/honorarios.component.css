@@ -1,0 +1,9 @@
+/* Honorarios */
+
+.pago-anulado { opacity: .6; }
+.pago-anulado strong { text-decoration: line-through; }
+.pago-valor { display: inline-flex; align-items: center; gap: 6px; }
+.anulacion { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; margin-top: 6px; }
+.anulacion .form-input { flex: 1; min-width: 180px; }
+.lista-pagos li { flex-wrap: wrap; }
+.liquidacion { margin-top: 10px; }

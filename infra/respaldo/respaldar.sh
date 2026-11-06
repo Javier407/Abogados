@@ -1,0 +1,101 @@
+#!/bin/sh
+# Copias de seguridad de PostgreSQL para el contenedor "respaldo" (imagen postgres:16-alpine).
+#   respaldar.sh            bucle: una copia al arrancar si no hay una reciente y otra cada día a HORA_RESPALDO
+#   respaldar.sh ahora      una copia ya
+#   respaldar.sh probar     restaura la copia más reciente en una base temporal, cuenta filas y la borra
+# F15: la prueba de restauración también corre sola cada domingo a HORA_PRUEBA y deja el resultado en
+# /respaldos/prueba-restauracion.txt (fecha, OK o FALLO y las filas contadas). El vigía avisa si falla o si lleva
+# más de 8 días sin hacerse.
+# Formato custom de pg_dump (-Fc): comprimido y restaurable tabla por tabla con pg_restore.
+# Desde F10 también empaqueta los documentos del expediente (volumen montado en /documentos, solo lectura) y deja
+# los archivos a nombre de PROPIETARIO (el usuario de la VM) para que la copia al PC pueda descargarlos.
+set -eu
+
+DIR=/respaldos
+HORA="${HORA_RESPALDO:-02:30}"
+HORA_PRUEBA="${HORA_PRUEBA:-04:00}"
+RETENER="${RETENER_DIAS:-14}"
+PROPIETARIO="${PROPIETARIO:-}"
+DOCS=/documentos
+export PGHOST=postgres PGUSER="$POSTGRES_USER" PGPASSWORD="$POSTGRES_PASSWORD"
+
+respaldar() {
+  archivo="$DIR/gabinete-$(date +%Y%m%d-%H%M%S).dump"
+  pg_dump -d "$POSTGRES_DB" -Fc -f "$archivo.parcial"
+  pg_restore --list "$archivo.parcial" > /dev/null      # el archivo se puede leer de vuelta
+  mv "$archivo.parcial" "$archivo"
+  chmod 600 "$archivo"
+  [ -n "$PROPIETARIO" ] && chown "$PROPIETARIO" "$archivo"
+  find "$DIR" -name 'gabinete-*.dump' -mtime +"$RETENER" -delete
+  echo "$(date '+%F %T') respaldo listo: $archivo ($(du -h "$archivo" | cut -f1))"
+  respaldar_documentos
+}
+
+respaldar_documentos() {
+  [ -d "$DOCS" ] || return 0
+  paquete="$DIR/documentos-$(date +%Y%m%d-%H%M%S).tar.gz"
+  tar -czf "$paquete.parcial" -C "$DOCS" .
+  tar -tzf "$paquete.parcial" > /dev/null                 # el paquete se puede leer de vuelta
+  mv "$paquete.parcial" "$paquete"
+  chmod 600 "$paquete"
+  [ -n "$PROPIETARIO" ] && chown "$PROPIETARIO" "$paquete"
+  find "$DIR" -name 'documentos-*.tar.gz' -mtime +"$RETENER" -delete
+  echo "$(date '+%F %T') documentos empaquetados: $paquete ($(du -h "$paquete" | cut -f1))"
+}
+
+probar() {
+  ultimo=$(ls -1t "$DIR"/gabinete-*.dump 2>/dev/null | head -1)
+  [ -n "$ultimo" ] || { echo "No hay respaldos en $DIR"; exit 1; }
+  echo "Restaurando $ultimo en la base temporal restauracion_prueba"
+  dropdb --if-exists restauracion_prueba
+  createdb restauracion_prueba
+  # --no-owner: los usuarios svc_* pueden no existir en otro servidor; los datos son lo que se verifica
+  pg_restore --no-owner --no-privileges -d restauracion_prueba "$ultimo"
+  psql -d restauracion_prueba -tA -c "
+    SELECT 'procesos ' || count(*) FROM procesos.procesos UNION ALL
+    SELECT 'clientes ' || count(*) FROM gabinete.clientes UNION ALL
+    SELECT 'terminos ' || count(*) FROM procesos.terminos UNION ALL
+    SELECT 'usuarios ' || count(*) FROM identidad.usuarios"
+  dropdb restauracion_prueba
+  echo "Restauración correcta (base temporal borrada)"
+}
+
+# La prueba semanal: el resultado queda en un archivo que lee el vigía.
+probar_y_anotar() {
+  resultado="$DIR/prueba-restauracion.txt"
+  if salida=$(probar 2>&1); then
+    printf '%s OK %s\n' "$(date '+%F %T')" \
+      "$(printf '%s' "$salida" | grep -E '^(procesos|clientes|terminos|usuarios) ' | tr '\n' ' ')" > "$resultado"
+  else
+    dropdb --if-exists restauracion_prueba 2>/dev/null || true
+    printf '%s FALLO %s\n' "$(date '+%F %T')" "$(printf '%s' "$salida" | tail -3 | tr '\n' ' ')" > "$resultado"
+  fi
+  [ -n "$PROPIETARIO" ] && chown "$PROPIETARIO" "$resultado"
+  cat "$resultado"
+}
+
+case "${1:-}" in
+  ahora) respaldar; exit 0 ;;
+  probar) probar; exit 0 ;;
+  prueba-semanal) probar_y_anotar; exit 0 ;;
+esac
+
+mkdir -p "$DIR"
+# Al arrancar (por ejemplo, después de un corte de luz), copia inmediata si la última tiene más de un día.
+if [ -z "$(find "$DIR" -name 'gabinete-*.dump' -mmin -1440 2>/dev/null)" ]; then
+  respaldar || echo "$(date '+%F %T') ERROR: falló el respaldo inicial"
+fi
+hecho=""
+probado=""
+while true; do
+  hoy=$(date +%F)
+  if [ "$(date +%H:%M)" = "$HORA" ] && [ "$hecho" != "$hoy" ]; then
+    respaldar || echo "$(date '+%F %T') ERROR: falló el respaldo diario"
+    hecho="$hoy"
+  fi
+  if [ "$(date +%u)" = 7 ] && [ "$(date +%H:%M)" = "$HORA_PRUEBA" ] && [ "$probado" != "$hoy" ]; then
+    probar_y_anotar || true
+    probado="$hoy"
+  fi
+  sleep 30
+done

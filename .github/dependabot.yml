@@ -1,0 +1,27 @@
+# Dependabot (F11): propone cada semana actualizaciones de dependencias y, de inmediato, las de seguridad.
+# Las actualizaciones menores y de parche van agrupadas en un solo pull request por ecosistema y carpeta.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directories: ["/servicios/identidad", "/servicios/gabinete", "/servicios/procesos", "/servicios/gateway"]
+    schedule: { interval: weekly, day: monday }
+    groups:
+      menores: { update-types: [minor, patch] }
+  - package-ecosystem: pip
+    directories: ["/servicios/notificaciones", "/servicios/vigilancia", "/servicios/asistente-ia"]
+    schedule: { interval: weekly, day: monday }
+    groups:
+      menores: { update-types: [minor, patch] }
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: { interval: weekly, day: monday }
+    groups:
+      angular: { patterns: ["@angular/*", "@angular-devkit/*"] }
+      menores: { update-types: [minor, patch] }
+  - package-ecosystem: docker
+    directories: ["/servicios/identidad", "/servicios/gabinete", "/servicios/procesos", "/servicios/gateway",
+                  "/servicios/notificaciones", "/servicios/vigilancia", "/servicios/asistente-ia", "/frontend"]
+    schedule: { interval: monthly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }

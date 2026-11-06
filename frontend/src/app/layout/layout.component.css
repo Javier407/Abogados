@@ -1,0 +1,97 @@
+/* Marco de la aplicación: mismo diseño que gabinete.html (vidrio, barra lateral azul con íconos) */
+:host { display: block; padding: 24px; }
+
+.shell {
+  max-width: 1320px; margin: 0 auto; min-height: calc(100vh - 48px);
+  display: grid; grid-template-columns: 96px minmax(0, 1fr);
+  background: rgba(255,255,255,.55); backdrop-filter: blur(18px);
+  border: 1px solid rgba(255,255,255,.8); border-radius: 30px;
+  box-shadow: 0 30px 70px -40px rgba(27,58,95,.6); overflow: clip;  /* clip y no hidden: deja funcionar el menú fijo */
+}
+
+/* ---------- Barra lateral ---------- */
+.side {
+  background: linear-gradient(180deg, var(--blue) 0%, #15304f 100%); color: #dfe6ef;
+  display: flex; flex-direction: column; align-items: stretch;
+}
+.brand { background: #102640; display: grid; place-items: center; padding: 14px 0; }
+.brand app-logo { width: 58px; height: 58px; }
+.side nav {
+  display: flex; flex-direction: column; gap: 4px; padding: 12px 10px;
+  position: sticky; top: 0; max-height: 100vh; overflow-y: auto; scrollbar-width: none;  /* el menú acompaña al bajar */
+}
+.nav-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  border-radius: 14px; padding: 9px 2px; color: #c3cfdd; text-decoration: none;
+  font-family: var(--second); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; text-align: center;
+  transition: background .15s, color .15s;
+}
+.nav-btn svg { width: 22px; height: 22px; }
+.nav-btn:hover { background: rgba(255,255,255,.08); color: #fff; }
+.nav-btn.activo { background: var(--parchment); color: var(--blue); }
+.grow { flex: 1; }
+
+.icono-con-contador { position: relative; display: inline-grid; }
+.contador {
+  position: absolute; top: -6px; right: -12px; min-width: 18px; padding: 1px 5px; border-radius: 99px;
+  background: var(--mahogany); color: #fff; font-family: var(--body); font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0; text-align: center; border: 2px solid var(--blue);
+}
+
+/* ---------- Contenido ---------- */
+.main { display: flex; flex-direction: column; min-width: 0; }
+.topbar { display: flex; justify-content: flex-end; padding: 18px 28px 0; }
+.top-tools {
+  display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.75);
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 16px; min-width: 0;
+}
+.fecha { font-family: var(--second); color: var(--muted); font-size: 13px; white-space: nowrap; }
+.usuario { display: flex; flex-direction: column; line-height: 1.2; text-align: right; padding-left: 10px; border-left: 1px solid var(--line); min-width: 0; }
+.usuario-nombre { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.usuario small { color: var(--muted); font-size: 11px; }
+.avatar {
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  font-weight: 600; font-size: 12px; background: var(--mahogany); color: #fff;
+}
+.btn-salir {
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: #fff;
+  color: var(--blue); border-radius: 999px; padding: 7px 12px; cursor: pointer; font-size: 12.5px;
+}
+.btn-salir svg { width: 16px; height: 16px; }
+.btn-salir:hover { background: var(--mahogany-soft); color: var(--mahogany); border-color: transparent; }
+.view { padding: 10px 28px 28px; min-width: 0; }
+
+.aviso-flotante {
+  position: fixed; right: 24px; bottom: 24px; max-width: 380px; z-index: 60;
+  background: var(--blue); color: #fff; border-radius: 14px; padding: 12px 16px;
+  box-shadow: 0 14px 30px -14px rgba(0,0,0,.6); display: flex; flex-direction: column; gap: 4px;
+  text-decoration: none; font-size: 13px; border-left: 4px solid var(--parchment);
+}
+.aviso-flotante span { color: #dfe6ef; }
+
+@media (max-width: 900px) {
+  :host { padding: 0; }
+  .shell { border-radius: 0; grid-template-columns: minmax(0, 1fr); min-height: 100vh; }
+  .side { flex-direction: row; align-items: center; position: sticky; top: 0; z-index: 20; min-width: 0; }
+  .brand { padding: 8px 12px; }
+  .brand app-logo { width: 40px; height: 40px; }
+  .side nav { flex-direction: row; padding: 6px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; min-width: 0; position: static; max-height: none; }
+  .nav-btn { padding: 8px 10px; flex: none; }
+  .grow { display: none; }
+  .topbar { padding: 12px 16px 0; }
+  .view { padding: 10px 16px 24px; }
+  .fecha, .btn-salir span { display: none; }
+  .usuario { border-left: 0; padding-left: 0; }
+  .aviso-flotante { left: 16px; right: 16px; max-width: none; }
+}
+@media (max-width: 520px) {
+  .usuario small { display: none; }
+  .top-tools { width: 100%; justify-content: flex-end; }
+}
+
+/* Impresión (F11): solo el contenido, sin menú ni barra superior (Reportes → "Imprimir o guardar PDF"). */
+@media print {
+  .side, .topbar, .aviso-flotante { display: none !important; }
+  .shell { display: block; box-shadow: none; border: 0; border-radius: 0; background: #fff; min-height: 0; }
+  .view { padding: 0; }
+}
