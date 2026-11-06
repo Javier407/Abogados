@@ -62,6 +62,33 @@ No va en el CI de GitHub, porque necesita el sistema completo levantado y con da
 
 - **Se cumple la meta.** Con 50 personas consultando a la vez, el 95 % de las respuestas llega en menos de medio segundo y no hay errores.
 - **Los tiempos de JMeter son más bajos que los de k6 porque generó menos carga, no porque el sistema fuera más rápido.** Su temporizador espera de 1 a 3 s después de **cada** petición, mientras que k6 espera una vez por recorrido de tres pantallas. Con 20 peticiones por segundo frente a 48, el sistema está más holgado. Es una lección práctica: dos herramientas con "el mismo escenario" solo son comparables si generan la misma tasa de peticiones.
-- **Términos es la pantalla más pesada.** Calcula el semáforo de vencimientos de cada término. Es la primera candidata a optimizar si la firma crece (paginación o un índice por fecha de vencimiento).
+- **Términos era la pantalla más pesada.** Calcula el semáforo de vencimientos de cada término. Se optimizó en F17 (ver abajo).
 - **Hubo picos aislados de 1 a 3 s al arrancar,** con la JVM todavía en calentamiento.
 - **Fuera del alcance:** el asistente de IA, que por diseño atiende un borrador a la vez (ver `docs/08`).
+
+## F17: optimización de la pantalla de términos (2026-11-06)
+
+**Causa.** La vista `procesos.v_terminos` llamaba dos veces por término a `dias_habiles_entre`: una para los días restantes y otra para el semáforo. Esa función generaba cada día del intervalo y consultaba `festivos` por cada uno. En un término vencido hace meses son cientos de consultas por fila.
+
+**Cambio.** Migración `db/migraciones/013-f17-dias-habiles-rapidos.sql`:
+- **Cálculo directo:** 5 hábiles por semana completa, más los días sueltos del final que caen de lunes a viernes, menos los festivos de lunes a viernes del intervalo. Los festivos se buscan con una consulta por rango sobre su llave primaria.
+- **Una sola llamada:** la vista calcula los días restantes una vez por término, con un `LATERAL`, y el semáforo reutiliza ese valor.
+
+**Mismo resultado comprobado.** Dentro de una transacción deshecha al final:
+- la función vieja y la nueva dieron lo mismo en **26 078 pares de fechas**, de diciembre de 2023 a enero de 2027 y con intervalos de 0 a 400 días, con **0 diferencias**;
+- los 19 términos reales conservan sus días y su situación.
+
+**Resultado** (k6, 50 usuarios, mismo escenario):
+
+| Medida | F16 | F17, VM recién encendida | F17, sistema caliente |
+|---|---|---|---|
+| Consulta de la lista en la base | 45 ms | 5 ms | 5 ms |
+| Términos: mediana / p95 | 125 / 457 ms | 74 / 383 ms | **27 / 116 ms** |
+| Clientes: p95 (sin cambios de código) | 132 ms | 319 ms | 63 ms |
+| Total: p95 | 326 ms | 352 ms | 87 ms |
+| Errores | 0 % | 0 % | 0 % |
+
+**Lectura honesta.** Parte de la diferencia entre corridas viene del estado de la VM:
+- **Con la VM recién encendida,** la JVM está en calentamiento y todas las pantallas salen más lentas, también las que no cambiaron.
+- **La comparación justa es contra las demás pantallas:** antes, términos tardaba **3,5 veces** lo que clientes (p95), y ahora **1,8 veces**.
+- **La consulta en la base** pasó de 45 ms a 5 ms.
