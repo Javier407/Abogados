@@ -21,7 +21,7 @@ Usamos **los dos con el mismo escenario** para comparar las herramientas.
 - **Recorrido de cada usuario:** consulta la lista de **procesos**, la de **términos** y la de **clientes**, y "lee" entre 1 y 3 segundos.
 - **Perfil:**
   - k6: rampa a 10 usuarios en 30 s, a 50 en 30 s, 2 min sostenido en 50 y bajada en 30 s.
-  - JMeter: 50 hilos que arrancan en 60 s, durante 3 min.
+  - JMeter: 50 hilos que arrancan en 60 s, durante 3 min. Desde F17 la pausa de lectura va una vez por recorrido, como en k6 (ver abajo).
 - **Umbrales (k6):** el 95 % de las respuestas en menos de **800 ms** (en total y por pantalla) y menos de **1 %** de errores.
 
 ## Cómo correrla
@@ -92,3 +92,27 @@ No va en el CI de GitHub, porque necesita el sistema completo levantado y con da
 - **Con la VM recién encendida,** la JVM está en calentamiento y todas las pantallas salen más lentas, también las que no cambiaron.
 - **La comparación justa es contra las demás pantallas:** antes, términos tardaba **3,5 veces** lo que clientes (p95), y ahora **1,8 veces**.
 - **La consulta en la base** pasó de 45 ms a 5 ms.
+
+## F17: JMeter con la misma tasa que k6 (2026-11-06)
+
+**Causa.** En F16, el temporizador de lectura de JMeter estaba al nivel de las peticiones. JMeter aplica un temporizador así antes de **cada** petición del grupo: cada recorrido esperaba tres veces y salían 20 peticiones por segundo, frente a 48 de k6.
+
+**Cambio.** El temporizador ahora va dentro de un *Flow Control Action* (pausa) al final del recorrido, que JMeter no registra como petición. Así espera de 1 a 3 s **una vez** por recorrido, igual que el `sleep()` de k6.
+
+**Resultado** (las dos corridas una tras otra, con el sistema caliente y la optimización de términos aplicada):
+
+| Medida | JMeter F16 | **JMeter F17** | **k6 F17** |
+|---|---|---|---|
+| Peticiones por segundo | 20 | **58** | **54** |
+| Peticiones | 3 669 | 10 750 | 11 440 |
+| Errores | 0 % | 0 % | 0 % |
+| Procesos: mediana / p95 | 16 / 40 ms | 25 / 86 ms | 15 / 45 ms |
+| Términos: mediana / p95 | 42 / 91 ms | 36 / 119 ms | 24 / 68 ms |
+| Clientes: mediana / p95 | 14 / 33 ms | 22 / 73 ms | 12 / 35 ms |
+| Total: mediana / p95 | 20 / 66 ms | 28 / 95 ms | 17 / 52 ms |
+
+**Lectura.**
+- **Ahora las dos generan la misma carga** (58 frente a 54 peticiones por segundo), y por eso los números ya son comparables.
+- **Con más carga, los tiempos de JMeter subieron:** el p95 total pasó de 66 a 95 ms. Confirma lo que decía la lectura de F16: antes salía más rápido porque exigía menos.
+- **JMeter sigue un poco por encima de k6.** Su perfil mantiene los 50 usuarios todo el tiempo, sin la rampa de bajada de k6. Además, el primer minuto tuvo un pico de 2,9 s, porque esa corrida fue la primera tras una hora con Ollama ocupando la CPU.
+- **Las dos coinciden en lo importante:** 0 errores, todo muy por debajo del umbral de 800 ms, y términos sigue siendo la pantalla más lenta, pero ya en el mismo orden que las demás.
