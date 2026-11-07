@@ -346,3 +346,6 @@
   .tabla td, .tabla th { border-bottom: 1px solid #dde; padding: 4px 6px; }
   a { color: inherit; text-decoration: none; }
 }
+
+/* Tabla ancha que se desplaza con el teclado (core/tablas-desplazables.ts): el foco se ve en el borde */
+.tabla-wrapper[data-desplazable]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

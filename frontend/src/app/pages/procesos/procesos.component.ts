@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -12,7 +12,8 @@ import { ESTADOS, Proceso, Rama, etiqueta } from '../../core/modelos';
   selector: 'app-procesos',
   standalone: true,
   imports: [FormsModule, RouterLink, DatePipe],
-  templateUrl: './procesos.component.html'
+  changeDetection: ChangeDetectionStrategy.Eager,
+  templateUrl: './procesos.component.html',
 })
 export class ProcesosComponent implements OnInit {
   private api = inject(ApiService);
@@ -32,13 +33,17 @@ export class ProcesosComponent implements OnInit {
 
   ngOnInit(): void {
     // Nombres de clientes y abogados: viven en el servicio gabinete, el proceso solo guarda los id.
-    forkJoin({ ramas: this.api.ramas(), clientes: this.api.clientes(), abogados: this.api.abogados() }).subscribe({
-      next: r => {
+    forkJoin({
+      ramas: this.api.ramas(),
+      clientes: this.api.clientes(),
+      abogados: this.api.abogados(),
+    }).subscribe({
+      next: (r) => {
         this.ramas = r.ramas;
-        r.clientes.forEach(c => this.clientes.set(c.idCliente!, c.nombre));
-        r.abogados.forEach(a => this.abogados.set(a.idPersona, `${a.nombres} ${a.apellidos}`));
+        r.clientes.forEach((c) => this.clientes.set(c.idCliente!, c.nombre));
+        r.abogados.forEach((a) => this.abogados.set(a.idPersona, `${a.nombres} ${a.apellidos}`));
       },
-      error: e => this.error = mensajeDeError(e)
+      error: (e) => (this.error = mensajeDeError(e)),
     });
     this.cargar();
   }
@@ -46,8 +51,14 @@ export class ProcesosComponent implements OnInit {
   cargar(): void {
     this.cargando = true;
     this.api.procesos(this.filtro).subscribe({
-      next: p => { this.procesos = p; this.cargando = false; },
-      error: e => { this.error = mensajeDeError(e); this.cargando = false; }
+      next: (p) => {
+        this.procesos = p;
+        this.cargando = false;
+      },
+      error: (e) => {
+        this.error = mensajeDeError(e);
+        this.cargando = false;
+      },
     });
   }
 
@@ -60,15 +71,22 @@ export class ProcesosComponent implements OnInit {
     if (!confirm(`¿Eliminar el proceso ${p.radicadoLegible}?`)) return;
     this.mensaje = this.error = '';
     this.api.eliminarProceso(p.idProceso).subscribe({
-      next: () => { this.mensaje = `Proceso ${p.radicadoLegible} eliminado.`; this.cargar(); },
-      error: e => this.error = mensajeDeError(e)
+      next: () => {
+        this.mensaje = `Proceso ${p.radicadoLegible} eliminado.`;
+        this.cargar();
+      },
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 
   contar(estado: string): number {
-    return this.procesos.filter(p => p.estado === estado).length;
+    return this.procesos.filter((p) => p.estado === estado).length;
   }
 
-  cliente(id: number): string { return this.clientes.get(id) ?? `Cliente ${id}`; }
-  abogado(id?: number): string { return id ? (this.abogados.get(id) ?? String(id)) : '—'; }
+  cliente(id: number): string {
+    return this.clientes.get(id) ?? `Cliente ${id}`;
+  }
+  abogado(id?: number): string {
+    return id ? (this.abogados.get(id) ?? String(id)) : '—';
+  }
 }

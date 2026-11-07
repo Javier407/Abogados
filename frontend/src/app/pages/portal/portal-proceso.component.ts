@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
@@ -14,11 +14,16 @@ import { DetallePortal, DocumentoPortal, etiqueta, tamanoLegible } from '../../c
   selector: 'app-portal-proceso',
   standalone: true,
   imports: [RouterLink, DatePipe],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <div class="modulo-container">
       <p><a routerLink="/portal">← Mis procesos</a></p>
-      @if (error) { <div class="alerta alerta-error" role="alert">{{ error }}</div> }
-      @if (cargando) { <p class="form-ayuda">Cargando…</p> }
+      @if (error) {
+        <div class="alerta alerta-error" role="alert">{{ error }}</div>
+      }
+      @if (cargando) {
+        <p class="form-ayuda">Cargando…</p>
+      }
 
       @if (detalle; as d) {
         <div class="page-header">
@@ -28,10 +33,18 @@ import { DetallePortal, DocumentoPortal, etiqueta, tamanoLegible } from '../../c
         </div>
 
         <div class="resumen-bar">
-          <span class="resumen-chip">Estado: <strong>{{ etiqueta(d.proceso.estado) }}</strong></span>
-          <span class="resumen-chip">Etapa: <strong>{{ etiqueta(d.proceso.etapa) }}</strong></span>
-          <span class="resumen-chip">Usted es: <strong>{{ etiqueta(d.proceso.rolCliente) }}</strong></span>
-          <span class="resumen-chip">Su abogado: <strong>{{ d.proceso.abogado || '—' }}</strong></span>
+          <span class="resumen-chip"
+            >Estado: <strong>{{ etiqueta(d.proceso.estado) }}</strong></span
+          >
+          <span class="resumen-chip"
+            >Etapa: <strong>{{ etiqueta(d.proceso.etapa) }}</strong></span
+          >
+          <span class="resumen-chip"
+            >Usted es: <strong>{{ etiqueta(d.proceso.rolCliente) }}</strong></span
+          >
+          <span class="resumen-chip"
+            >Su abogado: <strong>{{ d.proceso.abogado || '—' }}</strong></span
+          >
         </div>
 
         <section class="card">
@@ -39,7 +52,7 @@ import { DetallePortal, DocumentoPortal, etiqueta, tamanoLegible } from '../../c
           <div class="card-body">
             @if (d.resumen; as r) {
               <p class="portal-resumen">{{ r.texto }}</p>
-              <p class="form-ayuda">Publicado el {{ r.publicadoEn | date:'dd/MM/yyyy' }}</p>
+              <p class="form-ayuda">Publicado el {{ r.publicadoEn | date: 'dd/MM/yyyy' }}</p>
             } @else {
               <p class="form-ayuda">Su abogado aún no ha publicado un resumen de este proceso.</p>
             }
@@ -52,11 +65,18 @@ import { DetallePortal, DocumentoPortal, etiqueta, tamanoLegible } from '../../c
             <div class="card-body">
               <ul class="lista-pagos">
                 @for (doc of d.documentos; track doc.idDocumento) {
-                  <li><span>
-                    <strong>{{ doc.nombre }}</strong> · {{ etiqueta(doc.categoria) }} · {{ tamano(doc.tamano) }}
-                    @if (doc.descripcion) { <br><small>{{ doc.descripcion }}</small> }
-                  </span>
-                  <button class="btn btn-secondary btn-sm" type="button" (click)="descargar(doc)">Descargar</button></li>
+                  <li>
+                    <span>
+                      <strong>{{ doc.nombre }}</strong> · {{ etiqueta(doc.categoria) }} ·
+                      {{ tamano(doc.tamano) }}
+                      @if (doc.descripcion) {
+                        <br /><small>{{ doc.descripcion }}</small>
+                      }
+                    </span>
+                    <button class="btn btn-secondary btn-sm" type="button" (click)="descargar(doc)">
+                      Descargar
+                    </button>
+                  </li>
                 }
               </ul>
             </div>
@@ -69,10 +89,18 @@ import { DetallePortal, DocumentoPortal, etiqueta, tamanoLegible } from '../../c
             <div class="card-body">
               <ul class="lista-pagos">
                 @for (a of d.audiencias; track $index) {
-                  <li><span>
-                    <strong>{{ a.fecha | date:'EEEE d MMMM yyyy' }}</strong>@if (a.hora) { a las {{ a.hora.slice(0, 5) }}}
-                    · {{ a.descripcion }}@if (a.lugar) { · {{ a.lugar }}}
-                  </span></li>
+                  <li>
+                    <span>
+                      <strong>{{ a.fecha | date: 'EEEE d MMMM yyyy' }}</strong>
+                      @if (a.hora) {
+                        a las {{ a.hora.slice(0, 5) }}
+                      }
+                      · {{ a.descripcion }}
+                      @if (a.lugar) {
+                        · {{ a.lugar }}
+                      }
+                    </span>
+                  </li>
                 }
               </ul>
               <p class="form-ayuda">Su abogado le indicará si debe asistir.</p>
@@ -90,9 +118,11 @@ import { DetallePortal, DocumentoPortal, etiqueta, tamanoLegible } from '../../c
                 @for (n of d.novedades; track $index) {
                   <li class="aviso">
                     <div class="aviso-texto">
-                      <small>{{ n.fecha | date:'dd/MM/yyyy' }} · {{ n.origen }}</small>
+                      <small>{{ n.fecha | date: 'dd/MM/yyyy' }} · {{ n.origen }}</small>
                       <strong>{{ n.titulo }}</strong>
-                      @if (n.detalle) { <span>{{ n.detalle }}</span> }
+                      @if (n.detalle) {
+                        <span>{{ n.detalle }}</span>
+                      }
                     </div>
                   </li>
                 }
@@ -103,7 +133,7 @@ import { DetallePortal, DocumentoPortal, etiqueta, tamanoLegible } from '../../c
         <p><a routerLink="/portal/pagos">Ver mis pagos y saldo</a></p>
       }
     </div>
-  `
+  `,
 })
 export class PortalProcesoComponent implements OnInit {
   private api = inject(ApiService);
@@ -118,15 +148,21 @@ export class PortalProcesoComponent implements OnInit {
   descargar(doc: DocumentoPortal): void {
     if (!this.detalle) return;
     this.api.archivoDocumento(this.detalle.proceso.idProceso, doc.idDocumento, true).subscribe({
-      next: b => guardarArchivo(b, doc.nombre),
-      error: e => this.error = mensajeDeError(e)
+      next: (b) => guardarArchivo(b, doc.nombre),
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 
   ngOnInit(): void {
     this.api.portalProceso(Number(this.ruta.snapshot.paramMap.get('id'))).subscribe({
-      next: d => { this.detalle = d; this.cargando = false; },
-      error: e => { this.error = mensajeDeError(e); this.cargando = false; }
+      next: (d) => {
+        this.detalle = d;
+        this.cargando = false;
+      },
+      error: (e) => {
+        this.error = mensajeDeError(e);
+        this.cargando = false;
+      },
     });
   }
 }

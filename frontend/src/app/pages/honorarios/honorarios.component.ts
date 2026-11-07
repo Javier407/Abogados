@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -7,7 +7,16 @@ import { forkJoin } from 'rxjs';
 import { ApiService, mensajeDeError } from '../../core/api.service';
 import { AuthService, MANEJAN_FINANZAS } from '../../core/auth.service';
 import {
-  FORMAS_COBRO, FormaCobro, Honorario, HonorarioSolicitud, MEDIOS_PAGO, Pago, Proceso, Tarifa, camposDeForma, etiqueta
+  FORMAS_COBRO,
+  FormaCobro,
+  Honorario,
+  HonorarioSolicitud,
+  MEDIOS_PAGO,
+  Pago,
+  Proceso,
+  Tarifa,
+  camposDeForma,
+  etiqueta,
 } from '../../core/modelos';
 
 /** Acuerdos de honorarios por proceso, pagos de los clientes y tarifas de referencia. */
@@ -16,7 +25,8 @@ import {
   standalone: true,
   imports: [FormsModule, RouterLink, CurrencyPipe, DatePipe],
   templateUrl: './honorarios.component.html',
-  styleUrl: './honorarios.component.css'
+  changeDetection: ChangeDetectionStrategy.Eager,
+  styleUrl: './honorarios.component.css',
 })
 export class HonorariosComponent implements OnInit {
   private api = inject(ApiService);
@@ -47,8 +57,11 @@ export class HonorariosComponent implements OnInit {
 
   ngOnInit(): void {
     forkJoin({ procesos: this.api.procesos(), tarifas: this.api.tarifas() }).subscribe({
-      next: r => { this.procesos = r.procesos; this.tarifas = r.tarifas; },
-      error: e => this.error = mensajeDeError(e)
+      next: (r) => {
+        this.procesos = r.procesos;
+        this.tarifas = r.tarifas;
+      },
+      error: (e) => (this.error = mensajeDeError(e)),
     });
     this.cargar();
   }
@@ -58,28 +71,43 @@ export class HonorariosComponent implements OnInit {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  pagoVacio(): Pago { return { fecha: this.hoy(), valor: null, medio: 'TRANSFERENCIA', referencia: '' }; }
+  pagoVacio(): Pago {
+    return { fecha: this.hoy(), valor: null, medio: 'TRANSFERENCIA', referencia: '' };
+  }
   acuerdoVacio(): HonorarioSolicitud {
-    return { idProceso: null, idCliente: null, idTarifa: null, formaCobro: 'FIJO', valorFijo: null, porcentaje: null,
-      valorEstimado: null, fechaPacto: this.hoy() };
+    return {
+      idProceso: null,
+      idCliente: null,
+      idTarifa: null,
+      formaCobro: 'FIJO',
+      valorFijo: null,
+      porcentaje: null,
+      valorEstimado: null,
+      fechaPacto: this.hoy(),
+    };
   }
 
   cargar(): void {
     this.api.honorarios({ estado: this.filtroEstado || undefined }).subscribe({
-      next: h => {
+      next: (h) => {
         this.honorarios = h;
-        if (this.seleccionado) this.seleccionado = h.find(x => x.idHonorario === this.seleccionado!.idHonorario) ?? null;
+        if (this.seleccionado)
+          this.seleccionado =
+            h.find((x) => x.idHonorario === this.seleccionado!.idHonorario) ?? null;
       },
-      error: e => this.error = mensajeDeError(e)
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 
   radicado(idProceso: number): string {
-    return this.procesos.find(p => p.idProceso === idProceso)?.radicadoLegible ?? `Proceso ${idProceso}`;
+    return (
+      this.procesos.find((p) => p.idProceso === idProceso)?.radicadoLegible ??
+      `Proceso ${idProceso}`
+    );
   }
 
   get procesosSinAcuerdo(): Proceso[] {
-    return this.procesos.filter(p => p.estado !== 'ARCHIVADO');
+    return this.procesos.filter((p) => p.estado !== 'ARCHIVADO');
   }
 
   get totalSaldo(): number {
@@ -91,26 +119,33 @@ export class HonorariosComponent implements OnInit {
     this.seleccionado = h;
     this.pago = this.pagoVacio();
     if (limpiar) this.mensaje = this.error = '';
-    this.api.pagos(h.idHonorario).subscribe({ next: p => this.pagos = p, error: e => this.error = mensajeDeError(e) });
+    this.api
+      .pagos(h.idHonorario)
+      .subscribe({ next: (p) => (this.pagos = p), error: (e) => (this.error = mensajeDeError(e)) });
   }
 
   registrarPago(form: NgForm): void {
     const h = this.seleccionado;
-    if (!h || form.invalid || !this.pago.valor) { this.error = 'Indique fecha, valor y medio del pago.'; return; }
+    if (!h || form.invalid || !this.pago.valor) {
+      this.error = 'Indique fecha, valor y medio del pago.';
+      return;
+    }
     this.mensaje = this.error = '';
     this.api.registrarPago(h.idHonorario, this.pago).subscribe({
-      next: act => {
-        this.mensaje = `Pago registrado. ${act.saldo != null ? 'Saldo: $' + act.saldo.toLocaleString('es-CO') + '.' : ''}`
-          + (act.estado === 'CUMPLIDO' ? ' El acuerdo quedó pagado por completo.' : '');
+      next: (act) => {
+        this.mensaje =
+          `Pago registrado. ${act.saldo != null ? 'Saldo: $' + act.saldo.toLocaleString('es-CO') + '.' : ''}` +
+          (act.estado === 'CUMPLIDO' ? ' El acuerdo quedó pagado por completo.' : '');
         this.cargar();
         this.elegir(act, false);
       },
-      error: e => this.error = mensajeDeError(e)
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 
   procesoCambio(): void {
-    this.nuevo.idCliente = this.procesos.find(p => p.idProceso === this.nuevo.idProceso)?.idCliente ?? null;
+    this.nuevo.idCliente =
+      this.procesos.find((p) => p.idProceso === this.nuevo.idProceso)?.idCliente ?? null;
   }
 
   formaCambio(): void {
@@ -131,10 +166,13 @@ export class HonorariosComponent implements OnInit {
   }
 
   crear(form: NgForm): void {
-    if (form.invalid) { this.error = 'Complete el proceso, la forma de cobro y los valores.'; return; }
+    if (form.invalid) {
+      this.error = 'Complete el proceso, la forma de cobro y los valores.';
+      return;
+    }
     this.mensaje = this.error = '';
     this.api.crearHonorario(this.nuevo).subscribe({
-      next: h => {
+      next: (h) => {
         this.mensaje = `Acuerdo registrado para ${h.cliente}.`;
         this.creando = false;
         this.nuevo = this.acuerdoVacio();
@@ -142,44 +180,58 @@ export class HonorariosComponent implements OnInit {
         this.cargar();
         this.elegir(h, false);
       },
-      error: e => this.error = mensajeDeError(e)
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 
   anular(p: Pago): void {
     const h = this.seleccionado;
     if (!h || !p.idPago) return;
-    if (this.motivoAnulacion.trim().length < 5) { this.error = 'Escriba el motivo de la anulación (mínimo 5 caracteres).'; return; }
+    if (this.motivoAnulacion.trim().length < 5) {
+      this.error = 'Escriba el motivo de la anulación (mínimo 5 caracteres).';
+      return;
+    }
     this.api.anularPago(h.idHonorario, p.idPago, this.motivoAnulacion.trim()).subscribe({
-      next: act => {
-        this.mensaje = 'Pago anulado: queda en el historial pero ya no cuenta.' + (h.estado === 'CUMPLIDO' ? ' El acuerdo volvió a estar vigente.' : '');
+      next: (act) => {
+        this.mensaje =
+          'Pago anulado: queda en el historial pero ya no cuenta.' +
+          (h.estado === 'CUMPLIDO' ? ' El acuerdo volvió a estar vigente.' : '');
         this.anulando = null;
         this.cargar();
         this.elegir(act, false);
       },
-      error: e => this.error = mensajeDeError(e)
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 
   liquidar(form: NgForm): void {
     const h = this.seleccionado;
-    if (!h || form.invalid || this.liquidacionBase == null) { this.error = 'Indique el valor obtenido.'; return; }
+    if (!h || form.invalid || this.liquidacionBase == null) {
+      this.error = 'Indique el valor obtenido.';
+      return;
+    }
     this.api.liquidarHonorario(h.idHonorario, this.liquidacionBase).subscribe({
-      next: act => {
-        this.mensaje = `Liquidado: ${act.valorLiquidado?.toLocaleString('es-CO')} pesos.` + (act.estado === 'CUMPLIDO' ? ' Ya estaba pagado: el acuerdo quedó cumplido.' : '');
+      next: (act) => {
+        this.mensaje =
+          `Liquidado: ${act.valorLiquidado?.toLocaleString('es-CO')} pesos.` +
+          (act.estado === 'CUMPLIDO' ? ' Ya estaba pagado: el acuerdo quedó cumplido.' : '');
         this.liquidacionBase = null;
         this.cargar();
         this.elegir(act, false);
       },
-      error: e => this.error = mensajeDeError(e)
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 
   cancelarAcuerdo(h: Honorario): void {
     if (!confirm(`¿Cancelar el acuerdo de ${h.cliente}? Dejará de recibir pagos.`)) return;
     this.api.cambiarEstadoHonorario(h.idHonorario, 'CANCELADO').subscribe({
-      next: () => { this.mensaje = 'Acuerdo cancelado.'; this.seleccionado = null; this.cargar(); },
-      error: e => this.error = mensajeDeError(e)
+      next: () => {
+        this.mensaje = 'Acuerdo cancelado.';
+        this.seleccionado = null;
+        this.cargar();
+      },
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 }

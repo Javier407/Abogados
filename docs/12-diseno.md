@@ -142,3 +142,30 @@ El rediseño sigue los criterios que pidió Javier:
 - `npm audit --omit=dev` encuentra 0 vulnerabilidades.
 - `ng build` y las 25 pruebas pasan.
 - La imagen Docker se construye en la VM y está desplegada.
+
+## Migración a Angular 22 (rama `chore/angular-22`, 2026-11-06)
+
+| | Antes | Después |
+|---|---|---|
+| Angular | 21.2.26 | 22.2.5 (CLI y build 22.2.6) |
+| TypeScript | 5.9 | 6.0 |
+| `@angular/cdk` / `@ng-icons` | 21.2 / 33 | 22.2 / 36.1 |
+| Node (Dockerfile y CI) | 22.12.0 | 22.22.3 (Angular 22 pide ^22.22.3) |
+| `npm audit` | 16 moderadas | **0** |
+
+**Qué cambió en el código:** lo hizo `ng update`, con sus migraciones automáticas:
+- **Detección de cambios:** cada componente lleva `changeDetection: ChangeDetectionStrategy.Eager`. En Angular 22 el valor por defecto pasa a OnPush, y la migración conserva el comportamiento de antes. Pasar componentes a OnPush queda como mejora aparte, de a uno y con pruebas.
+- **`HttpClient`:** `provideHttpClient(withXhr(), …)` conserva el backend XHR. En v22 el predeterminado pasa a ser `fetch`.
+- **Otros:** ajustes de `tsconfig` y formato con Prettier de los archivos migrados. Por eso el diff es grande aunque los cambios de fondo son pocos.
+
+**Encontrado al probar la migración** (no venía de Angular 22, pero se corrigió en esta rama):
+- **Cifras del Inicio:** podían quedar en 0 si el navegador no ejecuta cuadros de animación, por ejemplo en una pestaña en segundo plano. Ahora el valor final queda fijado igual.
+- **Tablas anchas:**
+  - **Problema:** en pantallas angostas, una tabla que desborda y no tiene botones no se podía desplazar con el teclado (axe `scrollable-region-focusable`).
+  - **Corrección:** `core/tablas-desplazables.ts` vuelve enfocable el contenedor solo mientras desborde, con `role="region"` y el título cercano como nombre.
+
+**Verificación:**
+- `ng build` sin avisos (632 kB) y 27 pruebas en verde.
+- Imagen Docker construida en la VM.
+- Recorrido en el navegador con Angular 22.2.5: login, menús, Ctrl+K, expediente y pestañas.
+- axe sin violaciones graves en 15 pantallas a 1366 px y en 11 a 375 px.

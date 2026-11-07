@@ -1,5 +1,5 @@
 # Compila Angular y lo sirve con nginx (que además reenvía /api al gateway).
-FROM node:22.12.0-alpine AS build
+FROM node:22.22.3-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
