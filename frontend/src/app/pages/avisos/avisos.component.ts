@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectionStrategy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
@@ -12,7 +12,8 @@ import { AuthService } from '../../core/auth.service';
   selector: 'app-avisos',
   standalone: true,
   imports: [RouterLink, DatePipe],
-  templateUrl: './avisos.component.html'
+  changeDetection: ChangeDetectionStrategy.Eager,
+  templateUrl: './avisos.component.html',
 })
 export class AvisosComponent {
   private api = inject(ApiService);
@@ -37,24 +38,38 @@ export class AvisosComponent {
 
   cargar(): void {
     const id = this.sesion.idPersona();
-    if (!id) { this.avisos = []; return; }
+    if (!id) {
+      this.avisos = [];
+      return;
+    }
     this.cargando = true;
     this.api.avisos(id).subscribe({
-      next: a => { this.avisos = a; this.cargando = false; },
-      error: e => { this.error = mensajeDeError(e); this.cargando = false; }
+      next: (a) => {
+        this.avisos = a;
+        this.cargando = false;
+      },
+      error: (e) => {
+        this.error = mensajeDeError(e);
+        this.cargando = false;
+      },
     });
   }
 
   cargarTelegram(id: number | null): void {
     this.vinculo = null;
-    if (!id) { this.telegram = null; return; }
-    this.api.estadoTelegram(id).subscribe({ next: t => this.telegram = t, error: () => this.telegram = null });
+    if (!id) {
+      this.telegram = null;
+      return;
+    }
+    this.api
+      .estadoTelegram(id)
+      .subscribe({ next: (t) => (this.telegram = t), error: () => (this.telegram = null) });
   }
 
   vincularTelegram(): void {
     this.api.vincularTelegram(this.sesion.idPersona()!).subscribe({
-      next: v => this.vinculo = v,
-      error: e => this.error = mensajeDeError(e)
+      next: (v) => (this.vinculo = v),
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 
@@ -62,28 +77,28 @@ export class AvisosComponent {
     if (!confirm('¿Dejar de recibir avisos por Telegram?')) return;
     this.api.desvincularTelegram(this.sesion.idPersona()!).subscribe({
       next: () => this.cargarTelegram(this.sesion.idPersona()),
-      error: e => this.error = mensajeDeError(e)
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 
   /** El cliente va a su portal; el personal, al expediente. */
   enlace(a: Aviso): (string | number)[] {
-    const id = a.referencia?.id_proceso ?? "";
-    return a.referencia?.portal ? ["/portal/procesos", id] : ["/procesos", id];
+    const id = a.referencia?.id_proceso ?? '';
+    return a.referencia?.portal ? ['/portal/procesos', id] : ['/procesos', id];
   }
 
   leer(a: Aviso): void {
     if (a.leida) return;
     this.api.marcarAvisoLeido(a.idNotificacion, this.sesion.idPersona()!).subscribe({
       next: () => this.sesion.refrescarNoLeidos(),
-      error: e => this.error = mensajeDeError(e)
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 
   leerTodos(): void {
     this.api.marcarAvisosLeidos(this.sesion.idPersona()!).subscribe({
       next: () => this.sesion.refrescarNoLeidos(),
-      error: e => this.error = mensajeDeError(e)
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 }

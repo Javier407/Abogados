@@ -1,4 +1,13 @@
-import { Component, ElementRef, forwardRef, input, output, signal, viewChildren } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  forwardRef,
+  input,
+  output,
+  signal,
+  viewChildren,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 /**
@@ -8,32 +17,105 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 @Component({
   selector: 'app-codigo-otp',
   standalone: true,
-  providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => CodigoOtpComponent), multi: true }],
+  providers: [
+    { provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => CodigoOtpComponent), multi: true },
+  ],
   template: `
     <div class="otp" role="group" [attr.aria-label]="etiqueta()" [class.con-error]="conError()">
       @for (d of digitos(); track $index; let i = $index) {
-        <input #casilla class="casilla" [class.llena]="!!d" type="text" inputmode="numeric" maxlength="1"
-               [attr.autocomplete]="i === 0 ? 'one-time-code' : 'off'" [attr.aria-label]="'Dígito ' + (i + 1) + ' de ' + largo()"
-               [value]="d" [disabled]="deshabilitado()" (input)="escribir(i, $event)" (keydown)="tecla(i, $event)"
-               (paste)="pegar($event)" (focus)="seleccionar($event)" />
+        <input
+          #casilla
+          class="casilla"
+          [class.llena]="!!d"
+          type="text"
+          inputmode="numeric"
+          maxlength="1"
+          [attr.autocomplete]="i === 0 ? 'one-time-code' : 'off'"
+          [attr.aria-label]="'Dígito ' + (i + 1) + ' de ' + largo()"
+          [value]="d"
+          [disabled]="deshabilitado()"
+          (input)="escribir(i, $event)"
+          (keydown)="tecla(i, $event)"
+          (paste)="pegar($event)"
+          (focus)="seleccionar($event)"
+        />
       }
     </div>
   `,
-  styles: [`
-    .otp { display: flex; gap: 10px; justify-content: center; }
-    .casilla {
-      width: 48px; height: 56px; text-align: center; font-size: 22px; font-weight: 700; font-family: var(--font);
-      border: 1.5px solid var(--line-input); border-radius: 12px; background: var(--surface); color: var(--ink);
-      transition: border-color .15s, box-shadow .15s, transform .15s;
-    }
-    .casilla:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
-    .casilla.llena { border-color: var(--accent); animation: aparecer .18s ease-out; }
-    .con-error .casilla { border-color: var(--danger); animation: temblar .35s ease-in-out; }
-    @keyframes aparecer { from { transform: scale(.85); } to { transform: scale(1); } }
-    @keyframes temblar { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
-    @media (max-width: 400px) { .otp { gap: 6px; } .casilla { width: 40px; height: 50px; font-size: 20px; } }
-    @media (prefers-reduced-motion: reduce) { .casilla { animation: none !important; } }
-  `]
+  changeDetection: ChangeDetectionStrategy.Eager,
+  styles: [
+    `
+      .otp {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+      .casilla {
+        width: 48px;
+        height: 56px;
+        text-align: center;
+        font-size: 22px;
+        font-weight: 700;
+        font-family: var(--font);
+        border: 1.5px solid var(--line-input);
+        border-radius: 12px;
+        background: var(--surface);
+        color: var(--ink);
+        transition:
+          border-color 0.15s,
+          box-shadow 0.15s,
+          transform 0.15s;
+      }
+      .casilla:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px var(--accent-soft);
+      }
+      .casilla.llena {
+        border-color: var(--accent);
+        animation: aparecer 0.18s ease-out;
+      }
+      .con-error .casilla {
+        border-color: var(--danger);
+        animation: temblar 0.35s ease-in-out;
+      }
+      @keyframes aparecer {
+        from {
+          transform: scale(0.85);
+        }
+        to {
+          transform: scale(1);
+        }
+      }
+      @keyframes temblar {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-4px);
+        }
+        75% {
+          transform: translateX(4px);
+        }
+      }
+      @media (max-width: 400px) {
+        .otp {
+          gap: 6px;
+        }
+        .casilla {
+          width: 40px;
+          height: 50px;
+          font-size: 20px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .casilla {
+          animation: none !important;
+        }
+      }
+    `,
+  ],
 })
 export class CodigoOtpComponent implements ControlValueAccessor {
   readonly largo = input(6);
@@ -51,9 +133,15 @@ export class CodigoOtpComponent implements ControlValueAccessor {
     const limpio = (v ?? '').replace(/\D/g, '').slice(0, this.largo());
     this.digitos.set(Array.from({ length: this.largo() }, (_, i) => limpio[i] ?? ''));
   }
-  registerOnChange(fn: (v: string) => void): void { this.alCambiar = fn; }
-  registerOnTouched(fn: () => void): void { this.alTocar = fn; }
-  setDisabledState(d: boolean): void { this.deshabilitado.set(d); }
+  registerOnChange(fn: (v: string) => void): void {
+    this.alCambiar = fn;
+  }
+  registerOnTouched(fn: () => void): void {
+    this.alTocar = fn;
+  }
+  setDisabledState(d: boolean): void {
+    this.deshabilitado.set(d);
+  }
 
   escribir(i: number, e: Event): void {
     const el = e.target as HTMLInputElement;
@@ -64,13 +152,23 @@ export class CodigoOtpComponent implements ControlValueAccessor {
   }
 
   tecla(i: number, e: KeyboardEvent): void {
-    if (e.key === 'Backspace' && !this.digitos()[i] && i > 0) { e.preventDefault(); this.poner(i - 1, ''); this.enfocar(i - 1); }
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); this.enfocar(i - 1); }
-    else if (e.key === 'ArrowRight') { e.preventDefault(); this.enfocar(i + 1); }
+    if (e.key === 'Backspace' && !this.digitos()[i] && i > 0) {
+      e.preventDefault();
+      this.poner(i - 1, '');
+      this.enfocar(i - 1);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      this.enfocar(i - 1);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      this.enfocar(i + 1);
+    }
   }
 
   pegar(e: ClipboardEvent): void {
-    const texto = (e.clipboardData?.getData('text') ?? '').replace(/\D/g, '').slice(0, this.largo());
+    const texto = (e.clipboardData?.getData('text') ?? '')
+      .replace(/\D/g, '')
+      .slice(0, this.largo());
     if (!texto) return;
     e.preventDefault();
     this.writeValue(texto);
@@ -78,7 +176,9 @@ export class CodigoOtpComponent implements ControlValueAccessor {
     this.enfocar(Math.min(texto.length, this.largo() - 1));
   }
 
-  seleccionar(e: FocusEvent): void { (e.target as HTMLInputElement).select(); }
+  seleccionar(e: FocusEvent): void {
+    (e.target as HTMLInputElement).select();
+  }
 
   private poner(i: number, d: string): void {
     const l = [...this.digitos()];

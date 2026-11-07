@@ -1,12 +1,28 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideFolderPlus, lucideMail, lucideMapPin, lucidePencil, lucidePhone, lucideReceipt, lucideTrash2, lucideUserPlus, lucideX } from '@ng-icons/lucide';
+import {
+  lucideFolderPlus,
+  lucideMail,
+  lucideMapPin,
+  lucidePencil,
+  lucidePhone,
+  lucideReceipt,
+  lucideTrash2,
+  lucideUserPlus,
+  lucideX,
+} from '@ng-icons/lucide';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
-import { AuthService, EDITAN_CLIENTES, JURIDICO, MANEJAN_FINANZAS, VEN_HONORARIOS } from '../../core/auth.service';
+import {
+  AuthService,
+  EDITAN_CLIENTES,
+  JURIDICO,
+  MANEJAN_FINANZAS,
+  VEN_HONORARIOS,
+} from '../../core/auth.service';
 import { Cliente, PendienteFacturar, Proceso, Sede, etiqueta } from '../../core/modelos';
 
 /**
@@ -18,9 +34,22 @@ import { Cliente, PendienteFacturar, Proceso, Sede, etiqueta } from '../../core/
   selector: 'app-clientes',
   standalone: true,
   imports: [FormsModule, DatePipe, CurrencyPipe, RouterLink, NgIcon],
-  providers: [provideIcons({ lucideFolderPlus, lucideMail, lucideMapPin, lucidePencil, lucidePhone, lucideReceipt, lucideTrash2, lucideUserPlus, lucideX })],
+  providers: [
+    provideIcons({
+      lucideFolderPlus,
+      lucideMail,
+      lucideMapPin,
+      lucidePencil,
+      lucidePhone,
+      lucideReceipt,
+      lucideTrash2,
+      lucideUserPlus,
+      lucideX,
+    }),
+  ],
   templateUrl: './clientes.component.html',
-  styleUrl: './clientes.component.css'
+  changeDetection: ChangeDetectionStrategy.Eager,
+  styleUrl: './clientes.component.css',
 })
 export class ClientesComponent implements OnInit {
   private api = inject(ApiService);
@@ -57,25 +86,42 @@ export class ClientesComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.api.sedes().subscribe({ next: s => this.sedes = s, error: e => this.error = mensajeDeError(e) });
+    this.api
+      .sedes()
+      .subscribe({ next: (s) => (this.sedes = s), error: (e) => (this.error = mensajeDeError(e)) });
     this.cargar();
-    this.ruta.queryParamMap.subscribe(q => {
+    this.ruta.queryParamMap.subscribe((q) => {
       if (q.get('nuevo') && this.puedeEditar) this.nuevo();
       const id = Number(q.get('id'));
-      if (id) this.api.cliente(id).subscribe({ next: c => this.elegir(c), error: () => {} });
+      if (id) this.api.cliente(id).subscribe({ next: (c) => this.elegir(c), error: () => {} });
     });
   }
 
   vacio(): Cliente {
-    return { tipoPersona: 'NATURAL', tipoDocumento: 'CC', numeroDocumento: '', nombre: '', email: '', telefono: '',
-      direccion: '', ciudad: '', idSede: 1 };
+    return {
+      tipoPersona: 'NATURAL',
+      tipoDocumento: 'CC',
+      numeroDocumento: '',
+      nombre: '',
+      email: '',
+      telefono: '',
+      direccion: '',
+      ciudad: '',
+      idSede: 1,
+    };
   }
 
   cargar(): void {
     this.cargando = true;
     this.api.clientes(this.busqueda).subscribe({
-      next: c => { this.clientes = c; this.cargando = false; },
-      error: e => { this.error = mensajeDeError(e); this.cargando = false; }
+      next: (c) => {
+        this.clientes = c;
+        this.cargando = false;
+      },
+      error: (e) => {
+        this.error = mensajeDeError(e);
+        this.cargando = false;
+      },
     });
   }
 
@@ -86,11 +132,19 @@ export class ClientesComponent implements OnInit {
     this.pendientes = [];
     this.cargandoFicha = true;
     this.api.procesos({ idCliente: c.idCliente }).subscribe({
-      next: p => { this.procesosDe = p; this.cargandoFicha = false; },
-      error: () => { this.procesosDe = []; this.cargandoFicha = false; }
+      next: (p) => {
+        this.procesosDe = p;
+        this.cargandoFicha = false;
+      },
+      error: () => {
+        this.procesosDe = [];
+        this.cargandoFicha = false;
+      },
     });
     if (this.veHonorarios) {
-      this.api.pendientesFacturar(c.idCliente!).subscribe({ next: p => this.pendientes = p, error: () => this.pendientes = [] });
+      this.api
+        .pendientesFacturar(c.idCliente!)
+        .subscribe({ next: (p) => (this.pendientes = p), error: () => (this.pendientes = []) });
     }
   }
 
@@ -128,14 +182,19 @@ export class ClientesComponent implements OnInit {
       ? this.api.actualizarCliente(this.editandoId, this.cliente)
       : this.api.crearCliente(this.cliente);
     peticion.subscribe({
-      next: c => {
-        this.mensaje = this.editandoId ? `Cliente ${c.nombre} actualizado.` : `Cliente ${c.nombre} registrado.`;
+      next: (c) => {
+        this.mensaje = this.editandoId
+          ? `Cliente ${c.nombre} actualizado.`
+          : `Cliente ${c.nombre} registrado.`;
         this.cancelar(form);
         this.cargar();
         this.elegido = null;
         this.elegir(c);
       },
-      error: e => { this.error = mensajeDeError(e); this.guardando = false; }
+      error: (e) => {
+        this.error = mensajeDeError(e);
+        this.guardando = false;
+      },
     });
   }
 
@@ -151,8 +210,12 @@ export class ClientesComponent implements OnInit {
   eliminar(c: Cliente): void {
     if (!confirm(`¿Eliminar al cliente ${c.nombre}?`)) return;
     this.api.eliminarCliente(c.idCliente!).subscribe({
-      next: () => { this.mensaje = `Cliente ${c.nombre} eliminado.`; this.elegido = null; this.cargar(); },
-      error: e => this.error = mensajeDeError(e)
+      next: () => {
+        this.mensaje = `Cliente ${c.nombre} eliminado.`;
+        this.elegido = null;
+        this.cargar();
+      },
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 
@@ -166,6 +229,6 @@ export class ClientesComponent implements OnInit {
   }
 
   nombreSede(id: number): string {
-    return this.sedes.find(s => s.idSede === id)?.ciudad ?? String(id);
+    return this.sedes.find((s) => s.idSede === id)?.ciudad ?? String(id);
   }
 }

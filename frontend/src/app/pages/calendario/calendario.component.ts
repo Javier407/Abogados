@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -9,7 +9,7 @@ import { SesionService } from '../../core/sesion.service';
 import { PestanasAgendaComponent } from '../../ui/pestanas-agenda.component';
 
 interface Dia {
-  fecha: string;          // AAAA-MM-DD
+  fecha: string; // AAAA-MM-DD
   numero: number;
   delMes: boolean;
   hoy: boolean;
@@ -19,8 +19,20 @@ interface Dia {
   audiencias: Audiencia[];
 }
 
-const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre',
-  'octubre', 'noviembre', 'diciembre'];
+const MESES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
 
 /** Mes con los días inhábiles judiciales, los vencimientos de términos y las audiencias de cada día. */
 @Component({
@@ -28,7 +40,8 @@ const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', '
   standalone: true,
   imports: [RouterLink, FormsModule, PestanasAgendaComponent],
   templateUrl: './calendario.component.html',
-  styleUrl: './calendario.component.css'
+  changeDetection: ChangeDetectionStrategy.Eager,
+  styleUrl: './calendario.component.css',
 })
 export class CalendarioComponent implements OnInit {
   private api = inject(ApiService);
@@ -36,7 +49,7 @@ export class CalendarioComponent implements OnInit {
   readonly diasSemana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   anio = new Date().getFullYear();
-  mes = new Date().getMonth();          // 0 = enero
+  mes = new Date().getMonth(); // 0 = enero
   semanas: Dia[][] = [];
   soloMios = false;
   seleccionado: Dia | null = null;
@@ -72,15 +85,24 @@ export class CalendarioComponent implements OnInit {
     inicio.setDate(1 - ((primero.getDay() + 6) % 7));
     const fin = new Date(inicio);
     fin.setDate(inicio.getDate() + 41);
-    const desde = iso(inicio), hasta = iso(fin);
+    const desde = iso(inicio),
+      hasta = iso(fin);
 
     forkJoin({
       inhabiles: this.api.diasInhabiles(desde, hasta),
-      terminos: this.api.terminos({ desde, hasta, idResponsable: this.soloMios ? this.sesion.idPersona() : undefined }),
-      audiencias: this.api.audiencias(desde, hasta, this.soloMios ? this.sesion.idPersona() : undefined)
+      terminos: this.api.terminos({
+        desde,
+        hasta,
+        idResponsable: this.soloMios ? this.sesion.idPersona() : undefined,
+      }),
+      audiencias: this.api.audiencias(
+        desde,
+        hasta,
+        this.soloMios ? this.sesion.idPersona() : undefined,
+      ),
     }).subscribe({
       next: ({ inhabiles, terminos, audiencias }) => {
-        const porFecha = new Map(inhabiles.map(d => [d.fecha, d]));
+        const porFecha = new Map(inhabiles.map((d) => [d.fecha, d]));
         const hoy = iso(new Date());
         const dias: Dia[] = [];
         for (let i = 0; i < 42; i++) {
@@ -88,16 +110,21 @@ export class CalendarioComponent implements OnInit {
           d.setDate(inicio.getDate() + i);
           const f = iso(d);
           dias.push({
-            fecha: f, numero: d.getDate(), delMes: d.getMonth() === this.mes, hoy: f === hoy,
-            finDeSemana: d.getDay() === 0 || d.getDay() === 6, inhabil: porFecha.get(f),
-            terminos: terminos.filter(t => t.fechaVencimiento === f),
-            audiencias: audiencias.filter(a => a.fecha === f)
+            fecha: f,
+            numero: d.getDate(),
+            delMes: d.getMonth() === this.mes,
+            hoy: f === hoy,
+            finDeSemana: d.getDay() === 0 || d.getDay() === 6,
+            inhabil: porFecha.get(f),
+            terminos: terminos.filter((t) => t.fechaVencimiento === f),
+            audiencias: audiencias.filter((a) => a.fecha === f),
           });
         }
         this.semanas = Array.from({ length: 6 }, (_, s) => dias.slice(s * 7, s * 7 + 7));
-        if (this.seleccionado) this.seleccionado = dias.find(d => d.fecha === this.seleccionado!.fecha) ?? null;
+        if (this.seleccionado)
+          this.seleccionado = dias.find((d) => d.fecha === this.seleccionado!.fecha) ?? null;
       },
-      error: e => this.error = mensajeDeError(e)
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 
