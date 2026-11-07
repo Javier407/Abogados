@@ -119,6 +119,16 @@ services:
       # F13: verificación en dos pasos. Llave AES de los secretos (32 bytes en Base64) y roles que deben usarla.
       MFA_CLAVE_CIFRADO: ${MFA_CLAVE_CIFRADO:-}
       MFA_OBLIGATORIO_ROLES: ${MFA_OBLIGATORIO_ROLES:-}
+      # Entrar con Google, Microsoft o GitHub (docs/13): solo cuentas ya existentes. Cada proveedor se activa al
+      # escribir su identificador y secreto en infra/.env; la vuelta registrada es {URL_PUBLICA}/api/auth/externo/<proveedor>/vuelta
+      URL_PUBLICA: ${URL_PUBLICA:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      MICROSOFT_TENANT: ${MICROSOFT_TENANT:-common}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
       # F15: avisos de seguridad de la cuenta (evento cuenta.seguridad). Sin RabbitMQ identidad funciona igual.
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: ${RABBITMQ_USER}

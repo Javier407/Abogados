@@ -54,6 +54,9 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			r(GET, "/api/auth/yo", TODOS),
 			r(HttpMethod.POST, "/api/auth/clave", TODOS),
 			r(null, "/api/auth/mfa/**", TODOS),                  // la propia verificación en dos pasos (F13)
+			// cuentas externas enlazadas (Google, Microsoft, GitHub): cada persona administra las suyas
+			r(HttpMethod.POST, "/api/auth/externo/*/enlazar", TODOS),
+			r(null, "/api/auth/externo/enlaces/**", TODOS),
 			// portal del cliente: solo lectura y solo lo suyo
 			r(GET, "/api/portal/**", Set.of("CLIENTE")),
 			r(null, "/api/usuarios/**", Set.of("ADMIN")),        // administración de cuentas

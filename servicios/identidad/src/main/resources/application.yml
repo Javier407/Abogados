@@ -50,3 +50,20 @@ mfa:
 # Exchange compartido de eventos: identidad publica cuenta.seguridad (F15).
 eventos:
   exchange: gabinete.eventos
+
+# Entrar con Google, Microsoft o GitHub (solo cuentas ya existentes, enlazadas desde «Mi cuenta»).
+# Identificador y secreto de cada app OAuth en infra/.env (los escribe Javier; nunca en git). Sin ellos no hay botón.
+# url-publica: la dirección con la que se abre la app (URL_PUBLICA); la vuelta registrada en cada proveedor es
+# {url-publica}/api/auth/externo/{google|microsoft|github}/vuelta
+externo:
+  url-publica: ${URL_PUBLICA:}
+  google:
+    id: ${GOOGLE_CLIENT_ID:}
+    secreto: ${GOOGLE_CLIENT_SECRET:}
+  microsoft:
+    id: ${MICROSOFT_CLIENT_ID:}
+    secreto: ${MICROSOFT_CLIENT_SECRET:}
+    tenant: ${MICROSOFT_TENANT:common}
+  github:
+    id: ${GITHUB_CLIENT_ID:}
+    secreto: ${GITHUB_CLIENT_SECRET:}

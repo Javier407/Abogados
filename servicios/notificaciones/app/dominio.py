@@ -233,6 +233,12 @@ TEXTOS_SEGURIDAD = {
     "CODIGOS_RENOVADOS": ("Se generaron nuevos códigos de recuperación",
                           "El {cuando} se generaron nuevos códigos de recuperación para su cuenta {usuario}; los "
                           "anteriores ya no sirven." + NO_FUE_USTED),
+    "CUENTA_EXTERNA_ENLAZADA": ("Se enlazó una cuenta externa a la suya",
+                                "El {cuando} se enlazó una cuenta de Google, Microsoft o GitHub a su cuenta {usuario}: "
+                                "desde ahora también puede entrar con ella. Puede quitarla en Mi cuenta." + NO_FUE_USTED),
+    "CUENTA_EXTERNA_QUITADA": ("Se quitó una cuenta externa de la suya",
+                               "El {cuando} se quitó una cuenta externa (Google, Microsoft o GitHub) de su cuenta "
+                               "{usuario}: ya no sirve para entrar." + NO_FUE_USTED),
 }
 
 

@@ -111,6 +111,33 @@ public class AutenticacionServicio {
 		return sesiones.abrir(u, ip);
 	}
 
+	/**
+	 * Entrar con una cuenta externa ya enlazada (Google, Microsoft, GitHub). El proveedor ya comprobó quién es la
+	 * persona; aquí rigen las mismas reglas que con contraseña: cuenta bloqueada o inactiva no entra, la
+	 * verificación en dos pasos se sigue pidiendo y el intento queda en la bitácora (motivo EXTERNO_...).
+	 */
+	@Transactional(noRollbackFor = { CredencialesInvalidasException.class, CuentaBloqueadaException.class,
+			MfaRequeridoException.class })
+	public Sesion iniciarSesionExterna(long idUsuario, String proveedor, String ip) {
+		Instant ahora = Instant.now(reloj);
+		Usuario u = usuarios.porId(idUsuario).orElseThrow(() -> new CredencialesInvalidasException(MENSAJE));
+		String etiqueta = recortar(u.usuario() + " (" + proveedor.toLowerCase(Locale.ROOT) + ")");
+		if (u.bloqueado(ahora)) {
+			usuarios.registrarIntento(etiqueta, u.idUsuario(), false, "BLOQUEADO", ip);
+			throw new CuentaBloqueadaException(u.minutosDeBloqueo(ahora));
+		}
+		if (!u.activo()) {
+			usuarios.registrarIntento(etiqueta, u.idUsuario(), false, "INACTIVO", ip);
+			throw new CredencialesInvalidasException("La cuenta está desactivada; hable con el administrador");
+		}
+		if (mfa != null) {
+			mfa.exigirSiCorresponde(u);
+		}
+		usuarios.guardarIngreso(u.idUsuario(), ahora);
+		usuarios.registrarIntento(etiqueta, u.idUsuario(), true, "EXTERNO_" + proveedor, ip);
+		return sesiones.abrir(u, ip);
+	}
+
 	@Transactional(readOnly = true)
 	public Usuario yo(long idUsuario) {
 		return usuarios.porId(idUsuario)

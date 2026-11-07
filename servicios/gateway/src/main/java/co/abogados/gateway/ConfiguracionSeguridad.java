@@ -55,6 +55,10 @@ public class ConfiguracionSeguridad {
 						.pathMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/renovar", "/api/auth/salir").permitAll()
 						// F13: segundo paso del login; aún no hay token, identidad valida el desafío firmado
 						.pathMatchers(HttpMethod.POST, "/api/auth/login/mfa", "/api/auth/login/mfa/**").permitAll()
+						// Entrar con Google, Microsoft o GitHub: aún no hay token. La ida exige X-Requested-With y la vuelta la
+						// valida identidad con el estado de un solo uso y la cookie del flujo.
+						.pathMatchers(HttpMethod.GET, "/api/auth/externo/proveedores", "/api/auth/externo/*/vuelta").permitAll()
+						.pathMatchers(HttpMethod.POST, "/api/auth/externo/*/entrar").permitAll()
 						.pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
 						.pathMatchers("/api/**").access(politica)
 						.anyExchange().denyAll())
