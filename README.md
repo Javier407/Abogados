@@ -95,6 +95,7 @@ El proyecto evoluciona hacia un sistema de microservicios para firmas de abogado
 | [`docs/10-accesibilidad.md`](docs/10-accesibilidad.md) | Auditoría WCAG 2.1 AA con axe-core (Axe DevTools): hallazgos, correcciones y prueba en CI |
 | [`docs/11-pruebas-usuario.md`](docs/11-pruebas-usuario.md) | Protocolo de pruebas con usuarios: tareas, métricas y cuestionario SUS |
 | [`docs/12-diseno.md`](docs/12-diseno.md) | Diseño Lexora: marca, sistema visual 60-30-10, menú agrupado, flujos encadenados y verificación |
+| [`docs/13-privacidad-y-acceso-externo.md`](docs/13-privacidad-y-acceso-externo.md) | Política de privacidad y de cookies, y entrar con Google, Microsoft o GitHub (cómo activarlos) |
 | [`docs/adr/`](docs/adr/) | Decisiones de arquitectura (políglota, RabbitMQ, PostgreSQL por esquemas, JWT propio, fuente Rama Judicial) |
 
 ### Base de datos de pruebas (PostgreSQL 16)
