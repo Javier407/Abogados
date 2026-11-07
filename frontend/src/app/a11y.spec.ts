@@ -13,6 +13,10 @@ import { TerminosComponent } from './pages/terminos/terminos.component';
 import { ClientesComponent } from './pages/clientes/clientes.component';
 import { FacturacionComponent } from './pages/facturacion/facturacion.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
+import { PrivacidadComponent } from './legal/privacidad.component';
+import { CookiesComponent } from './legal/cookies.component';
+import { AvisoCookiesComponent } from './legal/aviso-cookies.component';
+import { CuentasEnlazadasComponent } from './pages/cuenta/cuentas-enlazadas.component';
 
 // F17: datos de ejemplo para que las listas se revisen con filas (tablas, enlaces, insignias), no vacías.
 const PROCESO = {
@@ -48,6 +52,8 @@ function datosDeEjemplo(url: string): object {
   if (url.endsWith('/api/terminos')) return TERMINOS;
   if (url.endsWith('/api/clientes')) return [CLIENTE];
   if (url.endsWith('/api/facturas')) return [FACTURA];
+  if (url.endsWith('/api/auth/externo/proveedores')) return [{ codigo: 'GOOGLE', nombre: 'Google' }, { codigo: 'GITHUB', nombre: 'GitHub' }];
+  if (url.endsWith('/api/auth/externo/enlaces')) return [{ proveedor: 'GOOGLE', correo: 'c@gmail.com', creado: '2026-11-01T10:00:00Z' }];
   if (url.endsWith('/api/abogados')) return [{ idPersona: 79123456, nombres: 'Andrés Felipe', apellidos: 'Rodríguez Mejía' }];
   return [];
 }
@@ -110,6 +116,16 @@ describe('Accesibilidad (axe-core)', () => {
 
   it('el calendario no tiene violaciones graves (F16: antes role=grid sin filas)', async () => {
     expect(await violaciones(CalendarioComponent)).toEqual([]);
+  });
+
+  it.each([
+    ['la política de privacidad', PrivacidadComponent],
+    ['la política de cookies', CookiesComponent],
+    ['el aviso de cookies', AvisoCookiesComponent],
+    ['el login con cuentas externas', LoginComponent],
+    ['las cuentas enlazadas', CuentasEnlazadasComponent]
+  ] as [string, Type<unknown>][])('%s no tiene violaciones graves', async (_n, componente) => {
+    expect(await violaciones(componente, {}, true)).toEqual([]);
   });
 
   it('el inicio «Mi día» no tiene violaciones graves (diseño Lexora)', async () => {

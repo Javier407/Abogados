@@ -141,6 +141,9 @@
     <button hlmDropdownMenuItem routerLink="/cuenta">
       <ng-icon name="lucideUser" size="16" /> Mi cuenta
     </button>
+    <button hlmDropdownMenuItem routerLink="/privacidad">
+      <ng-icon name="lucideShieldCheck" size="16" /> Privacidad y cookies
+    </button>
     <button hlmDropdownMenuItem (click)="tema.alternar()">
       <ng-icon [name]="tema.oscuro() ? 'lucideSun' : 'lucideMoon'" size="16" />
       {{ tema.oscuro() ? 'Tema claro' : 'Tema oscuro' }}

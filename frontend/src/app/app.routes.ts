@@ -9,6 +9,11 @@ const cliente = conRol('CLIENTE');
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent, title: 'Iniciar sesión' },
+  // Textos legales: públicos, sin sesión (se enlazan desde el login y el aviso de cookies)
+  { path: 'privacidad', loadComponent: () => import('./legal/privacidad.component').then(m => m.PrivacidadComponent),
+    title: 'Política de privacidad' },
+  { path: 'cookies', loadComponent: () => import('./legal/cookies.component').then(m => m.CookiesComponent),
+    title: 'Política de cookies' },
   {
     path: '',
     // El marco (menú, barra y sus componentes de spartan) se descarga aparte: el login carga más liviano.

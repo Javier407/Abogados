@@ -6,6 +6,8 @@ import { AuthService } from './auth.service';
 
 /** Rutas que no llevan el token de acceso (van con usuario y contraseña o con la cookie de la sesión). */
 const SIN_TOKEN = ['/api/auth/login', '/api/auth/renovar', '/api/auth/salir'];
+/** Entrar con Google, Microsoft o GitHub: todavía no hay sesión (enlazar sí lleva el token). */
+const SIN_TOKEN_EXTERNO = [/\/api\/auth\/externo\/proveedores$/, /\/api\/auth\/externo\/[a-z]+\/entrar$/];
 
 /**
  * Agrega el token a cada llamada a /api (renovándolo antes si está por vencer). Si el gateway responde 401
@@ -13,7 +15,8 @@ const SIN_TOKEN = ['/api/auth/login', '/api/auth/renovar', '/api/auth/salir'];
  */
 export const autenticacion: HttpInterceptorFn = (peticion, siguiente) => {
   const auth = inject(AuthService);
-  if (!peticion.url.startsWith('/api/') || SIN_TOKEN.some(r => peticion.url.endsWith(r))) {
+  if (!peticion.url.startsWith('/api/') || SIN_TOKEN.some(r => peticion.url.endsWith(r))
+    || SIN_TOKEN_EXTERNO.some(r => r.test(peticion.url))) {
     return siguiente(peticion);
   }
   const con = (p: HttpRequest<unknown>, token: string | null) =>

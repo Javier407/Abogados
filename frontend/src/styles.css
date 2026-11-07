@@ -134,6 +134,8 @@
   h3 { font-size: 15px; }
   h4 { font-size: 14px; }
   a { color: var(--accent-ink); text-underline-offset: 3px; }
+  /* Enlaces dentro de un texto: subrayados, no solo de otro color (WCAG 1.4.1) */
+  p a:not(.btn), td a:not(.btn), li > small a:not(.btn) { text-decoration: underline; }
   button, input, select, textarea { font: inherit; color: inherit; }
   button { cursor: pointer; }
   button:disabled { cursor: not-allowed; }
