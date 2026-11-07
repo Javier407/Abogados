@@ -3,9 +3,9 @@
    (--ink: textos, títulos, iconos) y 10 % índigo (--accent: botones principales, enlaces, lo activo).
    La letra se sirve desde la app (la CSP no permite Google Fonts). */
 @import "tailwindcss";
+@import "@spartan-ng/brain/hlm-tailwind-preset.css";   /* variantes y animaciones de spartan (incluye tw-animate-css) */
 @import "@fontsource-variable/plus-jakarta-sans";
 
-@custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------- Tokens ---------- */
 :root {
@@ -17,6 +17,7 @@
   --ink-2: #2B3A63;
   --muted: #5A6478;              /* 5,9:1 sobre blanco, 5,5:1 sobre --bg-page */
   --line: #E4E7EF;
+  --line-input: #8C95A8;
   --accent: #4338FF;             /* índigo: 6,5:1 con texto blanco */
   --accent-hover: #3529E6;
   --accent-ink: #3B30E6;         /* enlaces y texto en acento */
@@ -58,6 +59,7 @@
   --ink-2: #C3CBE2;
   --muted: #9AA4BC;              /* 7:1 sobre --surface */
   --line: #26314F;
+  --line-input: #56638A;
   --accent: #5B50FF;             /* 5,2:1 con texto blanco */
   --accent-hover: #6C62FF;
   --accent-ink: #ABA5FF;         /* 7,5:1 sobre --surface */
@@ -71,21 +73,39 @@
   color-scheme: dark;
 }
 
-/* Colores y letra disponibles como utilidades de Tailwind (bg-surface, text-muted, text-accent...) */
+/* Colores y letra como utilidades de Tailwind. Se usan los nombres de shadcn/spartan (primary = índigo,
+   accent = fondo suave al pasar el mouse, muted-foreground = texto secundario) más los propios de Lexora
+   (surface, ink, brand, ok, warn, danger). */
 @theme inline {
   --font-sans: var(--font);
   --font-mono: var(--mono);
+  --color-background: var(--bg-page);
+  --color-foreground: var(--ink);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--on-accent);
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--muted);
+  --color-accent: var(--surface-2);
+  --color-accent-foreground: var(--ink);
+  --color-destructive: var(--danger);
+  --color-border: var(--line);
+  --color-input: var(--line);
+  --color-ring: var(--accent);
   --color-page: var(--bg-page);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
-  --color-muted: var(--muted);
   --color-line: var(--line);
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --color-accent-soft: var(--accent-soft);
+  --color-brand: var(--accent-ink);
+  --color-brand-soft: var(--accent-soft);
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
   --color-warn: var(--warn);
@@ -152,13 +172,13 @@
   .requerido { color: var(--danger); }
   .form-input {
     width: 100%; min-height: 40px; padding: 8px 12px;
-    border: 1px solid var(--line); border-radius: var(--radius-sm);
+    border: 1px solid var(--line-input);   /* borde del campo con 3:1 de contraste (WCAG 1.4.11) */ border-radius: var(--radius-sm);
     background: var(--surface); color: var(--ink);
     transition: border-color .15s, box-shadow .15s;
   }
   textarea.form-input, .form-textarea { padding: 10px 12px; resize: vertical; min-height: 88px; }
   .form-input::placeholder { color: var(--muted); opacity: .85; }
-  .form-input:hover:not(:disabled) { border-color: var(--surface-3); }
+  .form-input:hover:not(:disabled) { border-color: var(--muted); }
   .form-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .form-input:disabled { background: var(--surface-2); color: var(--muted); }
   .input-error { border-color: var(--danger) !important; box-shadow: 0 0 0 3px var(--danger-soft) !important; }

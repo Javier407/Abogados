@@ -7,6 +7,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { routes } from './app.routes';
 import { autenticacion } from './core/auth.interceptor';
 import { TemaService } from './core/tema.service';
+import { provideSpartanHlm } from '@spartan-ng/helm/utils';
 
 registerLocaleData(localeEsCo);
 
@@ -17,6 +18,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(withInterceptors([autenticacion])),
     { provide: LOCALE_ID, useValue: 'es-CO' },
+    provideSpartanHlm(),
     provideAppInitializer(() => { inject(TemaService); })   // aplica el tema claro u oscuro desde el inicio
   ]
 };

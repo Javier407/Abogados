@@ -18,9 +18,9 @@
   overflow: hidden;
 }
 .metrica-card-accent { background: var(--accent); color: var(--on-accent); }
-.metrica-card-accent .metrica-label { color: rgba(255,255,255,.85); }
-.metrica-card-accent .metrica-valor { color: var(--parchment); }
-.metrica-card-accent .metrica-link  { color: var(--parchment); }
+.metrica-card-accent .metrica-label { color: var(--on-accent); }
+.metrica-card-accent .metrica-valor { color: var(--on-accent); }
+.metrica-card-accent .metrica-link  { color: var(--on-accent); }
 
 .metrica-label { font-family: var(--second); font-size: 12.5px; color: var(--muted); }
 .metrica-valor { font-family: var(--display); font-size: 30px; font-weight: 600; line-height: 1; color: var(--blue); }

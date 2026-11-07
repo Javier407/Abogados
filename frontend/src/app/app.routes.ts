@@ -1,5 +1,4 @@
 import { Routes } from '@angular/router';
-import { LayoutComponent } from './layout/layout.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { ProcesosComponent } from './pages/procesos/procesos.component';
 import { ProcesoFormComponent } from './pages/procesos/proceso-form.component';
@@ -27,7 +26,8 @@ export const routes: Routes = [
   { path: 'login', component: LoginComponent, title: 'Iniciar sesión' },
   {
     path: '',
-    component: LayoutComponent,
+    // El marco (menú, barra y sus componentes de spartan) se descarga aparte: el login carga más liviano.
+    loadComponent: () => import('./layout/layout.component').then(m => m.LayoutComponent),
     canActivate: [conSesion],
     canActivateChild: [claveAlDia],
     children: [
