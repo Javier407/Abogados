@@ -111,6 +111,8 @@ export class AsistenteProcesoComponent implements OnInit, OnDestroy {
   private zona = inject(NgZone);
   readonly idProceso = input.required<number>();
   readonly radicado = input<string>('');
+  /** Si llega, el asistente abre listo para redactar el recurso contra esa providencia (desde la línea de tiempo). */
+  readonly providenciaInicial = input<number | null>(null);
 
   estado: EstadoAsistente | null = null;
   tipo: TipoBorrador = 'CONTESTACION';
@@ -134,6 +136,7 @@ export class AsistenteProcesoComponent implements OnInit, OnDestroy {
     this.api.estadoAsistente().subscribe({ next: e => this.estado = e, error: () => this.estado = null });
     this.api.resumenCliente(this.idProceso()).subscribe({ next: r => this.publicado = r, error: () => {} });
     this.api.providencias(this.idProceso()).subscribe({ next: p => this.providencias = p, error: () => {} });
+    if (this.providenciaInicial()) { this.tipo = 'RECURSO'; this.idProvidencia = this.providenciaInicial(); }
   }
 
   /** Redactar el resumen a mano (parte del último publicado, si hay). */

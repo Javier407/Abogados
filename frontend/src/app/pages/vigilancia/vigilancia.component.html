@@ -31,7 +31,7 @@
             <tr [class.fila-elegida]="seleccionado?.radicado === r.radicado">
               <td>
                 <button type="button" class="enlace mono" (click)="elegir(r)">{{ r.radicadoLegible }}</button>
-                <br><a class="form-ayuda" [routerLink]="['/procesos', r.idProceso, 'editar']">Proceso {{ r.idProceso }}</a>
+                <br><a class="form-ayuda" [routerLink]="['/procesos', r.idProceso]">Ver expediente</a>
               </td>
               <td>
                 <select class="form-input select-fuente" [ngModel]="r.fuente" (ngModelChange)="cambiarFuente(r, $event)"
@@ -96,6 +96,40 @@
             <div class="form-actions">
               <button class="btn btn-primary btn-sm" type="button" (click)="agregarSimulada()">Agregar</button>
             </div>
+          }
+
+          <h3 class="subtitulo">Providencias recientes</h3>
+          @if (providencias.length === 0) {
+            <p class="form-ayuda">Aún no hay providencias registradas en este proceso.</p>
+          } @else {
+            <ul class="providencias">
+              @for (p of providencias; track p.idProvidencia) {
+                <li>
+                  <div class="prov-cabeza">
+                    <span>
+                      <strong>{{ p.clase }}</strong>
+                      <small>{{ p.fechaEstado | date:'dd/MM/yyyy' }} · {{ p.tipo === 'SENTENCIA' ? 'Sentencia' : 'Auto' }}
+                        @if (p.fuente === 'VIGILANCIA') { · <span class="detectada">detectada</span> }</small>
+                    </span>
+                    <button class="btn btn-secondary btn-sm" type="button" (click)="verSugerencias(p)"
+                      [attr.aria-expanded]="sugerenciasDe === p.idProvidencia">Términos</button>
+                  </div>
+                  @if (sugerenciasDe === p.idProvidencia) {
+                    <div class="sugerencias">
+                      @if (cargandoSugerencias) { <p class="form-ayuda">Buscando términos…</p> }
+                      @else if (sugerencias.length === 0) { <p class="form-ayuda">Sin términos sugeridos (o ya se crearon).</p> }
+                      @for (s of sugerencias; track s.descripcion) {
+                        <div class="sugerencia">
+                          <span><strong>{{ s.descripcion }}</strong>
+                            <small>{{ s.diasHabiles }} días hábiles · vence {{ s.fechaVencimiento | date:'dd/MM/yyyy' }}</small></span>
+                          <button class="btn btn-primary btn-sm" type="button" (click)="crearTermino(p, s)">Crear</button>
+                        </div>
+                      }
+                    </div>
+                  }
+                </li>
+              }
+            </ul>
           }
 
           <h3 class="subtitulo">Últimas consultas</h3>

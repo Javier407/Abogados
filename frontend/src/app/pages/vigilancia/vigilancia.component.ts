@@ -4,9 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
-import { ConsultaVigilancia, FUENTES, FuenteVigilancia, RadicadoVigilado } from '../../core/modelos';
+import { ConsultaVigilancia, FUENTES, FuenteVigilancia, Providencia, RadicadoVigilado, SugerenciaTermino } from '../../core/modelos';
 
-/** Radicados vigilados en la Rama Judicial: de dónde se consultan, cómo les fue y simulación para pruebas. */
+/**
+ * Radicados vigilados en la Rama Judicial: de dónde se consultan, cómo les fue y simulación para pruebas.
+ * Encadenado: en el panel del radicado se ven sus providencias recientes (las detectadas por la vigilancia
+ * primero) y se crea el término sugerido ahí mismo, sin ir al expediente.
+ */
 @Component({
   selector: 'app-vigilancia',
   standalone: true,
@@ -23,6 +27,10 @@ export class VigilanciaComponent implements OnInit {
   filtro = '';
   seleccionado: RadicadoVigilado | null = null;
   historial: ConsultaVigilancia[] = [];
+  providencias: Providencia[] = [];
+  sugerenciasDe: number | null = null;
+  sugerencias: SugerenciaTermino[] = [];
+  cargandoSugerencias = false;
   simulada = { fecha: hoy(), actuacion: '', anotacion: '' };
 
   cargando = false;
@@ -68,6 +76,34 @@ export class VigilanciaComponent implements OnInit {
     this.seleccionado = r;
     this.mensaje = this.error = '';
     this.api.historialVigilancia(r.radicado).subscribe({ next: h => this.historial = h, error: () => this.historial = [] });
+    this.sugerenciasDe = null;
+    this.api.providencias(r.idProceso).subscribe({
+      next: p => this.providencias = [...p].sort((a, b) => b.fechaEstado.localeCompare(a.fechaEstado)).slice(0, 5),
+      error: () => this.providencias = []
+    });
+  }
+
+  verSugerencias(p: Providencia): void {
+    if (this.sugerenciasDe === p.idProvidencia) { this.sugerenciasDe = null; return; }
+    this.sugerenciasDe = p.idProvidencia;
+    this.sugerencias = [];
+    this.cargandoSugerencias = true;
+    this.api.sugerencias(p.idProceso, p.idProvidencia).subscribe({
+      next: s => { this.sugerencias = s; this.cargandoSugerencias = false; },
+      error: e => { this.error = mensajeDeError(e); this.cargandoSugerencias = false; }
+    });
+  }
+
+  crearTermino(p: Providencia, s: SugerenciaTermino): void {
+    this.api.crearTermino(p.idProceso, {
+      descripcion: s.descripcion, fechaInicio: s.fechaInicio, diasHabiles: s.diasHabiles, idProvidencia: p.idProvidencia
+    }).subscribe({
+      next: t => {
+        this.mensaje = `Término creado: «${t.descripcion}», vence el ${t.fechaVencimiento.split('-').reverse().join('/')}.`;
+        this.sugerencias = this.sugerencias.filter(x => x !== s);
+      },
+      error: e => this.error = mensajeDeError(e)
+    });
   }
 
   cambiarFuente(r: RadicadoVigilado, fuente: FuenteVigilancia): void {

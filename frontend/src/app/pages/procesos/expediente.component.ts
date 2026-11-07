@@ -1,13 +1,18 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import {
+  lucideFilePen, lucideFileText, lucideFolderOpen, lucideHandCoins, lucideListChecks, lucidePencil, lucideReceipt, lucideSparkles,
+  lucideUsers, lucideWallet, lucideCalendarClock, lucideGavel
+} from '@ng-icons/lucide';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
-import { AuthService, JURIDICO, JURIDICO_Y_DEPENDIENTES } from '../../core/auth.service';
+import { AuthService, JURIDICO, JURIDICO_Y_DEPENDIENTES, MANEJAN_FINANZAS } from '../../core/auth.service';
 import {
-  ActuacionSolicitud, ConflictoInteres, ESTADOS_PRUEBA, EstadoPrueba, EventoExpediente, Instancia, Parte, ParteSolicitud,
+  ActuacionSolicitud, ConflictoInteres, ESTADOS_PRUEBA, ETAPAS, EstadoPrueba, EventoExpediente, Instancia, Parte, ParteSolicitud,
   Perito, Proceso, Providencia, ProvidenciaSolicitud, Prueba, PruebaSolicitud, ROLES_PARTE, SugerenciaTermino,
   TIPOS_ACTUACION, TIPOS_PRUEBA, Termino, etiqueta
 } from '../../core/modelos';
@@ -18,16 +23,20 @@ import { DocumentosProcesoComponent } from './documentos-proceso.component';
 import { EquipoProcesoComponent } from './equipo-proceso.component';
 
 type Filtro = 'TODO' | 'ACTUACION' | 'PROVIDENCIA' | 'TERMINO';
+export type Pestana = 'resumen' | 'terminos' | 'pruebas' | 'documentos' | 'equipo' | 'gastos' | 'asistente';
+interface OpcionPestana { id: Pestana; texto: string; icono: string; }
 
 /**
- * Expediente de un proceso: datos, partes (con aviso de conflicto de intereses), línea de tiempo de
- * actuaciones, providencias y términos, y formularios para registrar lo que pasa en el proceso.
+ * Expediente de un proceso, de punta a punta: cabecera con la etapa y las acciones encadenadas (providencia →
+ * término sugerido → borrador → gasto → factura) y pestañas enlazables por URL (?pestana=asistente).
  */
 @Component({
   selector: 'app-expediente',
   standalone: true,
   imports: [FormsModule, DatePipe, RouterLink, TerminosProcesoComponent, AsistenteProcesoComponent, GastosProcesoComponent,
-    DocumentosProcesoComponent, EquipoProcesoComponent],
+    DocumentosProcesoComponent, EquipoProcesoComponent, NgIcon],
+  providers: [provideIcons({ lucideFilePen, lucideFileText, lucideFolderOpen, lucideHandCoins, lucideListChecks, lucidePencil,
+    lucideReceipt, lucideSparkles, lucideUsers, lucideWallet, lucideCalendarClock, lucideGavel })],
   templateUrl: './expediente.component.html',
   styleUrl: './expediente.component.css'
 })
@@ -35,6 +44,7 @@ export class ExpedienteComponent implements OnInit {
   private api = inject(ApiService);
   private ruta = inject(ActivatedRoute);
   private auth = inject(AuthService);
+  private router = inject(Router);
 
   readonly roles = ROLES_PARTE;
   readonly tiposActuacion = TIPOS_ACTUACION;
@@ -44,6 +54,26 @@ export class ExpedienteComponent implements OnInit {
   readonly juridico = this.auth.tiene(...JURIDICO);
   readonly registraActuaciones = this.auth.tiene(...JURIDICO_Y_DEPENDIENTES);
   readonly veFinanzas = this.auth.tiene('ADMIN', 'SOCIO', 'ABOGADO', 'ADMINISTRATIVO');
+  readonly puedeFacturar = this.auth.tiene(...MANEJAN_FINANZAS);
+  readonly etapas = ETAPAS;
+
+  pestana: Pestana = 'resumen';
+  /** Providencia elegida en la línea de tiempo para pedir el borrador del recurso. */
+  providenciaParaBorrador: number | null = null;
+  versionAsistente = 0;
+
+  get pestanas(): OpcionPestana[] {
+    const l: OpcionPestana[] = [
+      { id: 'resumen', texto: 'Resumen', icono: 'lucideFolderOpen' },
+      { id: 'terminos', texto: 'Términos', icono: 'lucideCalendarClock' },
+      { id: 'pruebas', texto: 'Pruebas', icono: 'lucideListChecks' },
+      { id: 'documentos', texto: 'Documentos', icono: 'lucideFileText' },
+      { id: 'equipo', texto: 'Equipo', icono: 'lucideUsers' }
+    ];
+    if (this.veFinanzas) l.push({ id: 'gastos', texto: 'Gastos', icono: 'lucideWallet' });
+    if (this.juridico) l.push({ id: 'asistente', texto: 'Asistente IA', icono: 'lucideSparkles' });
+    return l;
+  }
   readonly hoy = new Date().toLocaleDateString('en-CA');      // AAAA-MM-DD en hora local
 
   idProceso = 0;
@@ -85,6 +115,43 @@ export class ExpedienteComponent implements OnInit {
       this.formulario = null;
       this.cargar();
     });
+    this.ruta.queryParamMap.subscribe(q => {
+      const p = q.get('pestana') as Pestana | null;
+      this.pestana = p && this.pestanas.some(x => x.id === p) ? p : 'resumen';
+    });
+  }
+
+  irA(p: Pestana): void {
+    this.router.navigate([], { relativeTo: this.ruta, queryParams: { pestana: p === 'resumen' ? null : p },
+      queryParamsHandling: 'merge', replaceUrl: true });
+  }
+
+  /** Flechas izquierda/derecha entre pestañas (patrón de pestañas de WAI-ARIA). */
+  teclaPestana(e: KeyboardEvent, actual: Pestana): void {
+    const l = this.pestanas;
+    const i = l.findIndex(x => x.id === actual);
+    const destino = e.key === 'ArrowRight' ? l[(i + 1) % l.length] : e.key === 'ArrowLeft' ? l[(i - 1 + l.length) % l.length]
+      : e.key === 'Home' ? l[0] : e.key === 'End' ? l[l.length - 1] : null;
+    if (!destino) return;
+    e.preventDefault();
+    this.irA(destino.id);
+    setTimeout(() => document.getElementById('pestana-' + destino.id)?.focus());
+  }
+
+  /** Encadenado: de la providencia al borrador del recurso en el asistente. */
+  pedirBorrador(idProvidencia: number): void {
+    this.providenciaParaBorrador = idProvidencia;
+    this.versionAsistente++;
+    this.irA('asistente');
+  }
+
+  /** Encadenado: facturar a este cliente lo pendiente de este proceso. */
+  facturar(p: Proceso): void {
+    this.router.navigate(['/facturacion'], { queryParams: { nueva: 1, idCliente: p.idCliente, idProceso: p.idProceso } });
+  }
+
+  indiceEtapa(p: Proceso): number {
+    return (this.etapas as readonly string[]).indexOf(p.etapa);
   }
 
   get eventosVisibles(): EventoExpediente[] {

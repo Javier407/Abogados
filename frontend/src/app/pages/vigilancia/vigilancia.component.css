@@ -1,14 +1,25 @@
 .vigilancia-grid { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
-.vigilancia-grid.con-detalle { grid-template-columns: minmax(0, 1fr) 340px; }
-.select-fuente { min-width: 170px; padding: 6px 8px; font-size: 0.82rem; }
-.enlace { background: none; border: none; padding: 0; color: var(--secondary); cursor: pointer; font-size: 0.85rem; text-align: left; }
+.vigilancia-grid.con-detalle { grid-template-columns: minmax(0, 1fr) 380px; }
+.select-fuente { min-width: 170px; min-height: 34px; padding: 4px 8px; font-size: 13px; }
+.enlace { background: none; border: none; padding: 0; color: var(--accent-ink); cursor: pointer; font-size: 13px; text-align: left; font-weight: 600; }
 .enlace:hover { text-decoration: underline; }
-.detalle { position: sticky; top: 16px; margin-bottom: 0; }
-.subtitulo { font-family: var(--second); font-size: 13px; color: var(--mahogany); margin: 18px 0 8px; }
-.historial { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; }
-.historial li { display: flex; flex-direction: column; border-left: 3px solid var(--success-text); padding-left: 8px; }
-.historial li.fallida { border-left-color: var(--danger-text); }
-.historial small { color: var(--text-muted); }
+.detalle { position: sticky; top: 88px; }
+.subtitulo { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 20px 0 8px; }
+.historial { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.historial li { display: flex; flex-direction: column; border-left: 3px solid var(--ok); padding-left: 8px; }
+.historial li.fallida { border-left-color: var(--danger); }
+.historial small { color: var(--muted); }
+
+/* Providencias del radicado y sus términos sugeridos, sin salir de la pantalla */
+.providencias { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.providencias li { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.prov-cabeza { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.prov-cabeza span { display: flex; flex-direction: column; min-width: 0; }
+.prov-cabeza strong { font-size: 13px; }
+.detectada { color: var(--accent-ink); font-weight: 600; }
+.sugerencias { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.sugerencia { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.sugerencia span { display: flex; flex-direction: column; min-width: 0; font-size: 13px; }
 
 @media (max-width: 1000px) {
   .vigilancia-grid.con-detalle { grid-template-columns: 1fr; }
