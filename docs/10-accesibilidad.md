@@ -22,7 +22,8 @@ Una herramienta automática encuentra cerca de la mitad de los problemas de acce
    - Etiquetas evaluadas: `wcag2a`, `wcag2aa`, `wcag21a` y `wcag21aa`.
 2. **Corrección** de lo encontrado.
 3. **Prueba automática** (`frontend/src/app/a11y.spec.ts`), que corre con `ng test` en cada *push* del CI:
-   - monta el inicio de sesión, el asistente de borradores y el calendario;
+   - monta el inicio de sesión, el asistente de borradores y el calendario y, desde F17, las listas de procesos, términos, clientes y facturación;
+   - las listas se montan **con datos de ejemplo** (las consultas al servidor se responden en la prueba), para revisar las tablas con filas, enlaces e insignias y no solo el mensaje de lista vacía. La prueba también exige que la tabla tenga filas: si no se pintaran, fallaría en vez de pasar en verde;
    - falla si axe-core encuentra violaciones *serious* o *critical*;
    - el contraste no se mide aquí, porque jsdom no pinta la página; ese queda para la auditoría en el navegador;
    - incluye un control: comprueba que axe sí detecta un campo sin etiqueta y una imagen sin `alt`, para que la prueba no pase en verde por error;
@@ -73,6 +74,19 @@ Con la extensión **axe DevTools** en Chrome o Edge:
 1. Abrir cada pantalla.
 2. Ir a DevTools → pestaña *axe DevTools* → *Scan all of my page*.
 3. Filtrar por *Critical* y *Serious*.
+
+## F17: más pantallas en la prueba automática (2026-11-06)
+
+Antes, el CI solo vigilaba 3 pantallas; la auditoría en el navegador cubría 11, pero era manual. Ahora `a11y.spec.ts` vigila también las 4 listas de trabajo diario:
+
+| Pantalla | Datos con que se monta | Resultado |
+|---|---|---|
+| Procesos | 1 proceso, con cliente y abogado | 0 violaciones graves |
+| Términos | 4 términos, uno por situación (vencido, por vencer, al día, cumplido) | 0 violaciones graves |
+| Clientes | 1 cliente | 0 violaciones graves |
+| Facturación | 1 factura aceptada | 0 violaciones graves |
+
+En total, 8 pruebas de accesibilidad (7 pantallas y el control). Así, un cambio futuro que rompa una de estas tablas (un campo sin etiqueta, un botón sin nombre) falla en el CI y no espera a la próxima auditoría manual.
 
 ## Pendiente
 
