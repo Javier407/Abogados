@@ -104,7 +104,7 @@ const ANCHO = 600, ALTO = 120;
                     {{ s.servicio }} <strong>{{ s.total }}</strong></button>
                 }
               </div>
-              <ul class="lineas-error">
+              <ul class="lineas-error" tabindex="0" aria-label="Errores recientes del servidor">
                 @for (l of erroresVisibles(e); track $index) {
                   <li><span class="fecha-celda">{{ l.momento | date:'d MMM, h:mm a' }}</span> <strong>{{ l.servicio }}</strong>
                     <code>{{ l.linea }}</code></li>

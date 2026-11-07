@@ -85,3 +85,12 @@ kbd {
   .saludo h1 { font-size: 24px; }
   .rama { grid-template-columns: 120px 1fr 44px; }
 }
+@media (max-width: 900px) {
+  .saludo kbd { display: none; }   /* sin teclado físico el atajo no aplica */
+}
+@media (max-width: 520px) {
+  /* La insignia baja a su propia línea para no cortar el título */
+  .item { flex-wrap: wrap; align-items: flex-start; }
+  .item-texto { flex: 1 1 calc(100% - 60px); }
+  .item > .badge { margin-left: 56px; }
+}

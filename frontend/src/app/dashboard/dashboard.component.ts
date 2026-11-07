@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnInit, computed, inject, signal, viewChildren } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
@@ -39,7 +39,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   private sesion = inject(SesionService);
   private host = inject(ElementRef<HTMLElement>);
   readonly paleta = inject(PaletaService);
-  private readonly cifras = viewChildren<ElementRef<HTMLElement>>('cifra');
+  /** Lo que muestran las cifras mientras suben (vencidos, esta semana, audiencias, avisos). */
+  readonly vista = signal([0, 0, 0, 0]);
 
   protected readonly creaProcesos = this.auth.tiene(...JURIDICO);
   protected readonly creaClientes = this.auth.tiene(...EDITAN_CLIENTES);
@@ -121,7 +122,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   }
 
   private animar(): void {
-    for (const c of this.cifras()) contar(c.nativeElement, Number(c.nativeElement.dataset['valor'] ?? 0));
+    const valores = [this.vencidos().length, this.estaSemana().length, this.audiencias().length, this.avisos().length];
+    valores.forEach((v, i) => contar(v, n => this.vista.update(l => l.map((x, j) => j === i ? n : x))));
     entrar(this.host.nativeElement.querySelectorAll('.lista-dia li'), 0.03);
   }
 

@@ -14,9 +14,8 @@ export function entrar(elementos: Element | Element[] | NodeListOf<Element> | nu
   animate(lista, { opacity: [0, 1], y: [8, 0] }, { duration: 0.32, delay: stagger(retraso), ease: [0.22, 1, 0.36, 1] });
 }
 
-/** Contador que sube hasta el valor (para las cifras del inicio). */
-export function contar(el: HTMLElement | null | undefined, hasta: number, formato: (n: number) => string = n => String(Math.round(n))): void {
-  if (!el) return;
-  if (sinMovimiento() || hasta === 0) { el.textContent = formato(hasta); return; }
-  animate(0, hasta, { duration: 0.8, ease: [0.22, 1, 0.36, 1], onUpdate: v => el.textContent = formato(v) });
+/** Contador que sube de 0 hasta el valor; entrega cada paso (p. ej. a una señal que pinta la plantilla). */
+export function contar(hasta: number, alActualizar: (n: number) => void): void {
+  if (sinMovimiento() || hasta === 0) { alActualizar(hasta); return; }
+  animate(0, hasta, { duration: 0.8, ease: [0.22, 1, 0.36, 1], onUpdate: v => alActualizar(Math.round(v)) });
 }

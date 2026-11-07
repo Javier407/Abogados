@@ -31,22 +31,22 @@
   <section class="cifras entra" aria-label="Resumen de hoy">
     <a class="cifra" routerLink="/terminos" [class.peligro]="vencidos().length > 0">
       <span class="cifra-icono"><ng-icon name="lucideCircleAlert" size="18" /></span>
-      <span class="cifra-valor" #cifra [attr.data-valor]="vencidos().length">{{ cargando() ? '–' : vencidos().length }}</span>
+      <span class="cifra-valor">{{ cargando() ? '–' : vista()[0] }}</span>
       <span class="cifra-nombre">Términos vencidos</span>
     </a>
     <a class="cifra" routerLink="/terminos" [class.aviso]="estaSemana().length > 0">
       <span class="cifra-icono"><ng-icon name="lucideCalendarClock" size="18" /></span>
-      <span class="cifra-valor" #cifra [attr.data-valor]="estaSemana().length">{{ cargando() ? '–' : estaSemana().length }}</span>
+      <span class="cifra-valor">{{ cargando() ? '–' : vista()[1] }}</span>
       <span class="cifra-nombre">Vencen en 5 días hábiles</span>
     </a>
     <a class="cifra" routerLink="/calendario">
       <span class="cifra-icono"><ng-icon name="lucideGavel" size="18" /></span>
-      <span class="cifra-valor" #cifra [attr.data-valor]="audiencias().length">{{ cargando() ? '–' : audiencias().length }}</span>
+      <span class="cifra-valor">{{ cargando() ? '–' : vista()[2] }}</span>
       <span class="cifra-nombre">Audiencias en 14 días</span>
     </a>
     <a class="cifra" routerLink="/avisos">
       <span class="cifra-icono"><ng-icon name="lucideBell" size="18" /></span>
-      <span class="cifra-valor" #cifra [attr.data-valor]="avisos().length">{{ cargando() ? '–' : avisos().length }}</span>
+      <span class="cifra-valor">{{ cargando() ? '–' : vista()[3] }}</span>
       <span class="cifra-nombre">Avisos sin leer</span>
     </a>
   </section>
