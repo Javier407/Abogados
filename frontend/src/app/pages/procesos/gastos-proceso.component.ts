@@ -99,7 +99,7 @@ import { Gasto, GastoSolicitud } from '../../core/modelos';
   styles: [`
     .encabezado-gastos { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
     .form-gasto { background: var(--parchment-2); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
-    .chip-check { background: #fff; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+    .chip-check { background: var(--surface); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
     .btn-quitar { border: 0; background: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 0 4px; }
     .btn-quitar:hover { color: var(--mahogany); }
   `]

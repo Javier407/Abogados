@@ -21,11 +21,9 @@ import { CodigosRecuperacionComponent, QrMfaComponent } from '../../core/mfa-ui'
       <form class="login-caja" [class.ancha]="paso === 'configurar' || paso === 'codigos'" #form="ngForm"
             (ngSubmit)="enviar(form)" novalidate>
         <header class="login-cabeza">
-          <span class="login-logo"><app-logo /></span>
-          <div>
-            <h1>Gestión Jurídica</h1>
-            <p>Rodríguez &amp; Asociados</p>
-          </div>
+          <app-logo class="login-logo" />
+          <h1>Bienvenido de nuevo</h1>
+          <p>Rodríguez &amp; Asociados</p>
         </header>
         <div class="login-cuerpo">
 
@@ -83,19 +81,18 @@ import { CodigosRecuperacionComponent, QrMfaComponent } from '../../core/mfa-ui'
   `,
   styles: [`
     .login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
-    .login-caja { width: 100%; max-width: 400px; background: var(--bg); border-radius: 24px; overflow: hidden;
-      box-shadow: 0 30px 60px -20px rgba(16,38,64,.5); }
+    .login-caja { width: 100%; max-width: 400px; background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow-lg); }
     .login-caja.ancha { max-width: 680px; }
-    .login-cabeza { background: linear-gradient(160deg, var(--blue) 0%, #15304f 100%); padding: 22px 24px;
-      display: flex; align-items: center; gap: 16px; }
-    .login-logo { width: 58px; height: 58px; flex: none; display: grid; }
-    h1 { margin: 0; font-family: var(--display); font-size: 24px; font-weight: 600; color: var(--parchment); }
-    .login-cabeza p { margin: 2px 0 0; font-family: var(--second); color: #c3cfdd; }
-    .login-cuerpo { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 14px; }
+    .login-cabeza { padding: 28px 28px 4px; display: flex; flex-direction: column; gap: 4px; }
+    .login-logo { --logo-tam: 40px; --logo-texto: 22px; margin-bottom: 18px; }
+    h1 { font-size: 22px; }
+    .login-cabeza p { color: var(--muted); }
+    .login-cuerpo { padding: 20px 28px 28px; display: flex; flex-direction: column; gap: 14px; }
     .login-cuerpo .alerta { margin-bottom: 0; }
     .explicacion { margin: 0; color: var(--ink); }
     .codigo { font-size: 20px; letter-spacing: 4px; text-align: center; }
-    .btn-enlace { background: none; border: 0; color: var(--blue); cursor: pointer; padding: 2px; font: inherit; text-decoration: underline; }
+    .btn-enlace { background: none; border: 0; color: var(--accent-ink); cursor: pointer; padding: 2px; font: inherit; text-decoration: underline; }
   `]
 })
 export class LoginComponent implements OnInit {

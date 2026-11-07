@@ -10,15 +10,15 @@
 .formulario { background: var(--parchment-2); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
 
 .chip-filtro { border: 0; background: none; cursor: pointer; font: inherit; }
-.chip-filtro.activo { background: #fff; color: var(--blue); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.chip-filtro.activo { background: var(--surface); color: var(--blue); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 
 /* Línea de tiempo: punto de color por origen y una línea vertical que los une */
 .linea { list-style: none; margin: 0; padding: 0; }
 .evento { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 12px; padding: 0 0 18px 22px; }
 .evento::before { content: ""; position: absolute; left: 5px; top: 14px; bottom: 0; width: 2px; background: var(--line); }
 .evento:last-child::before { display: none; }
-.punto-linea { position: absolute; left: 0; top: 4px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); }
-.ev-firma .punto-linea { background: var(--blue); }
+.punto-linea { position: absolute; left: 0; top: 4px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.ev-firma .punto-linea { background: var(--accent); }
 .ev-juzgado .punto-linea { background: var(--mahogany); }
 .ev-termino .punto-linea { background: var(--warn); }
 .ev-cumplido .punto-linea { background: var(--ok); }

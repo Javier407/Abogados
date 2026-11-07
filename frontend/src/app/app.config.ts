@@ -1,13 +1,12 @@
-import { ApplicationConfig, LOCALE_ID, provideBrowserGlobalErrorListeners, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, LOCALE_ID, inject, provideAppInitializer, provideBrowserGlobalErrorListeners, provideZoneChangeDetection } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localeEsCo from '@angular/common/locales/es-CO';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { providePrimeNG } from 'primeng/config';
-import Aura from '@primeuix/themes/aura';
 
 import { routes } from './app.routes';
 import { autenticacion } from './core/auth.interceptor';
+import { TemaService } from './core/tema.service';
 
 registerLocaleData(localeEsCo);
 
@@ -18,10 +17,6 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(withInterceptors([autenticacion])),
     { provide: LOCALE_ID, useValue: 'es-CO' },
-    providePrimeNG({
-      theme: {
-        preset: Aura
-      }
-    })
+    provideAppInitializer(() => { inject(TemaService); })   // aplica el tema claro u oscuro desde el inicio
   ]
 };

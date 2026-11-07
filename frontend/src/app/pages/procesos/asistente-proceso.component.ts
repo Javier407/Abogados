@@ -103,7 +103,7 @@ import { EstadoAsistente, Providencia, ResumenPublicado, TipoBorrador } from '..
     </div>
   `,
   styles: [`.borrador { margin-top: 14px; font-family: Georgia, 'Times New Roman', serif; font-size: 0.92rem; line-height: 1.55; white-space: pre-wrap; }
-    .aviso-ia { margin: 14px 0 0; padding: 8px 12px; border-left: 4px solid #9a6b1f; background: #fbf6ec; color: #3d2f12; font-size: 0.88rem; }`]
+    .aviso-ia { margin: 14px 0 0; padding: 8px 12px; border-left: 4px solid var(--warn); background: var(--warn-soft); color: var(--ink); font-size: 0.88rem; }`]
 })
 export class AsistenteProcesoComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);

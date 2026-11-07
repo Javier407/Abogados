@@ -150,7 +150,7 @@ const ANCHO = 600, ALTO = 120;
     .grafica .caida { fill: var(--mahogany); opacity: .35; }
     .eje { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
     .lista-problemas { margin: 6px 0 0; padding-left: 18px; }
-    .chip-servicio { border: 1px solid var(--line); background: #fff; cursor: pointer; }
+    .chip-servicio { border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
     .chip-servicio.activo { border-color: var(--blue); color: var(--blue); }
     .lineas-error { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; max-height: 420px; overflow: auto; }
     .lineas-error li { font-size: 13px; border-bottom: 1px solid var(--line); padding-bottom: 6px; overflow-wrap: anywhere; }
