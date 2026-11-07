@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
@@ -7,7 +7,7 @@ import {
   lucideBell, lucideBookOpenCheck, lucideBriefcase, lucideBuilding2, lucideCalendarClock, lucideChartColumn,
   lucideChevronDown, lucideChevronRight, lucideEye, lucideFlaskConical, lucideFolderOpen, lucideHandCoins, lucideKeyRound,
   lucideLayoutDashboard, lucideLogOut, lucideMenu, lucideMessagesSquare, lucideMoon, lucidePanelLeftClose,
-  lucidePanelLeftOpen, lucideReceipt, lucideServer, lucideSun, lucideUser, lucideUsers, lucideWallet
+  lucidePanelLeftOpen, lucideReceipt, lucideSearch, lucideServer, lucideSun, lucideUser, lucideUsers, lucideWallet
 } from '@ng-icons/lucide';
 import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
 
@@ -15,6 +15,8 @@ import { AuthService } from '../core/auth.service';
 import { SesionService } from '../core/sesion.service';
 import { LogoComponent } from '../core/logo.component';
 import { TemaService } from '../core/tema.service';
+import { PaletaService } from '../ui/paleta.service';
+import { PaletaComandosComponent } from '../ui/paleta-comandos.component';
 
 interface Opcion {
   ruta: string;
@@ -38,12 +40,12 @@ const NOMBRES_ROL: Record<string, string> = { ADMIN: 'Administrador', SOCIO: 'So
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, LogoComponent, NgIcon, HlmDropdownMenuImports],
+  imports: [RouterOutlet, RouterLink, LogoComponent, NgIcon, HlmDropdownMenuImports, PaletaComandosComponent],
   providers: [provideIcons({
     lucideBell, lucideBookOpenCheck, lucideBriefcase, lucideBuilding2, lucideCalendarClock, lucideChartColumn,
     lucideChevronDown, lucideChevronRight, lucideEye, lucideFlaskConical, lucideFolderOpen, lucideHandCoins, lucideKeyRound,
     lucideLayoutDashboard, lucideLogOut, lucideMenu, lucideMessagesSquare, lucideMoon, lucidePanelLeftClose,
-    lucidePanelLeftOpen, lucideReceipt, lucideServer, lucideSun, lucideUser, lucideUsers, lucideWallet
+    lucidePanelLeftOpen, lucideReceipt, lucideSearch, lucideServer, lucideSun, lucideUser, lucideUsers, lucideWallet
   })],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.css'
@@ -52,6 +54,7 @@ export class LayoutComponent {
   readonly auth = inject(AuthService);
   readonly sesion = inject(SesionService);
   readonly tema = inject(TemaService);
+  readonly paleta = inject(PaletaService);
   private readonly router = inject(Router);
 
   readonly hoy = new Intl.DateTimeFormat('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
@@ -144,6 +147,15 @@ export class LayoutComponent {
     if (s.has(g.id)) s.delete(g.id); else s.add(g.id);
     this.abiertos.set(s);
     guardar('lexora.menu.grupos', [...s].join(','));
+  }
+
+  /** Ctrl+K o ⌘K abre la búsqueda global desde cualquier pantalla. */
+  @HostListener('document:keydown', ['$event'])
+  atajo(e: KeyboardEvent): void {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && this.auth.esPersonal()) {
+      e.preventDefault();
+      this.paleta.alternar();
+    }
   }
 
   alternarColapso(): void {

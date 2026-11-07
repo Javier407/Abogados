@@ -80,7 +80,13 @@
       </nav>
 
       <div class="herramientas">
-        <span class="fecha solo-escritorio">{{ hoy }}</span>
+        @if (auth.esPersonal()) {
+          <button type="button" class="buscador" (click)="paleta.abrir()" aria-label="Buscar (Ctrl+K)">
+            <ng-icon name="lucideSearch" size="16" />
+            <span class="solo-escritorio">Buscar procesos, clientes…</span>
+            <kbd class="solo-escritorio">Ctrl K</kbd>
+          </button>
+        }
         <button type="button" class="btn-icono-barra" (click)="tema.alternar()"
           [attr.aria-label]="tema.oscuro() ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
           [attr.title]="tema.oscuro() ? 'Tema claro' : 'Tema oscuro'">
@@ -132,3 +138,5 @@
     </button>
   </hlm-dropdown-menu>
 </ng-template>
+
+@if (auth.esPersonal()) { <app-paleta-comandos /> }

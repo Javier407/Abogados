@@ -157,3 +157,18 @@
   .app { display: block; }
   .view { padding: 0; max-width: none; }
 }
+
+/* Botón de búsqueda global (abre la paleta Ctrl+K) */
+.buscador {
+  display: inline-flex; align-items: center; gap: 10px; height: 38px; padding: 0 8px 0 12px; margin-right: 6px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); font-size: 13px;
+  min-width: 280px; transition: border-color .15s, background-color .15s;
+}
+.buscador:hover { border-color: var(--line-input); color: var(--ink); }
+.buscador span { flex: 1; text-align: left; }
+.buscador kbd {
+  font: 600 11px var(--font); padding: 2px 6px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line);
+}
+@media (max-width: 1100px) {
+  .buscador { min-width: 0; width: 38px; padding: 0; justify-content: center; margin-right: 0; }
+}

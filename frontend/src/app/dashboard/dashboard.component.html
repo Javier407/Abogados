@@ -1,113 +1,182 @@
-<div class="dashboard">
+<div class="inicio">
 
-  <div class="dash-header page-header">
-    <h1>Panel</h1>
-    <p class="dash-subtitle">Resumen de la firma</p>
+  <!-- Saludo y acciones rápidas -->
+  <header class="saludo entra">
+    <div>
+      <p class="fecha">{{ fecha }}</p>
+      <h1>{{ saludo }}, {{ nombre() }}</h1>
+      <p class="sub">
+        @if (cargando()) { Revisando su agenda… }
+        @else if (vencidos().length) { Tiene <strong class="texto-peligro">{{ vencidos().length }} término(s) vencido(s)</strong> por atender. }
+        @else if (estaSemana().length) { Esta semana vencen <strong>{{ estaSemana().length }}</strong> de sus términos. }
+        @else { No tiene términos urgentes. Buen momento para adelantar trabajo. }
+      </p>
+    </div>
+    <div class="acciones">
+      <button type="button" class="btn btn-secondary" (click)="paleta.abrir()">
+        <ng-icon name="lucideSearch" size="16" /> Buscar <kbd>Ctrl K</kbd>
+      </button>
+      @if (creaClientes) {
+        <a class="btn btn-secondary" routerLink="/clientes" [queryParams]="{ nuevo: 1 }"><ng-icon name="lucideUserPlus" size="16" /> Cliente</a>
+      }
+      @if (creaProcesos) {
+        <a class="btn btn-primary" routerLink="/procesos/nuevo"><ng-icon name="lucideFolderPlus" size="16" /> Nuevo proceso</a>
+      }
+    </div>
+  </header>
+
+  @if (error()) { <div class="alerta alerta-error" role="alert">{{ error() }}</div> }
+
+  <!-- Cifras del día -->
+  <section class="cifras entra" aria-label="Resumen de hoy">
+    <a class="cifra" routerLink="/terminos" [class.peligro]="vencidos().length > 0">
+      <span class="cifra-icono"><ng-icon name="lucideCircleAlert" size="18" /></span>
+      <span class="cifra-valor" #cifra [attr.data-valor]="vencidos().length">{{ cargando() ? '–' : vencidos().length }}</span>
+      <span class="cifra-nombre">Términos vencidos</span>
+    </a>
+    <a class="cifra" routerLink="/terminos" [class.aviso]="estaSemana().length > 0">
+      <span class="cifra-icono"><ng-icon name="lucideCalendarClock" size="18" /></span>
+      <span class="cifra-valor" #cifra [attr.data-valor]="estaSemana().length">{{ cargando() ? '–' : estaSemana().length }}</span>
+      <span class="cifra-nombre">Vencen en 5 días hábiles</span>
+    </a>
+    <a class="cifra" routerLink="/calendario">
+      <span class="cifra-icono"><ng-icon name="lucideGavel" size="18" /></span>
+      <span class="cifra-valor" #cifra [attr.data-valor]="audiencias().length">{{ cargando() ? '–' : audiencias().length }}</span>
+      <span class="cifra-nombre">Audiencias en 14 días</span>
+    </a>
+    <a class="cifra" routerLink="/avisos">
+      <span class="cifra-icono"><ng-icon name="lucideBell" size="18" /></span>
+      <span class="cifra-valor" #cifra [attr.data-valor]="avisos().length">{{ cargando() ? '–' : avisos().length }}</span>
+      <span class="cifra-nombre">Avisos sin leer</span>
+    </a>
+  </section>
+
+  <!-- Lo urgente -->
+  <div class="rejilla-dia">
+    <section class="card tarjeta-dia mis-terminos entra" aria-labelledby="t-terminos">
+      <div class="card-header">
+        <h2 id="t-terminos">Mis términos</h2>
+        <a routerLink="/terminos" class="ver-todo">Agenda <ng-icon name="lucideArrowRight" size="14" /></a>
+      </div>
+      @if (urgentes().length) {
+        <ul class="lista-dia">
+          @for (t of urgentes(); track t.idTermino) {
+            <li>
+              <a class="item" [routerLink]="['/procesos', t.idProceso]">
+                <span class="marca-fecha" [class.vencido]="t.situacion === 'VENCIDO'" [class.pronto]="t.situacion === 'POR_VENCER'">
+                  <strong>{{ t.fechaVencimiento | date:'dd' }}</strong><small>{{ t.fechaVencimiento | date:'MMM' }}</small>
+                </span>
+                <span class="item-texto">
+                  <strong>{{ t.descripcion }}</strong>
+                  <small><span class="mono">{{ t.radicadoLegible }}</span> · {{ t.asunto }}</small>
+                </span>
+                <span class="badge" [class.badge-danger]="t.situacion === 'VENCIDO'" [class.badge-warning]="t.situacion === 'POR_VENCER'"
+                  [class.badge-success]="t.situacion === 'AL_DIA'">{{ textoRestantes(t.diasHabilesRestantes) }}</span>
+              </a>
+            </li>
+          }
+        </ul>
+      } @else if (!cargando()) {
+        <p class="vacio">No tiene términos pendientes a su cargo.</p>
+      }
+    </section>
+
+    <section class="card tarjeta-dia entra" aria-labelledby="t-audiencias">
+      <div class="card-header">
+        <h2 id="t-audiencias">{{ audienciasMias() ? 'Mis audiencias' : 'Audiencias de la firma' }}</h2>
+        <a routerLink="/calendario" class="ver-todo">Calendario <ng-icon name="lucideArrowRight" size="14" /></a>
+      </div>
+      @if (audiencias().length) {
+        <ul class="lista-dia">
+          @for (a of audiencias(); track a.idActuacion) {
+            <li>
+              <a class="item" [routerLink]="['/procesos', a.idProceso]">
+                <span class="marca-fecha"><strong>{{ a.fecha | date:'dd' }}</strong><small>{{ a.fecha | date:'MMM' }}</small></span>
+                <span class="item-texto">
+                  <strong>{{ a.descripcion }}</strong>
+                  <small>{{ a.hora ? a.hora.slice(0, 5) + ' · ' : '' }}{{ a.lugar || a.asunto }}</small>
+                </span>
+              </a>
+            </li>
+          }
+        </ul>
+      } @else if (!cargando()) {
+        <p class="vacio">No hay audiencias en los próximos 14 días.</p>
+      }
+    </section>
+
+    <section class="card tarjeta-dia entra" aria-labelledby="t-avisos">
+      <div class="card-header">
+        <h2 id="t-avisos">Avisos sin leer</h2>
+        <a routerLink="/avisos" class="ver-todo">Todos <ng-icon name="lucideArrowRight" size="14" /></a>
+      </div>
+      @if (avisos().length) {
+        <ul class="lista-dia">
+          @for (a of avisos(); track a.idNotificacion) {
+            <li>
+              <a class="item" [routerLink]="enlaceAviso(a)">
+                <span class="punto-aviso" aria-hidden="true"></span>
+                <span class="item-texto">
+                  <strong>{{ a.titulo }}</strong>
+                  <small>{{ a.creada | date:'dd/MM HH:mm' }} · {{ a.mensaje }}</small>
+                </span>
+              </a>
+            </li>
+          }
+        </ul>
+      } @else if (!cargando()) {
+        <p class="vacio">Está al día con sus avisos.</p>
+      }
+      @if (veVigilancia && enAlerta().length) {
+        <a class="alerta-vigilancia" routerLink="/vigilancia">
+          <ng-icon name="lucideEye" size="16" />
+          {{ enAlerta().length }} radicado(s) vigilado(s) con fallas de consulta
+        </a>
+      }
+    </section>
   </div>
 
-  @if (cargando) {
-    <div class="estado-msg">Cargando...</div>
-  }
-
-  @if (error) {
-    <div class="estado-msg estado-error">{{ error }}</div>
-  }
-
-  @if (!cargando && !error) {
-
-    <div class="metricas-grid">
-      <div class="metrica-card metrica-alerta" [class.sin-alertas]="terminosVencidos + terminosPorVencer === 0">
-        <span class="metrica-label">Términos por vencer</span>
-        <span class="metrica-valor">{{ terminosPorVencer }}</span>
-        <span class="metrica-sub">{{ terminosVencidos }} vencido(s) sin cumplir</span>
-        <a routerLink="/terminos" class="metrica-link">Ver agenda</a>
-      </div>
-      <div class="metrica-card">
-        <span class="metrica-label">Procesos</span>
-        <span class="metrica-valor">{{ totalProcesos }}</span>
-        <a routerLink="/procesos" class="metrica-link">Ver procesos</a>
-      </div>
-      <div class="metrica-card">
-        <span class="metrica-label">Activos</span>
-        <span class="metrica-valor">{{ activos }}</span>
-        <span class="metrica-sub">{{ suspendidos }} suspendido(s) · {{ cerrados }} cerrado(s)</span>
-      </div>
-      <div class="metrica-card">
-        <span class="metrica-label">Clientes</span>
-        <span class="metrica-valor">{{ totalClientes }}</span>
-        <a routerLink="/clientes" class="metrica-link">Ver clientes</a>
-      </div>
-      <div class="metrica-card metrica-card-accent">
-        <span class="metrica-label">Abogados activos</span>
-        <span class="metrica-valor">{{ abogadosActivos }}</span>
-        <a routerLink="/abogados" class="metrica-link">Ver abogados</a>
-      </div>
-    </div>
-
-    <div class="seccion panel">
-      <div class="seccion-header"><h2>Procesos por rama (activos / total)</h2></div>
-      @for (r of porRama; track r.rama) {
-        <div class="barra-fila">
-          <span class="barra-nombre">{{ r.rama }}</span>
-          <span class="barra-pista"><span class="barra" [style.width.%]="ancho(r)"></span></span>
-          <span class="barra-valor">{{ r.activos }} / {{ r.total }}</span>
+  <!-- La firma (socios y administradores) -->
+  @if (firma(); as f) {
+    <h2 class="titulo-seccion">La firma</h2>
+    <section class="cifras cifras-firma" aria-label="Totales de la firma">
+      <a class="cifra" routerLink="/procesos"><span class="cifra-valor">{{ f.procesos }}</span><span class="cifra-nombre">Procesos</span></a>
+      <a class="cifra" routerLink="/procesos"><span class="cifra-valor">{{ f.activos }}</span><span class="cifra-nombre">Activos</span></a>
+      <a class="cifra" routerLink="/clientes"><span class="cifra-valor">{{ f.clientes }}</span><span class="cifra-nombre">Clientes</span></a>
+      <a class="cifra" routerLink="/abogados"><span class="cifra-valor">{{ f.abogados }}</span><span class="cifra-nombre">Abogados activos</span></a>
+    </section>
+    <div class="rejilla-firma">
+      <section class="card" aria-labelledby="t-ramas">
+        <div class="card-header"><h2 id="t-ramas">Procesos por rama</h2><small>activos / total</small></div>
+        <div class="card-body ramas">
+          @for (r of f.porRama; track r.rama) {
+            <div class="rama">
+              <span class="rama-nombre">{{ r.rama }}</span>
+              <span class="rama-pista"><span class="rama-barra" [style.width.%]="ancho(r, f.porRama)"></span></span>
+              <span class="rama-valor">{{ r.activos }} / {{ r.total }}</span>
+            </div>
+          }
         </div>
-      }
-    </div>
-
-    <div class="seccion">
-      <div class="seccion-header">
-        <h2>Procesos más recientes</h2>
-        <a routerLink="/procesos" class="ver-todos">Ver todos</a>
-      </div>
-      @if (ultimos.length > 0) {
-        <div class="tabla-wrapper">
-          <table class="tabla">
-            <thead><tr><th>Radicado</th><th>Rama</th><th>Asunto</th><th>Estado</th><th>Radicado el</th></tr></thead>
-            <tbody>
-              @for (p of ultimos; track p.idProceso) {
-                <tr>
-                  <td class="mono">{{ p.radicadoLegible }}</td>
-                  <td>{{ p.rama }}</td>
-                  <td>{{ p.asunto }}</td>
-                  <td>{{ etiqueta(p.estado) }} · {{ etiqueta(p.etapa) }}</td>
-                  <td class="fecha-celda">{{ p.fechaRadicacion | date:'dd/MM/yyyy' }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
+      </section>
+      <section class="card" aria-labelledby="t-recientes">
+        <div class="card-header">
+          <h2 id="t-recientes">Procesos recientes</h2>
+          <a routerLink="/procesos" class="ver-todo">Ver todos <ng-icon name="lucideArrowRight" size="14" /></a>
         </div>
-      } @else {
-        <p class="estado-msg">Aún no hay procesos registrados.</p>
-      }
+        <ul class="lista-dia">
+          @for (p of f.recientes; track p.idProceso) {
+            <li>
+              <a class="item" [routerLink]="['/procesos', p.idProceso]">
+                <span class="item-texto">
+                  <strong>{{ p.asunto }}</strong>
+                  <small><span class="mono">{{ p.radicadoLegible }}</span> · {{ p.rama }}</small>
+                </span>
+                <span class="badge badge-muted">{{ etiqueta(p.etapa) }}</span>
+              </a>
+            </li>
+          }
+        </ul>
+      </section>
     </div>
-
-    @if (creaProcesos || creaClientes || creaAbogados) {
-    <div class="accesos-rapidos">
-      <h2>Accesos rápidos</h2>
-      <div class="accesos-grid">
-        @if (creaProcesos) {
-          <a routerLink="/procesos/nuevo" class="acceso-card">
-            <span class="acceso-title">Nuevo proceso</span>
-            <span class="acceso-desc">Registrar un proceso por su radicado</span>
-          </a>
-        }
-        @if (creaClientes) {
-          <a routerLink="/clientes" class="acceso-card">
-            <span class="acceso-title">Registrar cliente</span>
-            <span class="acceso-desc">Persona natural o jurídica</span>
-          </a>
-        }
-        @if (creaAbogados) {
-          <a routerLink="/abogados" class="acceso-card">
-            <span class="acceso-title">Registrar abogado</span>
-            <span class="acceso-desc">Con tarjeta profesional y área</span>
-          </a>
-        }
-      </div>
-    </div>
-    }
-
   }
-
 </div>
