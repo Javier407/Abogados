@@ -1,6 +1,7 @@
-<div class="app" [class.colapsado]="colapsado()" [class.menu-abierto]="menuMovil()">
+<div class="app" [class.colapsado]="colapsado()" [class.menu-abierto]="menuMovil()" [class.portal]="esPortal()">
 
-  <!-- ================= Menú lateral ================= -->
+  <!-- ================= Menú lateral (personal de la firma; el portal del cliente usa la barra superior) ================= -->
+  @if (!esPortal()) {
   <aside class="side" id="menu-principal" aria-label="Menú">
     <div class="side-cabeza">
       <a class="marca" [routerLink]="auth.inicio()" (click)="menuMovil.set(false)" title="Lexora · Rodríguez & Asociados">
@@ -51,6 +52,7 @@
       </a>
     </div>
   </aside>
+  }
   @if (menuMovil()) {
     <button type="button" class="velo" aria-label="Cerrar el menú" (click)="menuMovil.set(false)"></button>
   }
@@ -58,12 +60,23 @@
   <!-- ================= Contenido ================= -->
   <div class="main">
     <header class="topbar">
+      @if (esPortal()) {
+        <a class="marca-portal" [routerLink]="auth.inicio()" title="Lexora · Rodríguez & Asociados"><app-logo /></a>
+        <nav class="nav-portal" aria-label="Menú principal">
+          @for (o of grupos()[0].opciones; track o.ruta) {
+            <a class="opcion-portal" [routerLink]="o.ruta" [class.activa]="activa(o)" [attr.aria-current]="activa(o) ? 'page' : null">
+              <ng-icon [name]="o.icono" size="18" /> {{ o.etiqueta }}
+            </a>
+          }
+        </nav>
+      } @else {
       <button type="button" class="btn-icono-barra solo-movil" (click)="menuMovil.set(true)" aria-label="Abrir el menú"
         aria-controls="menu-principal" [attr.aria-expanded]="menuMovil()">
         <ng-icon name="lucideMenu" size="20" />
       </button>
+      }
 
-      <nav class="migas" aria-label="Ubicación">
+      <nav class="migas" aria-label="Ubicación" [class.oculto]="esPortal()">
         @if (ubicacion(); as u) {
           <ol>
             @if (u.grupo) { <li class="migas-grupo">{{ u.grupo }}</li> }

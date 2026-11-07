@@ -50,7 +50,7 @@ import { Termino, TerminoSolicitud, etiqueta, textoRestantes } from '../../core/
           </div>
         }
 
-        <form #form="ngForm" (ngSubmit)="agregar(form)" novalidate style="margin-top: 20px">
+        <form class="mt-5" #form="ngForm" (ngSubmit)="agregar(form)" novalidate>
           <div class="form-grid">
             <div class="form-group form-group-full">
               <label class="form-label" for="descTermino">Nuevo término <span class="requerido">*</span></label>

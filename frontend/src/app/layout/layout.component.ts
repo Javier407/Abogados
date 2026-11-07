@@ -73,6 +73,9 @@ export class LayoutComponent {
     return ((partes[0]?.[0] ?? '') + (partes[1]?.[0] ?? '')).toUpperCase();
   });
 
+  /** El cliente ve el portal: sin menú lateral, con sus pocas opciones en la barra superior. */
+  readonly esPortal = computed(() => this.auth.esCliente() && !this.auth.esPersonal());
+
   readonly rol = computed(() => (this.auth.sesion()?.roles ?? []).map(r => NOMBRES_ROL[r] ?? r).join(' · '));
 
   /** Menú según el rol: lo diario arriba, lo administrativo abajo y plegable. */

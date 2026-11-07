@@ -29,7 +29,7 @@ import { Abogado, Integrante, RolEquipo, etiqueta } from '../../core/modelos';
           }
         </ul>
         @if (juridico) {
-          <div class="filtros" style="margin-top: 12px">
+          <div class="filtros mt-3">
             <select class="form-input" [(ngModel)]="idPersona" aria-label="Persona que se agrega">
               <option [ngValue]="null">Agregar a…</option>
               @for (a of disponibles(); track a.idPersona) { <option [ngValue]="a.idPersona">{{ a.nombres }} {{ a.apellidos }}</option> }

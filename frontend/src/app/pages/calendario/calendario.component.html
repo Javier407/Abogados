@@ -67,7 +67,7 @@
           </ul>
         }
         @if (seleccionado.terminos.length === 0) {
-          @if (!seleccionado.audiencias.length) { <p class="empty-state" style="padding: 8px">No hay audiencias ni vencimientos este día.</p> }
+          @if (!seleccionado.audiencias.length) { <p class="empty-state p-2">No hay audiencias ni vencimientos este día.</p> }
         } @else {
           <ul class="lista-detalle">
             @for (t of seleccionado.terminos; track t.idTermino) {

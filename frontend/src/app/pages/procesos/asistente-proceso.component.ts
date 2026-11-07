@@ -67,7 +67,7 @@ import { EstadoAsistente, Providencia, ResumenPublicado, TipoBorrador } from '..
           }
         </div>
 
-        @if (aviso) { <div class="alerta alerta-error" style="margin-top: 12px">{{ aviso }}</div> }
+        @if (aviso) { <div class="alerta alerta-error mt-3">{{ aviso }}</div> }
         @if (tipo === 'RESUMEN_CLIENTE') {
           <p class="form-ayuda">
             @if (publicado) { Último resumen publicado en el portal: {{ publicado.publicadoEn | date:'dd/MM/yyyy HH:mm' }}. }
@@ -77,7 +77,7 @@ import { EstadoAsistente, Providencia, ResumenPublicado, TipoBorrador } from '..
             }
           </p>
         }
-        @if (mensaje) { <div class="alerta alerta-exito" style="margin-top: 12px">{{ mensaje }}</div> }
+        @if (mensaje) { <div class="alerta alerta-exito mt-3">{{ mensaje }}</div> }
         @if (texto || redactando || editando) {
           @if (!editando) {
             <p class="aviso-ia" role="note">Borrador generado con IA: puede equivocarse o inventar datos.

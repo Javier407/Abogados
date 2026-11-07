@@ -25,7 +25,7 @@
         </div>
 
         @if (desglose) {
-          <div class="tabla-wrapper" style="margin-top: 16px">
+          <div class="tabla-wrapper mt-4">
             <table class="tabla">
               <thead>
                 <tr><th>DANE</th><th>Entidad</th><th>Especialidad</th><th>Despacho</th><th>Año</th><th>Consecutivo</th><th>Instancia</th></tr>
@@ -40,11 +40,11 @@
             </table>
           </div>
           @if (desglose.despacho) {
-            <div class="alerta alerta-exito" style="margin-top: 12px">
+            <div class="alerta alerta-exito mt-3">
               Radicado en: <strong>{{ desglose.despacho.nombre }}</strong> ({{ desglose.despacho.ciudad }})
             </div>
           } @else {
-            <div class="alerta alerta-error" style="margin-top: 12px">
+            <div class="alerta alerta-error mt-3">
               Los primeros 12 dígitos no corresponden a ningún despacho registrado.
             </div>
           }

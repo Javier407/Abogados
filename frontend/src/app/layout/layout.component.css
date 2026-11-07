@@ -172,3 +172,21 @@
 @media (max-width: 1100px) {
   .buscador { min-width: 0; width: 38px; padding: 0; justify-content: center; margin-right: 0; }
 }
+
+/* Portal del cliente: barra superior con sus opciones, letra más grande y contenido más angosto */
+.app.portal { grid-template-columns: minmax(0, 1fr); }
+.marca-portal { display: inline-flex; text-decoration: none; margin-right: 12px; }
+.nav-portal { display: flex; gap: 4px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.opcion-portal {
+  display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-radius: 10px; white-space: nowrap;
+  color: var(--ink-2); text-decoration: none; font-weight: 600; font-size: 14.5px; transition: background-color .15s, color .15s;
+}
+.opcion-portal:hover { background: var(--surface-2); color: var(--ink); }
+.opcion-portal.activa { background: var(--accent-soft); color: var(--accent-ink); }
+.migas.oculto { display: none; }
+.portal .view { max-width: 1080px; font-size: 15px; }
+@media (max-width: 640px) {
+  .portal .topbar { flex-wrap: wrap; height: auto; padding: 10px 16px; row-gap: 8px; }
+  .portal .nav-portal { order: 3; flex-basis: 100%; }
+  .portal .herramientas { margin-left: auto; }
+}
