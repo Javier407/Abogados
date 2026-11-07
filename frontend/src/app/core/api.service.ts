@@ -31,6 +31,9 @@ export class ApiService {
   clientes(q?: string): Observable<Cliente[]> {
     return this.http.get<Cliente[]>(`${API}/clientes`, { params: filtros({ q }) });
   }
+  cliente(id: number): Observable<Cliente> {
+    return this.http.get<Cliente>(`${API}/clientes/${id}`);
+  }
   crearCliente(c: Cliente): Observable<Cliente> {
     return this.http.post<Cliente>(`${API}/clientes`, c);
   }
