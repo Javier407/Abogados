@@ -10,6 +10,7 @@ COPY requirements-dev.txt pyproject.toml ./
 RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements-dev.txt
 COPY app ./app
 COPY tests ./tests
+COPY evaluacion ./evaluacion
 RUN python -m pytest -q && touch /tmp/pruebas-ok
 
 FROM base
