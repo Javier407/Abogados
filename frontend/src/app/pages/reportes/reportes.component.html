@@ -90,7 +90,7 @@
         @for (r of resultados; track r.codigoRama) {
           <div class="resultado">
             <span class="resultado-rama">{{ r.rama }} <small>({{ total(r) }})</small></span>
-            <span class="resultado-barra" [attr.aria-label]="r.favorables + ' favorables, ' + r.parciales + ' parciales, ' + r.desfavorables + ' desfavorables'">
+            <span class="resultado-barra" role="img" [attr.aria-label]="r.favorables + ' favorables, ' + r.parciales + ' parciales, ' + r.desfavorables + ' desfavorables'">
               <span class="seg seg-fav" [style.flex-grow]="r.favorables"></span>
               <span class="seg seg-par" [style.flex-grow]="r.parciales"></span>
               <span class="seg seg-des" [style.flex-grow]="r.desfavorables"></span>

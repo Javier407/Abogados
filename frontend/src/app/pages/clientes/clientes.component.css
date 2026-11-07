@@ -1,0 +1,31 @@
+/* Clientes: lista y ficha lateral con lo que sigue (procesos, facturar). */
+.nombre-cliente {
+  display: flex; align-items: center; gap: 12px; border: 0; background: none; padding: 0; text-align: left; color: inherit;
+}
+.nombre-cliente span:last-child { display: flex; flex-direction: column; }
+.nombre-cliente strong { font-weight: 600; }
+.avatar-cliente, .avatar-grande {
+  display: grid; place-items: center; flex: none; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent-ink); font-weight: 700;
+}
+.avatar-cliente { width: 36px; height: 36px; font-size: 12.5px; }
+
+.ficha-cabeza {
+  position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px;
+  padding: 28px 20px 18px; border-bottom: 1px solid var(--line);
+}
+.ficha-cabeza h2 { font-size: 18px; margin-top: 8px; }
+.ficha-cabeza p { color: var(--muted); font-size: 13px; }
+.avatar-grande { width: 72px; height: 72px; font-size: 24px; }
+.cerrar { position: absolute; top: 10px; right: 10px; }
+.contacto { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.contacto li { display: flex; align-items: center; gap: 10px; color: var(--ink-2); word-break: break-word; }
+.contacto ng-icon { color: var(--muted); flex: none; }
+.acciones-ficha { display: flex; gap: 8px; flex-wrap: wrap; }
+.acciones-ficha.pie { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.lista-procesos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.lista-procesos a { display: flex; flex-direction: column; padding: 8px 10px; border-radius: 10px; text-decoration: none; color: inherit; }
+.lista-procesos a:hover { background: var(--surface-2); }
+.lista-procesos strong { font-size: 13px; font-weight: 600; }
+.total-pendiente { font-size: 22px; font-weight: 800; display: flex; flex-direction: column; }
+.texto-peligro { color: var(--danger); }

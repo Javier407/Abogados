@@ -12,6 +12,7 @@ import { ProcesosComponent } from './pages/procesos/procesos.component';
 import { TerminosComponent } from './pages/terminos/terminos.component';
 import { ClientesComponent } from './pages/clientes/clientes.component';
 import { FacturacionComponent } from './pages/facturacion/facturacion.component';
+import { DashboardComponent } from './dashboard/dashboard.component';
 
 // F17: datos de ejemplo para que las listas se revisen con filas (tablas, enlaces, insignias), no vacías.
 const PROCESO = {
@@ -109,6 +110,10 @@ describe('Accesibilidad (axe-core)', () => {
 
   it('el calendario no tiene violaciones graves (F16: antes role=grid sin filas)', async () => {
     expect(await violaciones(CalendarioComponent)).toEqual([]);
+  });
+
+  it('el inicio «Mi día» no tiene violaciones graves (diseño Lexora)', async () => {
+    expect(await violaciones(DashboardComponent, {}, true)).toEqual([]);
   });
 
   // F17: las pantallas de trabajo diario, con datos.

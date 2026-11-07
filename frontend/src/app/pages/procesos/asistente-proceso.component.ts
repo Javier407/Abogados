@@ -67,7 +67,7 @@ import { EstadoAsistente, Providencia, ResumenPublicado, TipoBorrador } from '..
           }
         </div>
 
-        @if (aviso) { <div class="alerta alerta-error" style="margin-top: 12px">{{ aviso }}</div> }
+        @if (aviso) { <div class="alerta alerta-error mt-3">{{ aviso }}</div> }
         @if (tipo === 'RESUMEN_CLIENTE') {
           <p class="form-ayuda">
             @if (publicado) { Último resumen publicado en el portal: {{ publicado.publicadoEn | date:'dd/MM/yyyy HH:mm' }}. }
@@ -77,7 +77,7 @@ import { EstadoAsistente, Providencia, ResumenPublicado, TipoBorrador } from '..
             }
           </p>
         }
-        @if (mensaje) { <div class="alerta alerta-exito" style="margin-top: 12px">{{ mensaje }}</div> }
+        @if (mensaje) { <div class="alerta alerta-exito mt-3">{{ mensaje }}</div> }
         @if (texto || redactando || editando) {
           @if (!editando) {
             <p class="aviso-ia" role="note">Borrador generado con IA: puede equivocarse o inventar datos.
@@ -103,7 +103,7 @@ import { EstadoAsistente, Providencia, ResumenPublicado, TipoBorrador } from '..
     </div>
   `,
   styles: [`.borrador { margin-top: 14px; font-family: Georgia, 'Times New Roman', serif; font-size: 0.92rem; line-height: 1.55; white-space: pre-wrap; }
-    .aviso-ia { margin: 14px 0 0; padding: 8px 12px; border-left: 4px solid #9a6b1f; background: #fbf6ec; color: #3d2f12; font-size: 0.88rem; }`]
+    .aviso-ia { margin: 14px 0 0; padding: 8px 12px; border-left: 4px solid var(--warn); background: var(--warn-soft); color: var(--ink); font-size: 0.88rem; }`]
 })
 export class AsistenteProcesoComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
@@ -111,6 +111,8 @@ export class AsistenteProcesoComponent implements OnInit, OnDestroy {
   private zona = inject(NgZone);
   readonly idProceso = input.required<number>();
   readonly radicado = input<string>('');
+  /** Si llega, el asistente abre listo para redactar el recurso contra esa providencia (desde la línea de tiempo). */
+  readonly providenciaInicial = input<number | null>(null);
 
   estado: EstadoAsistente | null = null;
   tipo: TipoBorrador = 'CONTESTACION';
@@ -134,6 +136,7 @@ export class AsistenteProcesoComponent implements OnInit, OnDestroy {
     this.api.estadoAsistente().subscribe({ next: e => this.estado = e, error: () => this.estado = null });
     this.api.resumenCliente(this.idProceso()).subscribe({ next: r => this.publicado = r, error: () => {} });
     this.api.providencias(this.idProceso()).subscribe({ next: p => this.providencias = p, error: () => {} });
+    if (this.providenciaInicial()) { this.tipo = 'RECURSO'; this.idProvidencia = this.providenciaInicial(); }
   }
 
   /** Redactar el resumen a mano (parte del último publicado, si hay). */

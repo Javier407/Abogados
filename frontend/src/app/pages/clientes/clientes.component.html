@@ -1,15 +1,23 @@
 <div class="modulo-container">
 
   <div class="page-header">
-    <h1>Clientes</h1>
-    <p>Personas y empresas que la firma representa</p>
+    <div>
+      <h1>Clientes</h1>
+      <p>Personas y empresas que la firma representa</p>
+    </div>
+    @if (puedeEditar && !formularioAbierto) {
+      <div class="acciones">
+        <button class="btn btn-primary" type="button" (click)="nuevo()"><ng-icon name="lucideUserPlus" size="16" /> Nuevo cliente</button>
+      </div>
+    }
   </div>
 
-  @if (mensaje) { <div class="alerta alerta-exito">{{ mensaje }}</div> }
-  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+  @if (mensaje) { <div class="alerta alerta-exito" role="status">{{ mensaje }}</div> }
+  @if (error) { <div class="alerta alerta-error" role="alert">{{ error }}</div> }
 
-  <div class="card">
-    <div class="card-header"><h2>{{ editandoId ? 'Editar cliente ' + editandoId : 'Registrar cliente' }}</h2></div>
+  @if (formularioAbierto) {
+  <section class="card" aria-labelledby="titulo-form">
+    <div class="card-header"><h2 id="titulo-form">{{ editandoId ? 'Editar cliente' : 'Nuevo cliente' }}</h2></div>
     <div class="card-body">
       <form #form="ngForm" (ngSubmit)="guardar(form)" novalidate>
         <div class="form-grid">
@@ -90,54 +98,115 @@
           <button type="submit" class="btn btn-primary" [disabled]="guardando">
             {{ guardando ? 'Guardando...' : (editandoId ? 'Guardar cambios' : 'Registrar cliente') }}
           </button>
-          <button type="button" class="btn btn-secondary" (click)="cancelar(form)">
-            {{ editandoId ? 'Cancelar' : 'Limpiar' }}
-          </button>
+          <button type="button" class="btn btn-secondary" (click)="cancelar(form)">Cancelar</button>
         </div>
       </form>
     </div>
+  </section>
+  }
+
+  <div class="filtros">
+    <input class="form-input" type="search" [(ngModel)]="busqueda" (keyup.enter)="cargar()"
+      placeholder="Buscar por nombre o documento y pulsar Enter" aria-label="Buscar clientes" />
+    <button class="btn btn-secondary" type="button" (click)="cargar()">Buscar</button>
+    <span class="resumen-chip">Clientes: <strong>{{ clientes.length }}</strong></span>
   </div>
 
-  <div class="card">
-    <div class="card-header"><h2>Clientes registrados ({{ clientes.length }})</h2></div>
-    <div class="card-body">
-      <div class="filtros">
-        <input class="form-input" type="search" [(ngModel)]="busqueda" (keyup.enter)="cargar()"
-          placeholder="Buscar por nombre o documento y pulsar Enter" aria-label="Buscar clientes" />
-        <button class="btn btn-secondary" type="button" (click)="cargar()">Buscar</button>
+  <div class="honorarios-grid" [class.con-detalle]="elegido">
+    @if (cargando) {
+      <div class="empty-state">Cargando clientes...</div>
+    } @else if (clientes.length === 0) {
+      <div class="empty-state">No hay clientes que coincidan.</div>
+    } @else {
+      <div class="tabla-wrapper">
+        <table class="tabla">
+          <thead>
+            <tr><th>Cliente</th><th>Documento</th><th>Contacto</th><th>Ciudad</th><th>Desde</th></tr>
+          </thead>
+          <tbody>
+            @for (c of clientes; track c.idCliente) {
+              <tr class="fila-clic" [class.fila-elegida]="elegido?.idCliente === c.idCliente" (click)="elegir(c)">
+                <td>
+                  <button type="button" class="nombre-cliente" (click)="elegir(c); $event.stopPropagation()"
+                    [attr.aria-pressed]="elegido?.idCliente === c.idCliente">
+                    <span class="avatar-cliente" aria-hidden="true">{{ iniciales(c.nombre) }}</span>
+                    <span><strong>{{ c.nombre }}</strong><small>{{ etiqueta(c.tipoPersona) }}</small></span>
+                  </button>
+                </td>
+                <td class="mono">{{ c.tipoDocumento }} {{ c.numeroDocumento }}</td>
+                <td>{{ c.email }}@if (c.telefono) {<br><small>{{ c.telefono }}</small>}</td>
+                <td>{{ c.ciudad }}<br><small>Sede {{ nombreSede(c.idSede) }}</small></td>
+                <td class="fecha-celda">{{ c.creado | date:'dd/MM/yyyy' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
+    }
 
-      @if (cargando) {
-        <div class="empty-state">Cargando clientes...</div>
-      } @else if (clientes.length === 0) {
-        <div class="empty-state">No hay clientes que coincidan.</div>
-      } @else {
-        <div class="tabla-wrapper">
-          <table class="tabla">
-            <thead>
-              <tr><th>Id</th><th>Nombre</th><th>Documento</th><th>Contacto</th><th>Ciudad</th><th>Sede</th><th>Desde</th><th></th></tr>
-            </thead>
-            <tbody>
-              @for (c of clientes; track c.idCliente) {
-                <tr>
-                  <td><span class="badge badge-primary">#{{ c.idCliente }}</span></td>
-                  <td class="titulo-celda">{{ c.nombre }}<br><span class="badge badge-muted">{{ etiqueta(c.tipoPersona) }}</span></td>
-                  <td class="mono">{{ c.tipoDocumento }} {{ c.numeroDocumento }}</td>
-                  <td>{{ c.email }}<br>{{ c.telefono }}</td>
-                  <td>{{ c.ciudad }}</td>
-                  <td>{{ nombreSede(c.idSede) }}</td>
-                  <td class="fecha-celda">{{ c.creado | date:'dd/MM/yyyy' }}</td>
-                  <td class="acciones-celda">
-                    <button class="btn btn-secondary btn-sm" type="button" (click)="editar(c)">Editar</button>
-                    <button class="btn btn-danger btn-sm" type="button" (click)="eliminar(c)">Eliminar</button>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+    <!-- Ficha del cliente: lo que sigue con él, encadenado -->
+    @if (elegido; as c) {
+      <aside class="card detalle-honorario ficha" aria-labelledby="ficha-nombre">
+        <div class="ficha-cabeza">
+          <button class="btn btn-ghost btn-sm btn-icono cerrar" type="button" (click)="cerrarFicha()" aria-label="Cerrar la ficha">
+            <ng-icon name="lucideX" size="16" />
+          </button>
+          <span class="avatar-grande" aria-hidden="true">{{ iniciales(c.nombre) }}</span>
+          <h2 id="ficha-nombre">{{ c.nombre }}</h2>
+          <p class="mono">{{ c.tipoDocumento }} {{ c.numeroDocumento }}</p>
+          <span class="badge badge-muted">{{ etiqueta(c.tipoPersona) }}</span>
         </div>
-      }
-    </div>
+        <div class="card-body">
+          <ul class="contacto">
+            @if (c.email) { <li><ng-icon name="lucideMail" size="15" /><a [href]="'mailto:' + c.email">{{ c.email }}</a></li> }
+            @if (c.telefono) { <li><ng-icon name="lucidePhone" size="15" />{{ c.telefono }}</li> }
+            <li><ng-icon name="lucideMapPin" size="15" />{{ c.direccion ? c.direccion + ', ' : '' }}{{ c.ciudad }}</li>
+          </ul>
+
+          <div class="acciones-ficha">
+            @if (creaProcesos) {
+              <a class="btn btn-primary btn-sm" routerLink="/procesos/nuevo" [queryParams]="{ idCliente: c.idCliente }">
+                <ng-icon name="lucideFolderPlus" size="14" /> Nuevo proceso</a>
+            }
+            @if (puedeFacturar) {
+              <a class="btn btn-secondary btn-sm" routerLink="/facturacion" [queryParams]="{ nueva: 1, idCliente: c.idCliente }">
+                <ng-icon name="lucideReceipt" size="14" /> Facturar</a>
+            }
+          </div>
+
+          <h3 class="subtitulo-detalle">Procesos ({{ procesosDe.length }})</h3>
+          @if (cargandoFicha) { <p class="form-ayuda">Cargando…</p> }
+          @else if (procesosDe.length === 0) { <p class="form-ayuda">Sin procesos con la firma.</p> }
+          <ul class="lista-procesos">
+            @for (p of procesosDe; track p.idProceso) {
+              <li>
+                <a [routerLink]="['/procesos', p.idProceso]">
+                  <strong>{{ p.asunto }}</strong>
+                  <small><span class="mono">{{ p.radicadoLegible }}</span> · {{ etiqueta(p.etapa) }}</small>
+                </a>
+              </li>
+            }
+          </ul>
+
+          @if (veHonorarios) {
+            <h3 class="subtitulo-detalle">Pendiente por facturar</h3>
+            @if (pendientes.length === 0) {
+              <p class="form-ayuda">Nada pendiente.</p>
+            } @else {
+              <p class="total-pendiente">{{ totalPendiente | currency:'COP':'symbol-narrow':'1.0-0' }}
+                <small>en {{ pendientes.length }} concepto(s)</small></p>
+            }
+          }
+
+          @if (puedeEditar) {
+            <div class="acciones-ficha pie">
+              <button class="btn btn-secondary btn-sm" type="button" (click)="editar(c)"><ng-icon name="lucidePencil" size="14" /> Editar</button>
+              <button class="btn btn-ghost btn-sm texto-peligro" type="button" (click)="eliminar(c)"><ng-icon name="lucideTrash2" size="14" /> Eliminar</button>
+            </div>
+          }
+        </div>
+      </aside>
+    }
   </div>
 
 </div>

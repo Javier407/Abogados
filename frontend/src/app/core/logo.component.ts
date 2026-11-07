@@ -1,30 +1,33 @@
-import { Component } from '@angular/core';
+import { Component, input } from '@angular/core';
 
-/** Logo de la firma (el mismo de gabinete.html): escudo con capitel griego y balanza. */
+/**
+ * Marca Lexora: monograma (una L que sostiene una X, el «cruce» de la ley con el plazo) en un cuadro índigo,
+ * y el nombre en Plus Jakarta Sans. Variante «icono» para el menú colapsado.
+ */
 @Component({
   selector: 'app-logo',
   standalone: true,
   template: `
-    <svg viewBox="0 0 120 120" role="img" aria-label="Logo de Rodríguez & Asociados">
-      <g fill="#F0E7D5">
-        <rect x="56" y="4" width="8" height="8" rx="2"/>
-        <rect x="10" y="12" width="100" height="7" rx="3.5"/>
-        <rect x="28" y="22" width="64" height="4" rx="2"/>
-        <rect x="34" y="29" width="52" height="4" rx="2"/>
-      </g>
-      <g fill="none" stroke="#F0E7D5" stroke-width="4">
-        <circle cx="16" cy="22" r="6"/><circle cx="104" cy="22" r="6"/>
-      </g>
-      <g stroke="#F0E7D5" stroke-width="1.6" fill="none">
-        <path d="M16 28 7 60M16 28l9 32M104 28l-9 32M104 28l9 32"/>
-      </g>
-      <g fill="#F0E7D5">
-        <path d="M4 60h24a12 8 0 0 1-24 0z"/><path d="M92 60h24a12 8 0 0 1-24 0z"/>
-      </g>
-      <path d="M32 38h56v38c0 18-14 28-28 36-14-8-28-18-28-36z" fill="none" stroke="#F0E7D5" stroke-width="4"/>
-      <g stroke="#F0E7D5" stroke-width="4" stroke-linecap="round"><path d="M48 48v44M60 48v54M72 48v44"/></g>
-    </svg>
+    <span class="marca" role="img" aria-label="Lexora">
+      <svg class="monograma" viewBox="0 0 40 40" aria-hidden="true">
+        <rect width="40" height="40" rx="11" fill="var(--accent, #4338FF)"/>
+        <path d="M11.5 10v19.5H22" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M19 10.5 29 22" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round"/>
+        <path d="M29 10.5 25.2 15" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="4.2" stroke-linecap="round"/>
+        <circle cx="29" cy="29.5" r="2.6" fill="#fff" fill-opacity=".9"/>
+      </svg>
+      @if (variante() === 'completo') {
+        <span class="nombre" aria-hidden="true">Lexora</span>
+      }
+    </span>
   `,
-  styles: [`:host { display: inline-grid; place-items: center; } svg { width: 100%; height: 100%; display: block; }`]
+  styles: [`
+    :host { display: inline-flex; }
+    .marca { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); }
+    .monograma { width: var(--logo-tam, 34px); height: var(--logo-tam, 34px); flex: none; display: block; }
+    .nombre { font-weight: 800; font-size: var(--logo-texto, 19px); letter-spacing: -0.03em; line-height: 1; }
+  `]
 })
-export class LogoComponent {}
+export class LogoComponent {
+  readonly variante = input<'completo' | 'icono'>('completo');
+}

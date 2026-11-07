@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
 import { AuthService, DIRECCION, MANEJAN_FINANZAS } from '../../core/auth.service';
@@ -224,6 +224,7 @@ import {
 export class FacturacionComponent implements OnInit {
   private api = inject(ApiService);
   private router = inject(Router);
+  private ruta = inject(ActivatedRoute);
   private auth = inject(AuthService);
   readonly puedeEmitir = this.auth.tiene(...MANEJAN_FINANZAS);
   readonly puedeConfigurar = this.auth.tiene(...DIRECCION);
@@ -252,6 +253,14 @@ export class FacturacionComponent implements OnInit {
     this.cargar();
     this.api.clientes().subscribe({ next: c => this.clientes = c, error: () => {} });
     if (this.puedeEmitir) this.cargarConfig();
+    // Desde el expediente o la ficha del cliente: ?nueva=1&idCliente=..&idProceso=.. abre la factura ya llena.
+    const q = this.ruta.snapshot.queryParamMap;
+    if (this.puedeEmitir && q.get('nueva') && Number(q.get('idCliente'))) {
+      this.pestana = 'nueva';
+      this.nueva.idCliente = Number(q.get('idCliente'));
+      if (Number(q.get('idProceso'))) this.nueva.idProceso = Number(q.get('idProceso'));
+      this.elegirCliente();
+    }
   }
 
   cargar(): void {

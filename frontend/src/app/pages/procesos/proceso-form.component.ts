@@ -90,6 +90,9 @@ export class ProcesoFormComponent implements OnInit {
         },
         error: e => this.error = mensajeDeError(e)
       });
+    } else if (Number(this.route.snapshot.queryParamMap.get('idCliente'))) {
+      // Desde la ficha del cliente: el proceso nuevo ya trae el cliente elegido.
+      this.proceso.idCliente = Number(this.route.snapshot.queryParamMap.get('idCliente'));
     }
   }
 

@@ -6,6 +6,7 @@ import { forkJoin } from 'rxjs';
 import { ApiService, mensajeDeError } from '../../core/api.service';
 import { Audiencia, DiaInhabil, Termino } from '../../core/modelos';
 import { SesionService } from '../../core/sesion.service';
+import { PestanasAgendaComponent } from '../../ui/pestanas-agenda.component';
 
 interface Dia {
   fecha: string;          // AAAA-MM-DD
@@ -25,7 +26,7 @@ const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', '
 @Component({
   selector: 'app-calendario',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, PestanasAgendaComponent],
   templateUrl: './calendario.component.html',
   styleUrl: './calendario.component.css'
 })

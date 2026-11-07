@@ -4,33 +4,69 @@
   @if (cargando && !proceso) { <p class="form-ayuda">Cargando el expediente…</p> }
 
   @if (proceso; as p) {
-    <div class="page-header cabecera">
-      <div>
-        <p class="mono radicado">{{ p.radicadoLegible }}</p>
-        <h1>{{ p.asunto }}</h1>
-        <p>{{ p.rama }} · {{ p.tipoProceso }} · {{ p.despachoActual }}</p>
+    <!-- ================= Cabecera: qué proceso es, en qué etapa va y qué se puede hacer ================= -->
+    <header class="card cabecera">
+      <div class="cabecera-fila">
+        <div class="cabecera-datos">
+          <p class="mono radicado">{{ p.radicadoLegible }}</p>
+          <h1>{{ p.asunto }}</h1>
+          <p class="meta">{{ p.rama }} · {{ p.tipoProceso }} · {{ p.despachoActual }}</p>
+          <div class="insignias">
+            <span class="badge" [class.badge-success]="p.estado === 'ACTIVO'" [class.badge-warning]="p.estado === 'SUSPENDIDO'"
+                  [class.badge-muted]="p.estado !== 'ACTIVO' && p.estado !== 'SUSPENDIDO'">{{ etiqueta(p.estado) }}</span>
+            <span class="badge badge-primary">Cliente {{ etiqueta(p.rolCliente).toLowerCase() }}</span>
+            @for (i of instancias; track i.idProceso) {
+              <a class="badge badge-muted" [routerLink]="['/procesos', i.idProceso]">
+                {{ i.instancia === 0 ? 'Primera instancia' : 'Instancia ' + i.instancia }} · {{ i.despacho }}
+              </a>
+            }
+          </div>
+        </div>
+        <div class="cabecera-acciones">
+          @if (juridico) {
+            <a class="btn btn-secondary btn-sm" [routerLink]="['/procesos', p.idProceso, 'editar']"><ng-icon name="lucidePencil" size="14" /> Editar</a>
+          }
+          @if (veFinanzas) {
+            <button class="btn btn-secondary btn-sm" type="button" (click)="irA('gastos')"><ng-icon name="lucideWallet" size="14" /> Registrar gasto</button>
+          }
+          @if (puedeFacturar) {
+            <button class="btn btn-secondary btn-sm" type="button" (click)="facturar(p)"><ng-icon name="lucideReceipt" size="14" /> Facturar</button>
+          }
+          @if (juridico) {
+            <button class="btn btn-primary btn-sm" type="button" (click)="irA('asistente')"><ng-icon name="lucideSparkles" size="14" /> Redactar con IA</button>
+          }
+        </div>
       </div>
-      <div class="cabecera-acciones">
-        <span class="badge" [class.badge-success]="p.estado === 'ACTIVO'" [class.badge-warning]="p.estado === 'SUSPENDIDO'"
-              [class.badge-muted]="p.estado !== 'ACTIVO' && p.estado !== 'SUSPENDIDO'">{{ etiqueta(p.estado) }}</span>
-        <span class="badge badge-primary">Etapa: {{ etiqueta(p.etapa) }}</span>
-        @if (juridico) { <a class="btn btn-secondary btn-sm" [routerLink]="['/procesos', p.idProceso, 'editar']">Editar datos</a> }
-      </div>
-    </div>
 
-    @if (instancias.length) {
-      <div class="instancias">
-        <span class="form-ayuda">Otras instancias del mismo radicado:</span>
-        @for (i of instancias; track i.idProceso) {
-          <a class="badge badge-primary" [routerLink]="['/procesos', i.idProceso]">
-            {{ i.instancia === 0 ? 'Primera instancia' : 'Instancia ' + i.instancia }} · {{ i.despacho }}
-          </a>
+      <!-- Etapa como barra de pasos -->
+      <ol class="etapas" aria-label="Etapas del proceso">
+        @for (et of etapas; track et; let i = $index) {
+          <li [class.hecha]="i < indiceEtapa(p)" [class.actual]="i === indiceEtapa(p)"
+              [attr.aria-current]="i === indiceEtapa(p) ? 'step' : null" [attr.title]="etiqueta(et)">
+            <span class="paso-punto" aria-hidden="true"></span>
+            <span class="paso-texto" [class.sr-only]="i !== indiceEtapa(p)">{{ etiqueta(et) }}{{ i < indiceEtapa(p) ? ' (hecha)' : '' }}</span>
+          </li>
         }
-      </div>
-    }
+      </ol>
+    </header>
 
     @if (mensaje) { <div class="alerta alerta-exito" role="status">{{ mensaje }}</div> }
 
+    <!-- ================= Pestañas ================= -->
+    <div class="pestanas" role="tablist" aria-label="Secciones del expediente">
+      @for (t of pestanas; track t.id) {
+        <button type="button" role="tab" class="pestana" [id]="'pestana-' + t.id" [attr.aria-selected]="pestana === t.id"
+                [attr.aria-controls]="'panel-expediente'" [attr.tabindex]="pestana === t.id ? 0 : -1"
+                (click)="irA(t.id)" (keydown)="teclaPestana($event, t.id)">
+          <ng-icon [name]="t.icono" size="16" /> {{ t.texto }}
+          @if (t.id === 'terminos' && terminosPendientes.length) { <span class="contador-pestana">{{ terminosPendientes.length }}</span> }
+        </button>
+      }
+    </div>
+
+    <div class="panel-pestana" id="panel-expediente" role="tabpanel" [attr.aria-labelledby]="'pestana-' + pestana">
+    @switch (pestana) {
+      @case ('resumen') {
     <div class="expediente-grid">
 
       <!-- ================= Línea de tiempo ================= -->
@@ -196,8 +232,14 @@
                     <button class="btn-quitar" type="button" (click)="eliminarActuacion(e)" [attr.aria-label]="'Eliminar la actuación ' + e.titulo">×</button>
                   }
                   @if (registraActuaciones && e.categoria === 'PROVIDENCIA') {
-                    <button class="btn btn-secondary btn-sm btn-sugerir" type="button" (click)="verSugerencias(e.id)"
-                            [attr.aria-expanded]="sugerenciasDe === e.id">Términos sugeridos</button>
+                    <div class="encadenadas">
+                      <button class="btn btn-secondary btn-sm" type="button" (click)="verSugerencias(e.id)"
+                              [attr.aria-expanded]="sugerenciasDe === e.id"><ng-icon name="lucideCalendarClock" size="14" /> Términos sugeridos</button>
+                      @if (juridico) {
+                        <button class="btn btn-ghost btn-sm" type="button" (click)="pedirBorrador(e.id)"
+                                [attr.aria-label]="'Pedir borrador del recurso contra ' + e.titulo"><ng-icon name="lucideFilePen" size="14" /> Borrador del recurso</button>
+                      }
+                    </div>
                   }
                   @if (sugerenciasDe === e.id && e.categoria === 'PROVIDENCIA') {
                     <div class="sugerencias">
@@ -300,8 +342,9 @@
         </div>
       </section>
     </div>
+      }
 
-    <!-- ================= Pruebas ================= -->
+      @case ('pruebas') {
     <section class="card">
       <div class="card-header encabezado-tarjeta">
         <h2>Pruebas ({{ pruebas.length }})</h2>
@@ -387,11 +430,18 @@
         }
       </div>
     </section>
+      }
 
-    <app-equipo-proceso [idProceso]="idProceso" />
-    <app-documentos-proceso [idProceso]="idProceso" />
-    @for (v of [version]; track v) { <app-terminos-proceso [idProceso]="idProceso" /> }
-    @if (veFinanzas) { <app-gastos-proceso [idProceso]="idProceso" /> }
-    @if (juridico) { <app-asistente-proceso [idProceso]="idProceso" [radicado]="p.radicado" /> }
+      @case ('terminos') { @for (v of [version]; track v) { <app-terminos-proceso [idProceso]="idProceso" /> } }
+      @case ('documentos') { <app-documentos-proceso [idProceso]="idProceso" /> }
+      @case ('equipo') { <app-equipo-proceso [idProceso]="idProceso" /> }
+      @case ('gastos') { <app-gastos-proceso [idProceso]="idProceso" /> }
+      @case ('asistente') {
+        @for (v of [versionAsistente]; track v) {
+          <app-asistente-proceso [idProceso]="idProceso" [radicado]="p.radicado" [providenciaInicial]="providenciaParaBorrador" />
+        }
+      }
+    }
+    </div>
   }
 </div>

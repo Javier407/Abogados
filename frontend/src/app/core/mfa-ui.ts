@@ -86,7 +86,7 @@ export class CodigosRecuperacionComponent {
   }
 
   descargar(): void {
-    const texto = `Gestión Jurídica — códigos de recuperación${this.usuario ? ' de ' + this.usuario : ''}\n`
+    const texto = `Lexora — códigos de recuperación${this.usuario ? ' de ' + this.usuario : ''}\n`
       + `Cada código sirve una sola vez.\n\n${this.codigos.join('\n')}\n`;
     guardarArchivo(new Blob([texto], { type: 'text/plain;charset=utf-8' }), 'codigos-recuperacion.txt');
   }

@@ -1,35 +1,67 @@
-.cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
-.radicado { margin: 0 0 2px; color: var(--mahogany); font-size: 13px; }
-.cabecera-acciones { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.instancias { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: -8px 0 16px; }
-.instancias a { text-decoration: none; }
+/* Expediente de punta a punta: cabecera con etapas, pestañas y la línea de tiempo con acciones encadenadas. */
+.cabecera { padding: 22px 24px 18px; display: flex; flex-direction: column; gap: 18px; }
+.cabecera-fila { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.cabecera-datos { min-width: 0; flex: 1; }
+.radicado { color: var(--muted); font-size: 12.5px; margin-bottom: 4px; }
+.cabecera h1 { font-size: 24px; }
+.meta { color: var(--muted); margin-top: 4px; }
+.insignias { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.insignias a { text-decoration: none; }
+.cabecera-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Barra de etapas: puntos unidos por una línea; la actual con su nombre */
+.etapas { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; }
+.etapas li { position: relative; flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.etapas li:not(:last-child)::after { content: ""; flex: 1; height: 2px; background: var(--line); margin-right: 8px; }
+.etapas li.hecha:not(:last-child)::after { background: var(--accent); }
+.etapas li.actual { flex: 2.2; }
+.paso-punto { width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--surface-3); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.hecha .paso-punto { background: var(--accent); box-shadow: none; }
+.actual .paso-punto { background: var(--surface); box-shadow: 0 0 0 3px var(--accent); }
+.paso-texto { font-size: 12.5px; font-weight: 700; color: var(--accent-ink); white-space: nowrap; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Pestañas */
+.pestanas { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: thin; border-bottom: 1px solid var(--line); margin-bottom: -4px; }
+.pestana {
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: 0; background: none;
+  color: var(--muted); font-weight: 600; font-size: 13.5px; white-space: nowrap;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s, border-color .15s;
+}
+.pestana:hover { color: var(--ink); }
+.pestana[aria-selected="true"] { color: var(--accent-ink); border-bottom-color: var(--accent); }
+.contador-pestana { min-width: 18px; padding: 0 6px; border-radius: 99px; background: var(--warn-soft); color: var(--warn); font-size: 11px; font-weight: 700; }
+.panel-pestana { display: flex; flex-direction: column; gap: 20px; }
 
 .expediente-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
 .encabezado-tarjeta { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .acciones-tarjeta { display: flex; gap: 8px; flex-wrap: wrap; }
-.formulario { background: var(--parchment-2); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+.formulario { background: var(--surface-2); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
 
 .chip-filtro { border: 0; background: none; cursor: pointer; font: inherit; }
-.chip-filtro.activo { background: #fff; color: var(--blue); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.chip-filtro.activo { background: var(--ink); color: var(--surface); }
+.chip-filtro.activo strong { color: var(--surface); }
+.resumen-bar { margin-bottom: 18px; }
 
 /* Línea de tiempo: punto de color por origen y una línea vertical que los une */
 .linea { list-style: none; margin: 0; padding: 0; }
-.evento { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 12px; padding: 0 0 18px 22px; }
+.evento { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 12px; padding: 0 0 20px 24px; }
 .evento::before { content: ""; position: absolute; left: 5px; top: 14px; bottom: 0; width: 2px; background: var(--line); }
 .evento:last-child::before { display: none; }
-.punto-linea { position: absolute; left: 0; top: 4px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); }
-.ev-firma .punto-linea { background: var(--blue); }
-.ev-juzgado .punto-linea { background: var(--mahogany); }
+.punto-linea { position: absolute; left: 0; top: 4px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.ev-firma .punto-linea { background: var(--accent); }
+.ev-juzgado .punto-linea { background: var(--danger); }
 .ev-termino .punto-linea { background: var(--warn); }
 .ev-cumplido .punto-linea { background: var(--ok); }
 .evento-fecha { font-size: 12.5px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
 .evento-cuerpo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.evento-tipo { font-family: var(--second); font-size: 12px; color: var(--muted); }
-.ev-juzgado .evento-tipo { color: var(--mahogany); }
+.evento-tipo { font-size: 11.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); }
+.ev-juzgado .evento-tipo { color: var(--danger); }
 .evento-cuerpo small { color: var(--muted); }
+.encadenadas { grid-column: 2 / -1; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
 
-.btn-quitar { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px; border-radius: 6px; align-self: start; }
-.btn-quitar:hover { color: var(--mahogany); background: var(--mahogany-soft); }
+.btn-quitar { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 6px; border-radius: 6px; align-self: start; }
+.btn-quitar:hover { color: var(--danger); background: var(--danger-soft); }
 
 .lista-partes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .lista-partes li { display: flex; justify-content: space-between; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
@@ -40,20 +72,25 @@
 .fila-doc { display: grid; grid-template-columns: 90px 1fr; gap: 10px; }
 .formulario > .form-group + .form-group, .formulario > .fila-doc, .formulario > .fila-doc + .form-group { margin-top: 10px; }
 
-@media (max-width: 1000px) {
-  .expediente-grid { grid-template-columns: 1fr; }
-}
-@media (max-width: 520px) {
-  .evento { grid-template-columns: 1fr auto; }
-  .evento-fecha { grid-column: 1 / -1; flex-direction: row; }
-}
-
 /* Términos sugeridos bajo la providencia */
-.btn-sugerir { grid-column: 2 / -1; justify-self: start; margin-top: 4px; }
-.sugerencias { grid-column: 2 / -1; display: flex; flex-direction: column; gap: 8px; background: var(--parchment-2); border-radius: 12px; padding: 10px 12px; }
+.sugerencias { grid-column: 2 / -1; display: flex; flex-direction: column; gap: 8px; background: var(--surface-2); border-radius: 12px; padding: 12px 14px; }
 .sugerencia { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .sugerencia div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .sugerencia small { color: var(--muted); }
 .sugerencia.opcional strong { font-weight: 500; color: var(--muted); }
 .a-validar { color: var(--warn) !important; }
-.select-estado { width: auto; min-width: 130px; padding: 6px 8px; }
+.select-estado { width: auto; min-width: 130px; min-height: 34px; padding: 4px 8px; }
+
+@media (max-width: 1000px) {
+  .expediente-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .cabecera { padding: 18px; }
+  .cabecera h1 { font-size: 20px; }
+  .etapas li.actual { flex: 3; }
+}
+@media (max-width: 520px) {
+  .evento { grid-template-columns: 1fr auto; }
+  .evento-fecha { grid-column: 1 / -1; flex-direction: row; }
+  .encadenadas, .sugerencias { grid-column: 1 / -1; }
+}

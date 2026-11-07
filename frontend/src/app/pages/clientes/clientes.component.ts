@@ -1,25 +1,50 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideFolderPlus, lucideMail, lucideMapPin, lucidePencil, lucidePhone, lucideReceipt, lucideTrash2, lucideUserPlus, lucideX } from '@ng-icons/lucide';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
-import { Cliente, Sede, etiqueta } from '../../core/modelos';
+import { AuthService, EDITAN_CLIENTES, JURIDICO, MANEJAN_FINANZAS, VEN_HONORARIOS } from '../../core/auth.service';
+import { Cliente, PendienteFacturar, Proceso, Sede, etiqueta } from '../../core/modelos';
 
+/**
+ * Clientes: lista con ficha lateral (estilo School). Desde la ficha se encadena lo que sigue con ese cliente:
+ * ver sus procesos, abrir uno nuevo con el cliente ya puesto y facturar lo pendiente. El formulario solo
+ * aparece al registrar o editar (?nuevo=1 lo abre; ?id=N abre la ficha, como hace la búsqueda Ctrl+K).
+ */
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [FormsModule, DatePipe],
-  templateUrl: './clientes.component.html'
+  imports: [FormsModule, DatePipe, CurrencyPipe, RouterLink, NgIcon],
+  providers: [provideIcons({ lucideFolderPlus, lucideMail, lucideMapPin, lucidePencil, lucidePhone, lucideReceipt, lucideTrash2, lucideUserPlus, lucideX })],
+  templateUrl: './clientes.component.html',
+  styleUrl: './clientes.component.css'
 })
 export class ClientesComponent implements OnInit {
   private api = inject(ApiService);
+  private auth = inject(AuthService);
+  private ruta = inject(ActivatedRoute);
+  private router = inject(Router);
   readonly etiqueta = etiqueta;
+  readonly puedeEditar = this.auth.tiene(...EDITAN_CLIENTES);
+  readonly creaProcesos = this.auth.tiene(...JURIDICO);
+  readonly puedeFacturar = this.auth.tiene(...MANEJAN_FINANZAS);
+  readonly veHonorarios = this.auth.tiene(...VEN_HONORARIOS);
 
   clientes: Cliente[] = [];
   sedes: Sede[] = [];
   cliente: Cliente = this.vacio();
   editandoId: number | null = null;
+  formularioAbierto = false;
   busqueda = '';
+
+  // Ficha lateral
+  elegido: Cliente | null = null;
+  procesosDe: Proceso[] = [];
+  pendientes: PendienteFacturar[] = [];
+  cargandoFicha = false;
 
   cargando = false;
   guardando = false;
@@ -27,9 +52,18 @@ export class ClientesComponent implements OnInit {
   mensaje = '';
   error = '';
 
+  get totalPendiente(): number {
+    return this.pendientes.reduce((s, p) => s + (p.valor ?? 0), 0);
+  }
+
   ngOnInit(): void {
     this.api.sedes().subscribe({ next: s => this.sedes = s, error: e => this.error = mensajeDeError(e) });
     this.cargar();
+    this.ruta.queryParamMap.subscribe(q => {
+      if (q.get('nuevo') && this.puedeEditar) this.nuevo();
+      const id = Number(q.get('id'));
+      if (id) this.api.cliente(id).subscribe({ next: c => this.elegir(c), error: () => {} });
+    });
   }
 
   vacio(): Cliente {
@@ -43,6 +77,40 @@ export class ClientesComponent implements OnInit {
       next: c => { this.clientes = c; this.cargando = false; },
       error: e => { this.error = mensajeDeError(e); this.cargando = false; }
     });
+  }
+
+  elegir(c: Cliente): void {
+    if (this.elegido?.idCliente === c.idCliente && this.procesosDe.length) return;
+    this.elegido = c;
+    this.procesosDe = [];
+    this.pendientes = [];
+    this.cargandoFicha = true;
+    this.api.procesos({ idCliente: c.idCliente }).subscribe({
+      next: p => { this.procesosDe = p; this.cargandoFicha = false; },
+      error: () => { this.procesosDe = []; this.cargandoFicha = false; }
+    });
+    if (this.veHonorarios) {
+      this.api.pendientesFacturar(c.idCliente!).subscribe({ next: p => this.pendientes = p, error: () => this.pendientes = [] });
+    }
+  }
+
+  cerrarFicha(): void {
+    this.elegido = null;
+    this.router.navigate([], { relativeTo: this.ruta, queryParams: {}, replaceUrl: true });
+  }
+
+  iniciales(nombre: string): string {
+    const p = nombre.split(/\s+/).filter(Boolean);
+    return ((p[0]?.[0] ?? '') + (p[1]?.[0] ?? '')).toUpperCase();
+  }
+
+  nuevo(): void {
+    this.editandoId = null;
+    this.cliente = this.vacio();
+    this.enviado = false;
+    this.formularioAbierto = true;
+    this.mensaje = this.error = '';
+    setTimeout(() => document.getElementById('tipoPersona')?.focus());
   }
 
   /** Persona jurídica implica NIT, y al revés. */
@@ -61,9 +129,11 @@ export class ClientesComponent implements OnInit {
       : this.api.crearCliente(this.cliente);
     peticion.subscribe({
       next: c => {
-        this.mensaje = this.editandoId ? `Cliente ${c.nombre} actualizado.` : `Cliente ${c.nombre} registrado con el id ${c.idCliente}.`;
+        this.mensaje = this.editandoId ? `Cliente ${c.nombre} actualizado.` : `Cliente ${c.nombre} registrado.`;
         this.cancelar(form);
         this.cargar();
+        this.elegido = null;
+        this.elegir(c);
       },
       error: e => { this.error = mensajeDeError(e); this.guardando = false; }
     });
@@ -72,14 +142,16 @@ export class ClientesComponent implements OnInit {
   editar(c: Cliente): void {
     this.editandoId = c.idCliente!;
     this.cliente = { ...c };
+    this.formularioAbierto = true;
     this.mensaje = this.error = '';
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => document.getElementById('tipoPersona')?.focus());
   }
 
   eliminar(c: Cliente): void {
     if (!confirm(`¿Eliminar al cliente ${c.nombre}?`)) return;
     this.api.eliminarCliente(c.idCliente!).subscribe({
-      next: () => { this.mensaje = `Cliente ${c.nombre} eliminado.`; this.cargar(); },
+      next: () => { this.mensaje = `Cliente ${c.nombre} eliminado.`; this.elegido = null; this.cargar(); },
       error: e => this.error = mensajeDeError(e)
     });
   }
@@ -88,6 +160,7 @@ export class ClientesComponent implements OnInit {
     this.editandoId = null;
     this.enviado = false;
     this.guardando = false;
+    this.formularioAbierto = false;
     form.resetForm(this.vacio());
     this.cliente = this.vacio();
   }

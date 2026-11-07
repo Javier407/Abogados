@@ -6,6 +6,7 @@ import { mensajeDeError } from '../../core/api.service';
 import { AuthService, InicioMfa, Sesion, esSegundoPaso } from '../../core/auth.service';
 import { LogoComponent } from '../../core/logo.component';
 import { CodigosRecuperacionComponent, QrMfaComponent } from '../../core/mfa-ui';
+import { CodigoOtpComponent } from '../../ui/codigo-otp.component';
 
 /**
  * Inicio de sesión. Con la verificación en dos pasos (F13) la contraseña correcta lleva a un segundo paso: el código
@@ -15,87 +16,140 @@ import { CodigosRecuperacionComponent, QrMfaComponent } from '../../core/mfa-ui'
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, LogoComponent, QrMfaComponent, CodigosRecuperacionComponent],
+  imports: [FormsModule, LogoComponent, QrMfaComponent, CodigosRecuperacionComponent, CodigoOtpComponent],
   template: `
     <main class="login">
-      <form class="login-caja" [class.ancha]="paso === 'configurar' || paso === 'codigos'" #form="ngForm"
-            (ngSubmit)="enviar(form)" novalidate>
-        <header class="login-cabeza">
-          <span class="login-logo"><app-logo /></span>
-          <div>
-            <h1>Gestión Jurídica</h1>
-            <p>Rodríguez &amp; Asociados</p>
-          </div>
-        </header>
-        <div class="login-cuerpo">
-
-        @if (aviso) { <div class="alerta alerta-exito">{{ aviso }}</div> }
-        @if (error) { <div class="alerta alerta-error" role="alert">{{ error }}</div> }
-
-        @switch (paso) {
-          @case ('clave') {
-            <div class="form-group">
-              <label class="form-label" for="usuario">Usuario o correo</label>
-              <input id="usuario" class="form-input" name="usuario" [(ngModel)]="usuario" required autocomplete="username"
-                autofocus />
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="clave">Contraseña</label>
-              <input id="clave" class="form-input" type="password" name="clave" [(ngModel)]="clave" required
-                autocomplete="current-password" />
-            </div>
-            <button class="btn btn-primary" type="submit" [disabled]="enviando">{{ enviando ? 'Entrando...' : 'Entrar' }}</button>
-          }
-          @case ('codigo') {
-            <p class="explicacion">{{ usarRecuperacion ? 'Escriba uno de sus códigos de recuperación.'
-              : 'Escriba el código de 6 dígitos de su app autenticadora.' }}</p>
-            <div class="form-group">
-              <label class="form-label" for="codigo">{{ usarRecuperacion ? 'Código de recuperación' : 'Código' }}</label>
-              <input id="codigo" class="form-input codigo" name="codigo" [(ngModel)]="codigo" required autofocus
-                [attr.inputmode]="usarRecuperacion ? 'text' : 'numeric'" autocomplete="one-time-code"
-                [attr.maxlength]="usarRecuperacion ? 9 : 6" [placeholder]="usarRecuperacion ? 'abcd-efgh' : '123456'" />
-            </div>
-            <button class="btn btn-primary" type="submit" [disabled]="enviando">{{ enviando ? 'Verificando...' : 'Verificar' }}</button>
-            <button class="btn-enlace" type="button" (click)="usarRecuperacion = !usarRecuperacion; codigo = ''">
-              {{ usarRecuperacion ? 'Usar el código de la app' : '¿Perdió el teléfono? Use un código de recuperación' }}</button>
-            <button class="btn-enlace" type="button" (click)="volver()">Volver</button>
-          }
-          @case ('configurar') {
-            <p class="explicacion"><strong>Su cuenta exige la verificación en dos pasos.</strong> Actívela para entrar:
-              además de la contraseña, cada vez se pedirá un código de su teléfono.</p>
-            @if (inicio) { <app-qr-mfa [inicio]="inicio" /> }
-            <div class="form-group">
-              <label class="form-label" for="codigoNuevo">Código de 6 dígitos</label>
-              <input id="codigoNuevo" class="form-input codigo" name="codigo" [(ngModel)]="codigo" required inputmode="numeric"
-                maxlength="6" autocomplete="one-time-code" placeholder="123456" />
-            </div>
-            <button class="btn btn-primary" type="submit" [disabled]="enviando || !inicio">{{ enviando ? 'Activando...' : 'Activar y entrar' }}</button>
-            <button class="btn-enlace" type="button" (click)="volver()">Volver</button>
-          }
-          @case ('codigos') {
-            <app-codigos-recuperacion [codigos]="codigosRecuperacion" [usuario]="usuario" />
-            <button class="btn btn-primary" type="submit">Ya los guardé, continuar</button>
-          }
-        }
+      <!-- Columna de marca (se oculta en el celular) -->
+      <section class="marca" aria-hidden="true">
+        <app-logo class="marca-logo" />
+        <div class="marca-texto">
+          <h2>Cada término, a tiempo.</h2>
+          <p>Procesos, plazos, audiencias y facturación de la firma en un solo lugar.</p>
         </div>
-      </form>
+        <ul class="marca-puntos">
+          <li><span></span>Términos en días hábiles judiciales</li>
+          <li><span></span>Vigilancia de la Rama Judicial</li>
+          <li><span></span>Borradores con IA local, sin salir del servidor</li>
+        </ul>
+        <div class="orbita" aria-hidden="true"></div>
+      </section>
+
+      <section class="lado-form">
+        <form class="login-caja" [class.ancha]="paso === 'configurar' || paso === 'codigos'" #form="ngForm"
+              (ngSubmit)="enviar(form)" novalidate>
+          <header class="login-cabeza">
+            <app-logo class="logo-movil" />
+            <h1>{{ titulo }}</h1>
+            <p>{{ subtitulo }}</p>
+          </header>
+
+          @if (aviso) { <div class="alerta alerta-exito" role="status">{{ aviso }}</div> }
+          @if (error) { <div class="alerta alerta-error" role="alert">{{ error }}</div> }
+
+          @switch (paso) {
+            @case ('clave') {
+              <div class="form-group">
+                <label class="form-label" for="usuario">Usuario o correo</label>
+                <input id="usuario" class="form-input" name="usuario" [(ngModel)]="usuario" required autocomplete="username"
+                  autofocus />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="clave">Contraseña</label>
+                <input id="clave" class="form-input" type="password" name="clave" [(ngModel)]="clave" required
+                  autocomplete="current-password" />
+              </div>
+              <button class="btn btn-primary btn-grande" type="submit" [disabled]="enviando">{{ enviando ? 'Entrando…' : 'Entrar' }}</button>
+            }
+            @case ('codigo') {
+              @if (usarRecuperacion) {
+                <div class="form-group">
+                  <label class="form-label" for="codigo">Código de recuperación</label>
+                  <input id="codigo" class="form-input codigo" name="codigo" [(ngModel)]="codigo" required autofocus
+                    autocomplete="one-time-code" maxlength="9" placeholder="abcd-efgh" />
+                </div>
+              } @else {
+                <app-codigo-otp name="codigo" [(ngModel)]="codigo" required [conError]="!!error"
+                  etiqueta="Código de 6 dígitos de su app autenticadora" (completo)="enviar(form)" />
+              }
+              <button class="btn btn-primary btn-grande" type="submit" [disabled]="enviando">{{ enviando ? 'Verificando…' : 'Verificar' }}</button>
+              <div class="enlaces">
+                <button class="btn-enlace" type="button" (click)="usarRecuperacion = !usarRecuperacion; codigo = ''">
+                  {{ usarRecuperacion ? 'Usar el código de la app' : '¿Perdió el teléfono? Use un código de recuperación' }}</button>
+                <button class="btn-enlace" type="button" (click)="volver()">Volver</button>
+              </div>
+            }
+            @case ('configurar') {
+              <p class="explicacion"><strong>Su cuenta exige la verificación en dos pasos.</strong> Actívela para entrar:
+                además de la contraseña, cada vez se pedirá un código de su teléfono.</p>
+              @if (inicio) { <app-qr-mfa [inicio]="inicio" /> }
+              <app-codigo-otp name="codigo" [(ngModel)]="codigo" required [conError]="!!error"
+                etiqueta="Código de 6 dígitos para activar" />
+              <button class="btn btn-primary btn-grande" type="submit" [disabled]="enviando || !inicio">{{ enviando ? 'Activando…' : 'Activar y entrar' }}</button>
+              <div class="enlaces"><button class="btn-enlace" type="button" (click)="volver()">Volver</button></div>
+            }
+            @case ('codigos') {
+              <app-codigos-recuperacion [codigos]="codigosRecuperacion" [usuario]="usuario" />
+              <button class="btn btn-primary btn-grande" type="submit">Ya los guardé, continuar</button>
+            }
+          }
+          <p class="pie">Rodríguez &amp; Asociados · acceso solo para personal y clientes de la firma</p>
+        </form>
+      </section>
     </main>
   `,
   styles: [`
-    .login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
-    .login-caja { width: 100%; max-width: 400px; background: var(--bg); border-radius: 24px; overflow: hidden;
-      box-shadow: 0 30px 60px -20px rgba(16,38,64,.5); }
+    .login { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--surface); }
+
+    .marca {
+      position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; gap: 40px;
+      padding: 48px 56px; color: #fff;
+      background: radial-gradient(120% 90% at 0% 0%, #5B50FF 0%, #3529E6 38%, #0F1E45 100%);
+    }
+    .marca-logo { --logo-tam: 42px; --logo-texto: 24px; position: relative; z-index: 1; }
+    .marca-logo ::ng-deep .marca { color: #fff; }
+    .marca-logo ::ng-deep rect { fill: rgba(255, 255, 255, .16); }
+    .marca-texto { position: relative; z-index: 1; max-width: 460px; }
+    .marca-texto h2 { color: #fff; font-size: 40px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+    .marca-texto p { color: rgba(255, 255, 255, .85); font-size: 16px; margin-top: 14px; line-height: 1.6; }
+    .marca-puntos { position: relative; z-index: 1; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+    .marca-puntos li { display: flex; align-items: center; gap: 12px; color: rgba(255, 255, 255, .92); font-weight: 500; }
+    .marca-puntos span { width: 8px; height: 8px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 5px rgba(255, 255, 255, .18); }
+    /* Anillos decorativos que giran despacio */
+    .orbita {
+      position: absolute; right: -180px; top: 50%; width: 560px; height: 560px; translate: 0 -50%; border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, .14); animation: girar 60s linear infinite;
+    }
+    .orbita::before, .orbita::after { content: ""; position: absolute; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .1); }
+    .orbita::before { inset: 70px; }
+    .orbita::after { inset: 150px; border-style: dashed; }
+    @keyframes girar { to { rotate: 360deg; } }
+
+    .lado-form { display: grid; place-items: center; padding: 32px 24px; background: var(--bg-page); }
+    .login-caja {
+      width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 16px;
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 36px 32px;
+      box-shadow: var(--shadow-lg);
+    }
     .login-caja.ancha { max-width: 680px; }
-    .login-cabeza { background: linear-gradient(160deg, var(--blue) 0%, #15304f 100%); padding: 22px 24px;
-      display: flex; align-items: center; gap: 16px; }
-    .login-logo { width: 58px; height: 58px; flex: none; display: grid; }
-    h1 { margin: 0; font-family: var(--display); font-size: 24px; font-weight: 600; color: var(--parchment); }
-    .login-cabeza p { margin: 2px 0 0; font-family: var(--second); color: #c3cfdd; }
-    .login-cuerpo { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 14px; }
-    .login-cuerpo .alerta { margin-bottom: 0; }
-    .explicacion { margin: 0; color: var(--ink); }
-    .codigo { font-size: 20px; letter-spacing: 4px; text-align: center; }
-    .btn-enlace { background: none; border: 0; color: var(--blue); cursor: pointer; padding: 2px; font: inherit; text-decoration: underline; }
+    .login-cabeza { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+    .logo-movil { display: none; --logo-tam: 36px; --logo-texto: 20px; margin-bottom: 14px; }
+    h1 { font-size: 26px; }
+    .login-cabeza p { color: var(--muted); }
+    .btn-grande { min-height: 46px; font-size: 15px; margin-top: 4px; }
+    .explicacion { color: var(--ink); }
+    .codigo { font-size: 18px; letter-spacing: 3px; text-align: center; }
+    .enlaces { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .btn-enlace { background: none; border: 0; color: var(--accent-ink); cursor: pointer; padding: 4px; font: inherit; font-size: 13.5px; }
+    .btn-enlace:hover { text-decoration: underline; }
+    .pie { text-align: center; color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    @media (max-width: 900px) {
+      .login { grid-template-columns: 1fr; }
+      .marca { display: none; }
+      .logo-movil { display: inline-flex; }
+      .login-caja { padding: 28px 22px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .orbita { animation: none; } }
   `]
 })
 export class LoginComponent implements OnInit {
@@ -115,6 +169,16 @@ export class LoginComponent implements OnInit {
   enviando = false;
   error = '';
   aviso = '';
+
+  get titulo(): string {
+    return { clave: 'Bienvenido de nuevo', codigo: 'Verificación en dos pasos', configurar: 'Active la verificación',
+      codigos: 'Guarde sus códigos' }[this.paso];
+  }
+  get subtitulo(): string {
+    return { clave: 'Inicie sesión en Lexora', codigo: this.usarRecuperacion ? 'Escriba uno de sus códigos de recuperación.'
+      : 'Escriba el código de 6 dígitos de su app autenticadora.', configurar: 'Escanee el código QR con su app autenticadora.',
+      codigos: 'Los necesitará si pierde el teléfono.' }[this.paso];
+  }
 
   ngOnInit(): void {
     if (this.ruta.snapshot.queryParamMap.get('vencida')) this.aviso = 'Su sesión terminó. Inicie sesión de nuevo.';

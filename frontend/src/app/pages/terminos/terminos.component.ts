@@ -6,12 +6,13 @@ import { RouterLink } from '@angular/router';
 import { ApiService, mensajeDeError } from '../../core/api.service';
 import { SITUACIONES, Termino, etiqueta, textoRestantes } from '../../core/modelos';
 import { SesionService } from '../../core/sesion.service';
+import { PestanasAgendaComponent } from '../../ui/pestanas-agenda.component';
 
 /** Agenda de términos: lo que vence, lo vencido y lo cumplido, con la revisión de avisos. */
 @Component({
   selector: 'app-terminos',
   standalone: true,
-  imports: [FormsModule, RouterLink, DatePipe],
+  imports: [FormsModule, RouterLink, DatePipe, PestanasAgendaComponent],
   templateUrl: './terminos.component.html'
 })
 export class TerminosComponent implements OnInit {
