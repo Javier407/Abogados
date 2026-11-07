@@ -2,7 +2,8 @@
 <!--
   F16: la misma prueba de carga que perf/k6/carga-gateway.js, en JMeter (docs/09-pruebas-carga.md).
   setUp: un solo login (credenciales de las variables de entorno K6_USUARIO y K6_CLAVE, nunca escritas aquí);
-  el token queda como propiedad compartida. Luego 50 hilos leen procesos, términos y clientes durante 3 minutos.
+  el token queda como propiedad compartida. Luego 50 hilos leen procesos, términos y clientes durante 3 minutos,
+  con una pausa de 1 a 3 s por recorrido (F17: misma tasa que k6).
   Servidor: -Jhost=127.0.0.1 -Jport=8091 (valores por defecto).
 -->
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.5">
@@ -134,11 +135,21 @@
           <stringProp name="HTTPSampler.method">GET</stringProp>
         </HTTPSamplerProxy>
         <hashTree/>
-        <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Tiempo de lectura">
-          <stringProp name="ConstantTimer.delay">1000</stringProp>
-          <stringProp name="RandomTimer.range">2000</stringProp>
-        </UniformRandomTimer>
-        <hashTree/>
+        <!-- F17: el temporizador va DENTRO de una pausa de control de flujo, así se aplica una vez por recorrido
+             (como sleep() en k6). Antes estaba al nivel de las peticiones y JMeter lo aplicaba antes de CADA una:
+             generaba 20 peticiones/s frente a 48 de k6. Flow Control Action no queda registrado en los resultados. -->
+        <TestAction guiclass="TestActionGui" testclass="TestAction" testname="Tiempo de lectura (una vez por recorrido)">
+          <intProp name="ActionProcessor.action">1</intProp>
+          <intProp name="ActionProcessor.target">0</intProp>
+          <stringProp name="ActionProcessor.duration">0</stringProp>
+        </TestAction>
+        <hashTree>
+          <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="1 a 3 s">
+            <stringProp name="ConstantTimer.delay">1000</stringProp>
+            <stringProp name="RandomTimer.range">2000</stringProp>
+          </UniformRandomTimer>
+          <hashTree/>
+        </hashTree>
       </hashTree>
     </hashTree>
   </hashTree>
