@@ -120,3 +120,25 @@ El rediseño sigue los criterios que pidió Javier:
   - expediente → factura ya llena;
   - cliente → nuevo proceso con el cliente puesto;
   - menú del celular y del usuario.
+
+## Dependencias y vulnerabilidades (`npm audit`, 2026-11-06)
+
+| Momento | Total | Críticas | Altas | Moderadas | Bajas | En lo que se ejecuta |
+|---|---|---|---|---|---|---|
+| Antes del rediseño (F17) | 43 | 3 | 18 | 20 | 2 | — |
+| Al instalar spartan | 51 | 3 | 14 | 32 | 2 | 1 (`fast-uri`) |
+| **Después de la revisión** | **16** | **0** | **0** | **16** | **0** | **0** |
+
+**Qué se hizo:**
+- **Parches de Angular:** el framework pasó a 21.2.26 y las herramientas (`@angular/build`, `@angular/cli`) a 21.2.29; `vitest` a 4.1.12. Con eso se corrigen `piscina`, `vite`, `undici`, `esbuild`, `immutable` y otras.
+- **Se quitó `@spartan-ng/cli`:** solo servía para generar los componentes, que ya están en `src/app/ui/helm`, y traía `nx`, `zod` y `ts-morph` vulnerables. Para generar otro se usa una vez y sin instalar: `npx @spartan-ng/cli@1.9.0 ...` (o `ng g` tras instalarlo temporalmente).
+- **`package-lock.json` regenerado:** npm no podía resolver las versiones encima del árbol anterior.
+
+**Lo que queda.** Son 16 moderadas, todas dentro de `@angular/cli`, en la cadena que descarga paquetes (`pacote`, `sigstore`, `glob`, `minimatch`):
+- **Cuándo se usan:** solo al instalar paquetes con `ng add` o `ng update` en el PC del desarrollador. No llegan al navegador ni a la imagen que se publica, que es nginx con los archivos ya compilados.
+- **Cómo se quitan:** con Angular 22, una versión mayor. Conviene hacerlo en una rama aparte, con sus propias pruebas.
+
+**Comprobación:**
+- `npm audit --omit=dev` encuentra 0 vulnerabilidades.
+- `ng build` y las 25 pruebas pasan.
+- La imagen Docker se construye en la VM y está desplegada.
