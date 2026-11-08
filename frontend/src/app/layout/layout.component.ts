@@ -252,6 +252,7 @@ export class LayoutComponent {
         opciones: [
           { ruta: '/usuarios', etiqueta: 'Usuarios', icono: 'lucideKeyRound' },
           { ruta: '/servidor', etiqueta: 'Servidor', icono: 'lucideServer' },
+          { ruta: '/auditoria', etiqueta: 'Auditoría', icono: 'lucideShieldCheck' },
         ],
       });
     }

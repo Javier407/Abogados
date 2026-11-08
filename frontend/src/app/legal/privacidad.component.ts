@@ -37,6 +37,9 @@ import { PaginaLegalComponent } from './pagina-legal.component';
         <li><strong>Personal de la firma:</strong> datos de su cuenta (usuario, nombre, correo, rol), la bitácora de ingresos
           con fecha, resultado y dirección IP, y las cuentas de Google, Microsoft o GitHub que cada persona decida enlazar
           (el identificador que entrega el proveedor y el correo).</li>
+        <li><strong>Toda persona que use el sistema</strong> (personal y clientes del portal): un registro de cada acción,
+          con quién la hizo, qué pantalla o dato consultó o cambió, cuándo, con qué resultado y desde qué dirección IP.
+          No guarda el contenido de lo que se consulta o se envía.</li>
       </ul>
 
       <h2>3. Para qué los usamos</h2>
@@ -96,13 +99,17 @@ import { PaginaLegalComponent } from './pagina-legal.component';
         <li>Contraseñas guardadas con un algoritmo de un solo sentido (no se pueden leer), bloqueo por intentos fallidos y
           verificación en dos pasos.</li>
         <li>Acceso por roles: cada persona ve solo lo que necesita para su trabajo, y el cliente solo ve sus propios asuntos.</li>
-        <li>Registro de los ingresos y de las acciones sensibles, y copias de respaldo cifradas.</li>
+        <li>Registro de los ingresos y de cada acción en una bitácora de auditoría que nadie puede modificar ni borrar
+          (cada registro queda encadenado al anterior), y copias de respaldo cifradas.</li>
       </ul>
 
       <h2>9. Cuánto tiempo los conservamos</h2>
       <p>Mientras dure la relación con el cliente y, después, durante los plazos que exigen las normas aplicables (por ejemplo,
         las de conservación de documentos contables y facturas) o los necesarios para atender reclamaciones.
         [COMPLETAR: plazos definidos por la firma].</p>
+      <p>La bitácora de auditoría no se borra por partes: su valor como prueba de quién hizo qué depende de que esté
+        completa. Por eso los registros de acceso no se suprimen a solicitud, por existir el deber de mantener la seguridad
+        y la trazabilidad de la información. [COMPLETAR: plazo de conservación de la bitácora definido por la firma].</p>
 
       <h2>10. Cookies</h2>
       <p>El sistema solo usa las cookies y el almacenamiento del navegador necesarios para funcionar y recordar sus

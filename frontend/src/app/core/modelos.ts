@@ -708,3 +708,32 @@ export interface PendienteFacturar {
 }
 
 export interface VistaPreviaFactura { lineas: LineaFactura[]; totales: TotalesFactura; retencionSugerida: number; }
+
+// ---------- bitácora de auditoría encadenada (solo ADMIN; docs/14-auditoria.md) ----------
+export interface AccesoAuditoria {
+  momento: string;
+  /** Documento de quien hizo la petición, o «anonimo» (sin sesión o con un token inválido). */
+  usuario: string;
+  roles: string;
+  metodo: string;
+  ruta: string;
+  /** Código HTTP; null si la petición se cortó antes de responder. */
+  estado: number | null;
+  duracionMs: number;
+  ip: string | null;
+}
+export interface RegistroAuditoria { id: number; acceso: AccesoAuditoria; hashAnterior: string; hash: string; }
+export interface PaginaAuditoria { registros: RegistroAuditoria[]; siguiente: number | null; }
+export interface FiltroAuditoria {
+  usuario?: string | null; metodo?: string | null; ruta?: string | null; fallos?: boolean;
+  desde?: string | null; hasta?: string | null; antesDe?: number | null; limite?: number;
+}
+export interface RevisionAuditoria {
+  cadena: {
+    integra: boolean; revisados: number; ultimoId: number; ultimoHash: string;
+    roturaEn: number | null; motivo: string | null;
+  };
+  /** Cómo va la escritura en el gateway: accesos esperando a guardarse y perdidos (espera llena). */
+  escritura: { almacen: 'postgres' | 'memoria'; pendientes: number; perdidos: number };
+  momento: string;
+}

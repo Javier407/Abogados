@@ -14,7 +14,7 @@ import {
   CategoriaDocumento, Consulta, ConsultaConAvisos, Documento, EstadoConsulta, Integrante, RolEquipo,
   CambioRegla, EstadoServidor, PruebaPatron, ReglaSolicitud, ReglaTermino,
   ConfigFacturacion, DetalleFactura, EstadoConfigFacturacion, EstadoFactura, Factura, FacturaSolicitud, PendienteFacturar,
-  VistaPreviaFactura
+  VistaPreviaFactura, FiltroAuditoria, PaginaAuditoria, RevisionAuditoria
 } from './modelos';
 
 /**
@@ -141,6 +141,16 @@ export class ApiService {
   cuentasConMfa(): Observable<number[]> { return this.http.get<number[]>(`${API}/usuarios/mfa`); }
   reiniciarMfa(idUsuario: number): Observable<void> {
     return this.http.post<void>(`${API}/usuarios/${idUsuario}/mfa/reinicio`, {});
+  }
+
+  /** Bitácora de auditoría encadenada (solo ADMIN): los más recientes primero. */
+  auditoria(f: FiltroAuditoria): Observable<PaginaAuditoria> {
+    return this.http.get<PaginaAuditoria>(`${API}/auditoria/registros`, { params: filtros({ ...f }) });
+  }
+  /** Revisa la cadena completa o, con un sello guardado (número y hash), desde ese registro. */
+  revisarAuditoria(sello?: { id: number; hash: string }): Observable<RevisionAuditoria> {
+    return this.http.get<RevisionAuditoria>(`${API}/auditoria/verificacion`,
+      { params: filtros({ desde: sello?.id, hash: sello?.hash }) });
   }
 
   /** Estado del servidor según el vigía (F12, solo ADMIN). */

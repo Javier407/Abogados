@@ -13,8 +13,8 @@ export const DATOS_LEGALES = {
   correoDatos: '[COMPLETAR: correo para consultas y reclamos de datos personales]',
   telefono: '[COMPLETAR: teléfono]',
   producto: 'Lexora',
-  version: '1.0',
-  vigenteDesde: '2026-11-07',
+  version: '1.1',            // 1.1: bitácora de auditoría de cada acción
+  vigenteDesde: '2026-11-08',
   revisada: false
 } as const;
 
