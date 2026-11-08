@@ -9,6 +9,7 @@
 # Formato custom de pg_dump (-Fc): comprimido y restaurable tabla por tabla con pg_restore.
 # Desde F10 también empaqueta los documentos del expediente (volumen montado en /documentos, solo lectura) y deja
 # los archivos a nombre de PROPIETARIO (el usuario de la VM) para que la copia al PC pueda descargarlos.
+# Con cada copia deja además un sello de la bitácora de auditoría (sello-auditoria-*.txt, no se borran).
 set -eu
 
 DIR=/respaldos
@@ -28,7 +29,22 @@ respaldar() {
   [ -n "$PROPIETARIO" ] && chown "$PROPIETARIO" "$archivo"
   find "$DIR" -name 'gabinete-*.dump' -mtime +"$RETENER" -delete
   echo "$(date '+%F %T') respaldo listo: $archivo ($(du -h "$archivo" | cut -f1))"
+  sellar_auditoria
   respaldar_documentos
+}
+
+# Sello de la bitácora de auditoría (docs/14-auditoria.md): número y hash del último registro, junto a cada respaldo.
+# La copia al PC guarda todos los sellos y comprueba que el servidor los sigue teniendo iguales: quien rehiciera o
+# recortara la cadena aquí no podría hacer coincidir los sellos que ya están en otro equipo.
+sellar_auditoria() {
+  sello=$(psql -d "$POSTGRES_DB" -tA -c "SELECT id || ' ' || hash || ' ' ||
+      to_char(momento AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')
+    FROM auditoria.registros ORDER BY id DESC LIMIT 1" 2>/dev/null) || return 0   # aún sin migración 015
+  [ -n "$sello" ] || return 0
+  destino="$DIR/sello-auditoria-$(date +%Y%m%d-%H%M%S).txt"
+  printf '%s\n' "$sello" > "$destino"
+  [ -z "$PROPIETARIO" ] || chown "$PROPIETARIO" "$destino"
+  echo "$(date '+%F %T') sello de la bitácora de auditoría: registro ${sello%% *}"
 }
 
 respaldar_documentos() {

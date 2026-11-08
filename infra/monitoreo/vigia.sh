@@ -6,7 +6,8 @@
 #   vigia.sh probar    envía un mensaje de prueba
 #
 # Revisa: contenedores corriendo y sanos, disco, memoria, edad del último respaldo, eventos atascados en los
-# outbox, colas de RabbitMQ sin consumidor o acumuladas y la app por HTTPS. Desde F15 también el respaldo cifrado de
+# outbox, colas de RabbitMQ sin consumidor o acumuladas y la app por HTTPS. También que la bitácora de auditoría
+# siga cuadrando (cadena de hashes). Desde F15 también el respaldo cifrado de
 # las llaves (y lo crea si cambiaron), la prueba semanal de restauración y los errores en los registros de cada
 # servicio (los guarda en operacion.errores). Una vez al día (después de las 7:00)
 # manda un resumen aunque todo esté bien, para saber que el vigía sigue vivo.
@@ -125,6 +126,32 @@ if [ ! -f "$prueba" ] || [ -n "$(find "$prueba" -mtime +8)" ]; then
   agregar restauracion "La prueba de restauración de la base no se ha hecho en los últimos 8 días"
 elif grep -q ' FALLO ' "$prueba"; then
   agregar restauracion "La última prueba de restauración de la base falló: $(cut -c1-150 "$prueba")"
+fi
+
+# Bitácora de auditoría encadenada (docs/14-auditoria.md). En cada vuelta se revisa desde el último registro ya
+# revisado (rápido) y una vez al día desde el principio. Si no cuadra, alguien la modificó por fuera de la app: se
+# avisa y el punto de partida no avanza, así el aviso sigue hasta que se aclare.
+sello=$(cat "$ESTADO/auditoria-sello" 2>/dev/null)          # "número hash" del último registro que cuadró
+hoy=$(date +%F)
+completa=false
+if [ -z "$sello" ] || [ "$(cat "$ESTADO/auditoria-completa" 2>/dev/null)" != "$hoy" ]; then
+  sello="0 -"; completa=true
+fi
+fila=$(psql_v -v desde="${sello%% *}" -v hash="${sello#* }" <<'SQL'
+SELECT revisados || ' ' || ultimo_id || ' ' || ultimo_hash || ' ' || coalesce(rotura_en::text, '-')
+FROM auditoria.verificar(:'desde'::bigint, nullif(:'hash', '-'));
+SQL
+)
+if [ -n "$fila" ]; then                                      # vacío: aún sin migración 015 o base caída (ya avisado)
+  read -r a_revisados a_ultimo a_hash a_rotura <<FIN
+$fila
+FIN
+  if [ "$a_rotura" != "-" ]; then
+    agregar auditoria "La bitácora de auditoría no cuadra desde el registro $a_rotura: alguien la modificó por fuera de la app"
+  else
+    printf '%s %s\n' "$a_ultimo" "$a_hash" > "$ESTADO/auditoria-sello"
+    $completa && printf '%s\n' "$hoy" > "$ESTADO/auditoria-completa"
+  fi
 fi
 
 # F15: líneas de error de los registros de cada servicio desde la vuelta anterior (hasta 30 por servicio). Se guardan
