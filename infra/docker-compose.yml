@@ -337,6 +337,10 @@ services:
       ASISTENTE_URL: http://asistente-ia:8000
       IDENTIDAD_URL: http://identidad:8080
       CORS_ORIGINS: http://localhost:4200${URL_PUBLICA:+,}${URL_PUBLICA:-}
+      # Bitácora de auditoría encadenada: svc_gateway solo puede agregar y leer (migración 015).
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USER: svc_gateway
+      DB_PASSWORD: ${SVC_PASSWORD}
     # F9: solo desde la propia VM (diagnóstico); desde la VPN se entra por el frontend (y por HTTPS).
     ports:
       - "127.0.0.1:8091:8080"
@@ -347,6 +351,7 @@ services:
       - vigilancia
       - asistente-ia
       - identidad
+      - postgres
     healthcheck: *java-salud
     mem_limit: 384m
     logging: *logs

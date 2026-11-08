@@ -11,7 +11,7 @@ psql_run() {
 }
 
 echo ">> Usuarios de base de datos por servicio"
-for svc in identidad gabinete procesos vigilancia notificaciones; do
+for svc in identidad gabinete procesos vigilancia notificaciones gateway; do
   psql_run -v svc="svc_$svc" -v pass="$SVC_PASSWORD" <<'SQL'
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'svc', :'pass')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'svc') \gexec
