@@ -209,3 +209,17 @@ Con esto se cierran las prioridades 9 y 10 del plan de mejora (sección 4). Lo q
 - las sesiones con usuarios;
 - un segundo servidor (Fiabilidad);
 - un registro inalterable (no repudio).
+
+## 11. No repudio: bitácora encadenada (2026-11-08)
+
+Cierra la prioridad 8 del plan (sección 4) y la brecha «No repudio» de la sección 1.
+
+| Subcaracterística | Antes | Ahora | Cumple | Evidencia |
+|---|---|---|---|---|
+| No repudio | Línea `AUDITORIA` en el log del contenedor: rota y se puede editar. No registraba los 401 ni los 403 | Tabla de solo anexar con hash SHA-256 encadenado; el gateway solo agrega; la base rechaza cambios y borrados. Sellos diarios guardados en el PC. La revisión corre en Java y en SQL, el vigía la hace cada 5 minutos y la pantalla «Auditoría» la muestra al administrador | ✔ | `docs/14-auditoria.md`, `CadenaTest`, `db/pruebas/015-auditoria.sql` |
+| Responsabilidad | Toda acción permitida con autor | También las negadas (401, 403) quedan con su autor e IP | ✔ | `AuditoriaTest` |
+
+**Puntaje:** Seguridad ya estaba en 10 y el total no cambia (9,40). Lo que cambia es que la brecha de no repudio
+deja de ser una excepción aceptada. Lo que queda para subir más:
+- las sesiones con usuarios;
+- un segundo servidor (Fiabilidad).
