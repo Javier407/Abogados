@@ -181,11 +181,13 @@ done
 
 Desde ahí http://IP:8090 redirige a HTTPS, el navegador recibe HSTS y la cookie de la sesión solo viaja cifrada. Mientras no haya HTTPS, `COOKIE_SEGURA=false` (si no, el navegador no guarda la cookie y la sesión dura 15 minutos).
 
-**Facturación electrónica (F14).** Pantalla **Facturación**. Hoy con el proveedor **SIMULADO** y el rango del set de pruebas de la DIAN: el flujo es el real, pero nada se envía a la DIAN ni tiene validez fiscal. Para producción hay que contratar un proveedor tecnológico, escribir su adaptador de `ProveedorFacturacion` y cargar la resolución de numeración real en **Facturación → Configuración**.
+**Facturación electrónica: retirada (noviembre de 2026).** La firma decidió no facturar desde la app. Se quitaron la pantalla, el servicio y sus tablas (migración `016-quitar-facturacion.sql`, que se detiene si encuentra facturas guardadas). Siguen **honorarios, pagos, liquidación, gastos y cartera**.
+
+**Rama Constitucional: desactivada.** La firma ya no ofrece tutelas ni acciones populares o de grupo. La migración `017-desactivar-constitucional.sql` las marca como inactivas (`activa`/`activo = false`): dejan de salir en las listas para procesos, áreas y tarifas nuevas, pero los procesos que ya existen se conservan y se pueden seguir editando.
 
 **Verificación en dos pasos (F13).** Cada persona la activa en **Mi cuenta** con una app autenticadora. `MFA_OBLIGATORIO_ROLES` en `infra/.env` (p. ej. `ADMIN,SOCIO`) la exige a esos roles. Los secretos se cifran con `MFA_CLAVE_CIFRADO` (se genera una vez en el servidor, ver `.env.example`, y se respalda con las demás llaves). Quien pierda el teléfono y los códigos de recuperación pide al administrador que la reinicie en **Usuarios**.
 
-**Historial del servidor (F12).** El vigía guarda cada revisión (90 días) y cada incidente en el esquema `operacion`; el administrador los ve en la pantalla **Servidor**. **Reglas de términos (F12):** pantalla **Reglas**; solo un socio las cambia o valida.
+**Historial del servidor (F12).** El vigía guarda cada revisión (90 días) y cada incidente en el esquema `operacion`; el administrador los ve en la pantalla **Servidor**. **Reglas de términos:** las sugerencias de términos siguen saliendo de `procesos.reglas_termino`, pero la pantalla **Reglas** se retiró: las reglas se cargan y validan por migración o SQL.
 
 **Vigía del servidor (F11).** `infra/monitoreo/vigia.sh` revisa cada 5 minutos contenedores, disco, memoria, respaldos, outbox, colas de RabbitMQ y HTTPS, y avisa por Telegram a los administradores que vincularon Telegram en la app (problema nuevo, resuelto y un resumen diario). Se instala como timer de systemd con `sh infra/monitoreo/instalar.sh` (`quitar` para desinstalarlo). Para revisar a mano: `sh infra/monitoreo/vigia.sh estado`.
 
@@ -231,6 +233,8 @@ Los correos van a Mailpit y no salen a internet. Para enviarlos de verdad, defin
 docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/migraciones/001-f2-terminos-y-avisos.sql
 docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/migraciones/002-f3-vigilancia.sql
 ```
+
+Las que borran o desactivan algo (`016`, `017`) se aplican **después** de desplegar el código nuevo, con un respaldo reciente y con `-v ON_ERROR_STOP=1`; cada archivo trae su comando en el encabezado.
 
 **Desarrollo del frontend** con recarga en vivo, contra el gateway del servidor:
 

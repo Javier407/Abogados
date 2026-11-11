@@ -30,7 +30,7 @@ Deben ser personas que no hayan visto la app.
 |---|---|---|---|
 | T1 | "Registre el proceso con radicado 11001-31-03-032-2024-00999-00, cliente Constructora Altamira." | El proceso queda creado con cliente y despacho correctos | 3 min |
 | T2 | "¿Qué términos vencen esta semana y cuál es el más urgente?" | Nombra el término correcto | 1 min |
-| T3 | "Emita la factura de honorarios del mes para Inversiones Andina." | La factura queda emitida (CUFE visible) | 3 min |
+| T3 | "Registre un pago de honorarios de Inversiones Andina y dígame cuánto queda debiendo." | El pago queda registrado y nombra el saldo correcto | 3 min |
 | T4 | "Active la verificación en dos pasos en su cuenta." | Queda activa y guardó los códigos de recuperación | 4 min |
 | T5 | "Pida al asistente un borrador de contestación para el proceso de Altamira y dígame qué revisaría antes de radicarlo." | Obtiene el borrador y menciona revisar lo marcado o el aviso de IA | 6 min |
 

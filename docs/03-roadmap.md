@@ -417,3 +417,11 @@ Pendiente o decidido para después:
 - **Copiar `D:\respaldos\abogados\llave\privada.pem` fuera del PC** (USB guardada aparte o gestor de contraseñas). Es lo único que no se puede regenerar si se pierden el PC y la VM a la vez.
 - Ensayar una vez la recuperación completa en una VM de prueba.
 - No hay logs centralizados con búsqueda (tipo Loki): se descartaron por la RAM. Lo que importa (errores) ya llega a la pantalla Servidor.
+
+## Ajustes de noviembre de 2026 (decisiones de la firma)
+
+Tres recortes pedidos por la firma después de F17. Ninguno borra historia de procesos.
+
+1. **Se retira la facturación electrónica (F14).** Fuera la pantalla, `FacturacionServicio`, el proveedor simulado, sus rutas del gateway y sus tablas (migración `016`, que se niega a borrar si hay facturas guardadas). Quedan honorarios, pagos, liquidación, gastos y cartera. La sección «F14» de arriba queda como registro de lo que se hizo; el código está en el historial de git.
+2. **Se retira la pantalla «Reglas de términos» (F12).** Las reglas, su historial y las sugerencias del expediente siguen funcionando; solo se quitó la pantalla. Desde ahora las reglas se cargan y validan por migración o SQL, y lo mismo los días de contestación de cada tipo de proceso.
+3. **Se desactiva la rama Constitucional.** `procesos.ramas.activa`, `procesos.tipos_proceso.activo`, `gabinete.areas_practica.activa` y `gabinete.tarifas.activa` (migración `017`). Lo desactivado no sale en las listas ni admite procesos nuevos; los procesos, términos, reglas y honorarios que ya lo usan se conservan y se pueden editar.
