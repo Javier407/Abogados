@@ -57,6 +57,8 @@ export class ProcesoFormComponent implements OnInit {
 
   ramas: Rama[] = [];
   tipos: TipoProceso[] = [];
+  /** El proceso que se edita: conserva su rama y su tipo aunque la firma ya no los ofrezca para procesos nuevos. */
+  conservar: { codigoRama: string; rama: string; idTipo: number; tipoProceso: string } | null = null;
   despachos: Despacho[] = [];
   clientes: Cliente[] = [];
   abogados: Abogado[] = [];
@@ -110,6 +112,7 @@ export class ProcesoFormComponent implements OnInit {
       this.api.proceso(this.idProceso).subscribe({
         next: (p) => {
           this.rama = p.codigoRama;
+          this.conservar = p;
           this.proceso = {
             radicado: p.radicadoLegible,
             idTipo: p.idTipo,
@@ -159,8 +162,18 @@ export class ProcesoFormComponent implements OnInit {
     this.radicado$.next(valor ?? '');
   }
 
+  /** Las ramas que se ofrecen hoy y, al editar, la del proceso si dejó de ofrecerse. */
+  get ramasParaElegir(): Rama[] {
+    const p = this.conservar;
+    if (!p || this.ramas.some((r) => r.codigo === p.codigoRama)) return this.ramas;
+    return [...this.ramas, { codigo: p.codigoRama, nombre: `${p.rama} (ya no se ofrece)`, norma: '' }];
+  }
+
   get tiposDeLaRama(): TipoProceso[] {
-    return this.rama ? this.tipos.filter((t) => t.codigoRama === this.rama) : this.tipos;
+    const lista = this.rama ? this.tipos.filter((t) => t.codigoRama === this.rama) : this.tipos;
+    const p = this.conservar;
+    if (!p || p.codigoRama !== this.rama || this.tipos.some((t) => t.idTipo === p.idTipo)) return lista;
+    return [...lista, { idTipo: p.idTipo, codigoRama: p.codigoRama, nombre: `${p.tipoProceso} (ya no se ofrece)` }];
   }
 
   get radicadoValido(): boolean {

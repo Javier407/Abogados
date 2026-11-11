@@ -175,7 +175,7 @@ final class Adaptadores {
 
 		@Override
 		public List<AreaPractica> areas() {
-			return areas.findAll(Sort.by("nombre")).stream().map(CatalogoGabineteJpa::aArea).toList();
+			return areas.findByActivaTrue(Sort.by("nombre")).stream().map(CatalogoGabineteJpa::aArea).toList();
 		}
 
 		@Override

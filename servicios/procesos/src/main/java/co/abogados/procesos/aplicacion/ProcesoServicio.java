@@ -69,7 +69,7 @@ public class ProcesoServicio {
 	}
 
 	public ProcesoVista crear(Proceso nuevo) {
-		validarCatalogos(nuevo);
+		validarCatalogos(nuevo, null);
 		validarRadicadoLibre(nuevo.radicado(), null);
 		DirectorioGabinete.Cliente cliente = clienteExistente(nuevo.idCliente());
 		validarResponsable(nuevo.idResponsable());
@@ -82,7 +82,7 @@ public class ProcesoServicio {
 
 	public ProcesoVista actualizar(int idProceso, Proceso datos) {
 		ProcesoVista actual = obtener(idProceso);
-		validarCatalogos(datos);
+		validarCatalogos(datos, actual.idTipo());
 		validarRadicadoLibre(datos.radicado(), idProceso);
 		// Solo se consulta gabinete si cambió la referencia: así editar el asunto no depende de otro servicio.
 		if (actual.idCliente() != datos.idCliente()) {
@@ -106,12 +106,17 @@ public class ProcesoServicio {
 		procesos.eliminar(idProceso);
 	}
 
-	private void validarCatalogos(Proceso p) {
+	/** tipoActual: el que ya tiene el proceso al editarlo (lo conserva aunque la firma deje de ofrecerlo). */
+	private void validarCatalogos(Proceso p, Short tipoActual) {
 		if (p.fechaRadicacion().isAfter(LocalDate.now(reloj))) {
 			throw new ReglaNegocioException("La fecha de radicación no puede ser futura");
 		}
 		if (catalogos.tipo(p.idTipo()).isEmpty()) {
 			throw new ReglaNegocioException("No existe el tipo de proceso " + p.idTipo());
+		}
+		boolean conservaSuTipo = tipoActual != null && tipoActual == p.idTipo();
+		if (!conservaSuTipo && !catalogos.tipoDisponible(p.idTipo())) {
+			throw new ReglaNegocioException("La firma ya no ofrece ese tipo de proceso; elija otro");
 		}
 		if (catalogos.despachoDeRadicado(p.radicado()).isEmpty()) {
 			Radicado r = p.radicado();

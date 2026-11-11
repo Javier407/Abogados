@@ -117,10 +117,13 @@ class RepositoriosJdbcTest {
 		CatalogoRepositorioJdbc repo = new CatalogoRepositorioJdbc(jdbc.cliente);
 
 		assertThat(repo.ramas()).singleElement().satisfies(r -> assertThat(r.norma()).isEqualTo("CGP"));
+		assertThat(jdbc.ultima().sql()).contains("WHERE activa");          // solo las ramas que la firma ofrece
 		assertThat(repo.tipos(null)).singleElement()
 				.satisfies(t -> assertThat(t.terminoContestacionDias()).isNull());
 		assertThat(jdbc.ultima().params()).isEmpty();
+		assertThat(jdbc.ultima().sql()).contains("WHERE activo");
 		assertThat(repo.tipos("civil")).hasSize(1);
+		assertThat(jdbc.ultima().sql()).contains("WHERE activo AND codigo_rama = :rama");
 		assertThat(jdbc.ultima().params()).containsEntry("rama", "CIVIL");
 		assertThat(repo.despachos(" ")).singleElement().satisfies(d -> assertThat(d.codDespacho()).isEqualTo("032"));
 		assertThat(repo.despachos("laboral")).hasSize(1);
@@ -130,6 +133,18 @@ class RepositoriosJdbcTest {
 		assertThat(repo.despachoDeRadicado(Radicado.de("11001310303220260050100"))).isPresent();
 		assertThat(jdbc.ultima().params()).containsEntry("dane", "11001").containsEntry("entidad", "31")
 				.containsEntry("especialidad", "03").containsEntry("despacho", "032");
+	}
+
+	@Test
+	void unTipoDesactivadoOInexistenteNoEstaDisponibleParaProcesosNuevos() {
+		CatalogoRepositorioJdbc repo = new CatalogoRepositorioJdbc(jdbc.cliente);
+
+		assertThat(repo.tipoDisponible((short) 99)).isFalse();             // no existe: sin filas
+		jdbc.responderValor("SELECT activo FROM procesos.tipos_proceso", false);
+		assertThat(repo.tipoDisponible((short) 32)).isFalse();             // existe, pero la firma ya no lo ofrece
+		assertThat(jdbc.ultima().params()).containsEntry("id", (short) 32);
+		jdbc.responderValor("SELECT activo FROM procesos.tipos_proceso", true);
+		assertThat(repo.tipoDisponible((short) 1)).isTrue();
 	}
 
 	@Test
