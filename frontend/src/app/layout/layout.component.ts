@@ -190,7 +190,7 @@ export class LayoutComponent {
           { ruta: '/', etiqueta: 'Inicio', icono: 'lucideLayoutDashboard', exacta: true },
           {
             ruta: '/terminos',
-            etiqueta: 'Agenda',
+            etiqueta: 'Términos y audiencias',
             icono: 'lucideCalendarClock',
             activoEn: ['/terminos', '/calendario'],
           },
