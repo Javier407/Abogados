@@ -12,9 +12,7 @@ import {
   CambioCuenta, CargaAbogado, CarteraCliente, Cuenta, CuentaSolicitud, CumplimientoTerminos, Gasto, GastoSolicitud,
   ResultadoRama, ProcesoPortal, DetallePortal, FinanzasPortal, ResumenPublicado,
   CategoriaDocumento, Consulta, ConsultaConAvisos, Documento, EstadoConsulta, Integrante, RolEquipo,
-  CambioRegla, EstadoServidor, PruebaPatron, ReglaSolicitud, ReglaTermino,
-  ConfigFacturacion, DetalleFactura, EstadoConfigFacturacion, EstadoFactura, Factura, FacturaSolicitud, PendienteFacturar,
-  VistaPreviaFactura, FiltroAuditoria, PaginaAuditoria, RevisionAuditoria
+  EstadoServidor, FiltroAuditoria, PaginaAuditoria, RevisionAuditoria
 } from './modelos';
 
 /**
@@ -89,52 +87,6 @@ export class ApiService {
   }
   desglosarRadicado(numero: string): Observable<DesgloseRadicado> {
     return this.http.get<DesgloseRadicado>(`${API}/procesos/radicado/${encodeURIComponent(numero)}`);
-  }
-
-  // ---------------------------------------------------------------- reglas de términos (F12)
-
-  reglas(): Observable<ReglaTermino[]> { return this.http.get<ReglaTermino[]>(`${API}/reglas-termino`); }
-  historialRegla(id: number): Observable<CambioRegla[]> {
-    return this.http.get<CambioRegla[]>(`${API}/reglas-termino/${id}/historial`);
-  }
-  probarPatron(patron: string, clase: string): Observable<PruebaPatron> {
-    return this.http.get<PruebaPatron>(`${API}/reglas-termino/prueba`, { params: filtros({ patron, clase }) });
-  }
-  guardarRegla(id: number | null, r: ReglaSolicitud): Observable<ReglaTermino> {
-    return id == null ? this.http.post<ReglaTermino>(`${API}/reglas-termino`, r)
-      : this.http.put<ReglaTermino>(`${API}/reglas-termino/${id}`, r);
-  }
-  validarRegla(id: number): Observable<ReglaTermino> {
-    return this.http.post<ReglaTermino>(`${API}/reglas-termino/${id}/validacion`, {});
-  }
-  cambiarContestacion(idTipo: number, dias: number | null): Observable<{ reglasSinValidar: number }> {
-    return this.http.put<{ reglasSinValidar: number }>(`${API}/catalogos/tipos/${idTipo}/contestacion`, { dias });
-  }
-
-  // ---------------------------------------------------------------- facturación electrónica (F14)
-
-  facturas(idCliente?: number | null, estado?: EstadoFactura | ''): Observable<Factura[]> {
-    return this.http.get<Factura[]>(`${API}/facturas`, { params: filtros({ idCliente, estado }) });
-  }
-  factura(id: number): Observable<DetalleFactura> { return this.http.get<DetalleFactura>(`${API}/facturas/${id}`); }
-  pendientesFacturar(idCliente: number): Observable<PendienteFacturar[]> {
-    return this.http.get<PendienteFacturar[]>(`${API}/facturas/pendientes`, { params: filtros({ idCliente }) });
-  }
-  vistaPreviaFactura(s: FacturaSolicitud): Observable<VistaPreviaFactura> {
-    return this.http.post<VistaPreviaFactura>(`${API}/facturas/vista-previa`, s);
-  }
-  emitirFactura(s: FacturaSolicitud): Observable<DetalleFactura> { return this.http.post<DetalleFactura>(`${API}/facturas`, s); }
-  anularFactura(id: number, motivo: string): Observable<DetalleFactura> {
-    return this.http.post<DetalleFactura>(`${API}/facturas/${id}/anulacion`, { motivo });
-  }
-  configFacturacion(): Observable<EstadoConfigFacturacion> {
-    return this.http.get<EstadoConfigFacturacion>(`${API}/facturacion/config`);
-  }
-  guardarConfigFacturacion(c: ConfigFacturacion): Observable<EstadoConfigFacturacion> {
-    return this.http.put<EstadoConfigFacturacion>(`${API}/facturacion/config`, c);
-  }
-  validarConfigFacturacion(): Observable<EstadoConfigFacturacion> {
-    return this.http.post<EstadoConfigFacturacion>(`${API}/facturacion/config/validacion`, {});
   }
 
   /** Cuentas con la verificación en dos pasos activa (F13, solo ADMIN). */

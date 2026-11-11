@@ -13,8 +13,8 @@ export const DATOS_LEGALES = {
   correoDatos: '[COMPLETAR: correo para consultas y reclamos de datos personales]',
   telefono: '[COMPLETAR: teléfono]',
   producto: 'Lexora',
-  version: '1.1',            // 1.1: bitácora de auditoría de cada acción
-  vigenteDesde: '2026-11-08',
+  version: '1.2',            // 1.2: sin facturación electrónica; se declara el envío de avisos por Telegram
+  vigenteDesde: '2026-11-11',
   revisada: false
 } as const;
 

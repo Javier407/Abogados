@@ -168,10 +168,6 @@
               <a class="btn btn-primary btn-sm" routerLink="/procesos/nuevo" [queryParams]="{ idCliente: c.idCliente }">
                 <ng-icon name="lucideFolderPlus" size="14" /> Nuevo proceso</a>
             }
-            @if (puedeFacturar) {
-              <a class="btn btn-secondary btn-sm" routerLink="/facturacion" [queryParams]="{ nueva: 1, idCliente: c.idCliente }">
-                <ng-icon name="lucideReceipt" size="14" /> Facturar</a>
-            }
           </div>
 
           <h3 class="subtitulo-detalle">Procesos ({{ procesosDe.length }})</h3>
@@ -187,16 +183,6 @@
               </li>
             }
           </ul>
-
-          @if (veHonorarios) {
-            <h3 class="subtitulo-detalle">Pendiente por facturar</h3>
-            @if (pendientes.length === 0) {
-              <p class="form-ayuda">Nada pendiente.</p>
-            } @else {
-              <p class="total-pendiente">{{ totalPendiente | currency:'COP':'symbol-narrow':'1.0-0' }}
-                <small>en {{ pendientes.length }} concepto(s)</small></p>
-            }
-          }
 
           @if (puedeEditar) {
             <div class="acciones-ficha pie">

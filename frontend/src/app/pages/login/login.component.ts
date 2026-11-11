@@ -35,7 +35,7 @@ import { CodigoOtpComponent } from '../../ui/codigo-otp.component';
         <app-logo class="marca-logo" />
         <div class="marca-texto">
           <h2>Cada término, a tiempo.</h2>
-          <p>Procesos, plazos, audiencias y facturación de la firma en un solo lugar.</p>
+          <p>Procesos, plazos, audiencias y honorarios de la firma en un solo lugar.</p>
         </div>
         <ul class="marca-puntos">
           <li><span></span>Términos en días hábiles judiciales</li>

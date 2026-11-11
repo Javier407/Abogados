@@ -11,7 +11,6 @@ import { AsistenteProcesoComponent } from './pages/procesos/asistente-proceso.co
 import { ProcesosComponent } from './pages/procesos/procesos.component';
 import { TerminosComponent } from './pages/terminos/terminos.component';
 import { ClientesComponent } from './pages/clientes/clientes.component';
-import { FacturacionComponent } from './pages/facturacion/facturacion.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { PrivacidadComponent } from './legal/privacidad.component';
 import { CookiesComponent } from './legal/cookies.component';
@@ -38,14 +37,6 @@ const CLIENTE = {
   nombre: 'Constructora Altamira SAS', email: 'contacto@altamira.test', telefono: '6015550000', ciudad: 'Bogotá',
   idSede: 1, creado: '2025-01-15T10:00:00'
 };
-const FACTURA = {
-  idFactura: 1, prefijo: 'SETP', numero: 990000001, resolucion: '18760000001', ambiente: 'PRUEBAS', idCliente: 2,
-  emitida: '2026-10-30T09:00:00', vence: '2026-11-29', formaPago: 'CREDITO', estado: 'ACEPTADA', emitidaPor: 79123456,
-  totales: { subtotal: 1000000, iva: 190000, reembolsos: 0, total: 1190000, retencionPct: 11, retencion: 110000, neto: 1080000 },
-  adquirente: { nombre: CLIENTE.nombre, tipoDocumento: 'NIT', numeroDocumento: '900123456', direccion: 'Cra 7 # 1-1',
-                ciudad: 'Bogotá', email: CLIENTE.email },
-  lineas: []
-};
 const AUDITORIA = {
   registros: [
     { id: 2, hashAnterior: 'a'.repeat(64), hash: 'b'.repeat(64),
@@ -63,7 +54,6 @@ function datosDeEjemplo(url: string): object {
   if (url.endsWith('/api/procesos')) return [PROCESO];
   if (url.endsWith('/api/terminos')) return TERMINOS;
   if (url.endsWith('/api/clientes')) return [CLIENTE];
-  if (url.endsWith('/api/facturas')) return [FACTURA];
   if (url.endsWith('/api/auth/externo/proveedores')) return [{ codigo: 'GOOGLE', nombre: 'Google' }, { codigo: 'GITHUB', nombre: 'GitHub' }];
   if (url.endsWith('/api/auth/externo/enlaces')) return [{ proveedor: 'GOOGLE', correo: 'c@gmail.com', creado: '2026-11-01T10:00:00Z' }];
   if (url.endsWith('/api/auditoria/registros')) return AUDITORIA;
@@ -152,7 +142,6 @@ describe('Accesibilidad (axe-core)', () => {
     ['procesos', ProcesosComponent, 1],
     ['términos', TerminosComponent, 4],
     ['clientes', ClientesComponent, 1],
-    ['facturación', FacturacionComponent, 1],
     ['auditoría', AuditoriaComponent, 2]
   ] as [string, Type<unknown>, number][])('la lista de %s no tiene violaciones graves', async (_n, componente, filas) => {
     expect(await violaciones(componente, {}, true)).toEqual([]);

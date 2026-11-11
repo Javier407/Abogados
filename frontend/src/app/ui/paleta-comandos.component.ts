@@ -19,7 +19,6 @@ import {
   lucideFolderOpen,
   lucideFolderPlus,
   lucideHandCoins,
-  lucideReceipt,
   lucideUser,
   lucideUserPlus,
   lucideUsers,
@@ -56,7 +55,6 @@ interface Accion {
       lucideFolderOpen,
       lucideFolderPlus,
       lucideHandCoins,
-      lucideReceipt,
       lucideUser,
       lucideUserPlus,
       lucideUsers,
@@ -209,12 +207,6 @@ export class PaletaComandosComponent {
         texto: 'Ir a honorarios',
         icono: 'lucideHandCoins',
         ruta: '/honorarios',
-      });
-      lista.push({
-        id: 'fa',
-        texto: 'Ir a facturación',
-        icono: 'lucideReceipt',
-        ruta: '/facturacion',
       });
     }
     return lista;
