@@ -24,9 +24,10 @@ public class TerminoRepositorioJdbc implements TerminoRepositorio {
 	private static final String SELECT_VISTA = """
 			SELECT t.id_termino, t.id_proceso, v.radicado, v.radicado_legible, v.rama, v.asunto, t.id_providencia,
 			       t.descripcion, t.fecha_inicio, t.dias_habiles, t.fecha_vencimiento, t.estado, t.id_responsable,
-			       t.dias_habiles_restantes, t.situacion
+			       t.dias_habiles_restantes, t.situacion, t.norma, v.tipo_proceso, v.etapa, pr.clase AS providencia
 			FROM procesos.v_terminos t
 			JOIN procesos.v_procesos v ON v.id_proceso = t.id_proceso
+			LEFT JOIN procesos.providencias pr ON pr.id_providencia = t.id_providencia
 			""";
 
 	private final JdbcClient jdbc;
@@ -81,10 +82,11 @@ public class TerminoRepositorioJdbc implements TerminoRepositorio {
 		p.put("vence", t.fechaVencimiento());
 		p.put("estado", t.estado().name());
 		p.put("responsable", t.idResponsable());
+		p.put("norma", t.norma());
 		return jdbc.sql("""
 				INSERT INTO procesos.terminos (id_proceso, id_providencia, descripcion, fecha_inicio, dias_habiles,
-				       fecha_vencimiento, estado, id_responsable)
-				VALUES (:proceso, :providencia, :descripcion, :inicio, :dias, :vence, :estado, :responsable)
+				       fecha_vencimiento, estado, id_responsable, norma)
+				VALUES (:proceso, :providencia, :descripcion, :inicio, :dias, :vence, :estado, :responsable, :norma)
 				RETURNING id_termino
 				""")
 				.params(p)
@@ -139,7 +141,11 @@ public class TerminoRepositorioJdbc implements TerminoRepositorio {
 				rs.getString("estado"),
 				rs.getLong("id_responsable"),
 				rs.getInt("dias_habiles_restantes"),
-				rs.getString("situacion"));
+				rs.getString("situacion"),
+				rs.getString("norma"),
+				rs.getString("tipo_proceso"),
+				rs.getString("etapa"),
+				rs.getString("providencia"));
 	}
 
 }

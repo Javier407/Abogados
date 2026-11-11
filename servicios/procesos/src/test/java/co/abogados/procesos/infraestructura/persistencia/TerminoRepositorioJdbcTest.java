@@ -62,7 +62,12 @@ class TerminoRepositorioJdbcTest {
 		assertThat(t.descripcion()).isEqualTo("Contestar demanda");
 		assertThat(id).isEqualTo(12);
 		assertThat(jdbc.ultima().params()).containsEntry("providencia", 5).containsEntry("estado", "PENDIENTE")
-				.containsEntry("dias", 20);
+				.containsEntry("dias", 20).containsEntry("norma", null);
+
+		repo.crear(new Termino(null, 31, 5, "Contestar demanda", LocalDate.of(2026, 10, 1), 20,
+				LocalDate.of(2026, 10, 30), EstadoTermino.PENDIENTE, 52345678L, "  CGP art. 369 "));
+		assertThat(jdbc.ultima().sql()).contains("id_responsable, norma)");
+		assertThat(jdbc.ultima().params()).containsEntry("norma", "CGP art. 369");
 
 		repo.marcarCumplido(12);
 		assertThat(jdbc.ultima().sql()).contains("estado = 'CUMPLIDO'");

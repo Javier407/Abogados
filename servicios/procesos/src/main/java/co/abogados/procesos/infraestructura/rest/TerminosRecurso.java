@@ -35,7 +35,8 @@ public class TerminosRecurso {
 			@NotNull(message = "Los días hábiles son obligatorios")
 			@Min(value = 1, message = "Mínimo 1 día hábil") @Max(value = 365, message = "Máximo 365 días hábiles") Integer diasHabiles,
 			Integer idProvidencia,
-			Long idResponsable) {
+			Long idResponsable,
+			@Size(max = 120, message = "La norma admite máximo 120 caracteres") String norma) {
 	}
 
 	private final TerminoServicio servicio;
@@ -63,7 +64,7 @@ public class TerminosRecurso {
 	public ResponseEntity<TerminoVista> crear(@PathVariable int idProceso,
 			@Valid @RequestBody TerminoSolicitud s) {
 		TerminoVista creado = servicio.crear(idProceso, new TerminoServicio.NuevoTermino(s.descripcion(),
-				s.fechaInicio(), s.diasHabiles(), s.idProvidencia(), s.idResponsable()));
+				s.fechaInicio(), s.diasHabiles(), s.idProvidencia(), s.idResponsable(), s.norma()));
 		return ResponseEntity.created(URI.create("/terminos/" + creado.idTermino())).body(creado);
 	}
 

@@ -8,6 +8,7 @@ import co.abogados.procesos.dominio.excepciones.ReglaNegocioException;
 /**
  * Auto o sentencia que registra la firma a mano (procesos sin vigilancia o fuente MANUAL).
  * Una sentencia debe decir su sentido para el cliente; un auto no lo lleva.
+ * anticipada: sentencia anticipada (CGP art. 278); solo tiene sentido en una sentencia.
  */
 public record NuevaProvidencia(
 		String tipo,
@@ -15,9 +16,15 @@ public record NuevaProvidencia(
 		LocalDate fechaProvidencia,
 		LocalDate fechaEstado,
 		String decision,
-		String sentido) {
+		String sentido,
+		boolean anticipada) {
 
 	private static final Set<String> SENTIDOS = Set.of("FAVORABLE", "DESFAVORABLE", "PARCIAL");
+
+	public NuevaProvidencia(String tipo, String clase, LocalDate fechaProvidencia, LocalDate fechaEstado,
+			String decision, String sentido) {
+		this(tipo, clase, fechaProvidencia, fechaEstado, decision, sentido, false);
+	}
 
 	public NuevaProvidencia {
 		if (!"AUTO".equals(tipo) && !"SENTENCIA".equals(tipo)) {
@@ -49,6 +56,9 @@ public record NuevaProvidencia(
 		}
 		if (sentido != null && !SENTIDOS.contains(sentido)) {
 			throw new ReglaNegocioException("Sentido inválido: use FAVORABLE, DESFAVORABLE o PARCIAL");
+		}
+		if (anticipada && !"SENTENCIA".equals(tipo)) {
+			throw new ReglaNegocioException("Solo una sentencia puede ser anticipada");
 		}
 	}
 

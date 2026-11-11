@@ -7,7 +7,7 @@ import co.abogados.procesos.dominio.excepciones.ReglaNegocioException;
 /**
  * Plazo que corre contra la firma dentro de un proceso (contestar, recurrir, aportar...).
  * fechaInicio es la notificación (normalmente el estado electrónico); vence al cumplirse
- * diasHabiles días hábiles contados desde el día hábil siguiente.
+ * diasHabiles días hábiles contados desde el día hábil siguiente. norma (opcional) es la que fija el plazo.
  */
 public record Termino(
 		Integer idTermino,
@@ -18,7 +18,14 @@ public record Termino(
 		int diasHabiles,
 		LocalDate fechaVencimiento,
 		EstadoTermino estado,
-		long idResponsable) {
+		long idResponsable,
+		String norma) {
+
+	public Termino(Integer idTermino, int idProceso, Integer idProvidencia, String descripcion, LocalDate fechaInicio,
+			int diasHabiles, LocalDate fechaVencimiento, EstadoTermino estado, long idResponsable) {
+		this(idTermino, idProceso, idProvidencia, descripcion, fechaInicio, diasHabiles, fechaVencimiento, estado,
+				idResponsable, null);
+	}
 
 	public Termino {
 		if (descripcion == null || descripcion.isBlank()) {
@@ -33,6 +40,10 @@ public record Termino(
 		}
 		if (estado == null) {
 			estado = EstadoTermino.PENDIENTE;
+		}
+		norma = norma == null || norma.isBlank() ? null : norma.strip();
+		if (norma != null && norma.length() > 120) {
+			throw new ReglaNegocioException("La norma admite máximo 120 caracteres");
 		}
 	}
 

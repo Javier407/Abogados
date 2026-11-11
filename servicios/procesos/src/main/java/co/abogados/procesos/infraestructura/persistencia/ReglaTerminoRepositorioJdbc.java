@@ -35,13 +35,14 @@ public class ReglaTerminoRepositorioJdbc implements ReglaTerminoRepositorio {
 	public List<ReglaTermino> reglas() {
 		return jdbc.sql("""
 				SELECT id_regla, tipo_providencia, codigo_rama, id_tipo, patron, lado, descripcion, dias, norma,
-				       prioridad, validada
+				       prioridad, validada, acto, momento
 				FROM procesos.reglas_termino WHERE activa ORDER BY prioridad, id_regla
 				""")
 				.query((rs, i) -> new ReglaTermino(rs.getInt("id_regla"), rs.getString("tipo_providencia"),
 						rs.getString("codigo_rama"), rs.getObject("id_tipo", Short.class), rs.getString("patron"),
 						rs.getString("lado"), rs.getString("descripcion"), rs.getObject("dias", Integer.class),
-						rs.getString("norma"), rs.getInt("prioridad"), rs.getBoolean("validada")))
+						rs.getString("norma"), rs.getInt("prioridad"), rs.getBoolean("validada"), rs.getString("acto"),
+						rs.getString("momento")))
 				.list();
 	}
 
