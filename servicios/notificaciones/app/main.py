@@ -6,7 +6,7 @@ import json
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 
@@ -36,6 +36,14 @@ def persona_autorizada(request: Request, idPersona: int = Query(..., gt=0)) -> i
     return idPersona
 
 
+def persona_de_la_sesion(request: Request) -> int:
+    """La persona que hace la petición, tomada del token (el gateway pone X-Usuario-Id y borra el que traiga)."""
+    usuario = (request.headers.get("x-usuario-id") or "").strip()
+    if not usuario.isdigit():
+        raise HTTPException(401, detail="Falta la identidad del usuario")
+    return int(usuario)
+
+
 def solo_admin(request: Request) -> None:
     """El estado del servidor (F12) es solo para el administrador; el gateway también lo exige."""
     if not (request.headers.get("x-usuario-id") or "").strip():
@@ -46,7 +54,7 @@ def solo_admin(request: Request) -> None:
 
 def crear_app(servicio: ServicioNotificaciones | None = None,
               en_vivo: AvisosEnVivoMemoria | None = None, verificador: VerificadorTokens | None = None,
-              servidor: ConsultaServidor | None = None) -> FastAPI:
+              servidor: ConsultaServidor | None = None, toga=None) -> FastAPI:
     """Sin argumentos conecta PostgreSQL, SMTP y RabbitMQ; en las pruebas se pasan dobles."""
 
     @asynccontextmanager
@@ -55,6 +63,7 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
             app.state.servicio = servicio
             app.state.en_vivo = en_vivo or AvisosEnVivoMemoria()
             app.state.servidor = servidor
+            app.state.toga = toga
             yield
             return
 
@@ -87,10 +96,12 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
             cuentas=ClienteIdentidad(cfg.identidad_url, token))
         app.state.servidor = ConsultaServidor(RepositorioServidorPostgres(pool))
         tareas = [asyncio.create_task(mensajeria.iniciar(app.state.servicio.procesar))]
+        # Toga responde en el portal siempre; por Telegram, solo con TELEGRAM_CONSULTAS.
+        app.state.toga = ConsultasBot(repo, DatosBotHttp(cfg.gabinete_url, cfg.procesos_url, token))
         if telegram is not None:
             consultar = None
             if cfg.telegram_consultas:
-                consultar = ConsultasBot(repo, DatosBotHttp(cfg.gabinete_url, cfg.procesos_url, token)).responder
+                consultar = app.state.toga.responder
                 log.info("El bot de Telegram responde consultas de la firma (TELEGRAM_CONSULTAS)")
             tareas.append(asyncio.create_task(telegram.escuchar(app.state.servicio.vincular_telegram, consultar)))
         try:
@@ -147,6 +158,15 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
     @app.delete("/notificaciones/telegram")
     async def desvincular_telegram(request: Request, idPersona: int = Depends(persona_autorizada)):
         return {"desvinculado": await srv(request).desvincular_telegram(idPersona)}
+
+    @app.post("/notificaciones/toga")
+    async def preguntar_a_toga(request: Request, idPersona: int = Depends(persona_de_la_sesion),
+                               texto: str = Body(..., embed=True, min_length=1, max_length=300)):
+        """Pregunta a Toga desde el portal. Mismas reglas que el bot: solo la firma, solo lo suyo, solo lectura."""
+        toga = getattr(request.app.state, "toga", None)
+        if toga is None:
+            raise HTTPException(503, detail="Toga no está disponible en este momento")
+        return {"respuesta": await toga.responder_portal(idPersona, texto)}
 
     @app.get("/notificaciones/servidor")
     async def estado_servidor(request: Request, dias: int = Query(7, ge=1, le=90)):

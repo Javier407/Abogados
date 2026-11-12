@@ -1,17 +1,18 @@
 /**
  * Datos del responsable del tratamiento (Ley 1581 de 2012, art. 17 y Decreto 1377 de 2013, art. 13) y versión de
  * los textos legales. Se completan aquí y en ningún otro lado: la política de privacidad, la de cookies y el aviso
- * los toman de este archivo. Lo que dice [COMPLETAR] lo debe llenar la firma.
+ * los toman de este archivo. Los datos de la firma son los mismos FICTICIOS de la base de pruebas
+ * (db/seed/03-gabinete.sql): antes de usar el sistema con una firma real, se cambian por los suyos.
  *
  * revisada: false muestra en las páginas que el texto es un borrador pendiente de revisión por un abogado.
  */
 export const DATOS_LEGALES = {
-  responsable: 'Rodríguez & Asociados',
-  nit: '[COMPLETAR: NIT]',
-  direccion: '[COMPLETAR: dirección de la sede principal]',
+  responsable: 'Rodríguez & Asociados Abogados SAS',
+  nit: '901234567-8',
+  direccion: 'Carrera 7 # 71-21, oficina 801',
   ciudad: 'Bogotá D. C., Colombia',
-  correoDatos: '[COMPLETAR: correo para consultas y reclamos de datos personales]',
-  telefono: '[COMPLETAR: teléfono]',
+  correoDatos: 'datospersonales@rodriguezasociados.co',
+  telefono: '601 321 6540',
   producto: 'Lexora',
   version: '1.2',            // 1.2: sin facturación electrónica; se declara el envío de avisos por Telegram
   vigenteDesde: '2026-11-11',

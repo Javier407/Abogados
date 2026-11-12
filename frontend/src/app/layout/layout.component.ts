@@ -46,6 +46,7 @@ import { LogoComponent } from '../core/logo.component';
 import { TemaService } from '../core/tema.service';
 import { PaletaService } from '../ui/paleta.service';
 import { PaletaComandosComponent } from '../ui/paleta-comandos.component';
+import { PreguntaTogaComponent } from '../ui/pregunta-toga.component';
 
 interface Opcion {
   ruta: string;
@@ -87,6 +88,7 @@ const NOMBRES_ROL: Record<string, string> = {
     NgIcon,
     HlmDropdownMenuImports,
     PaletaComandosComponent,
+    PreguntaTogaComponent,
   ],
   providers: [
     provideIcons({

@@ -107,11 +107,12 @@ import { PaginaLegalComponent } from './pagina-legal.component';
 
       <h2>9. Cuánto tiempo los conservamos</h2>
       <p>Mientras dure la relación con el cliente y, después, durante los plazos que exigen las normas aplicables (por ejemplo,
-        las de conservación de documentos contables) o los necesarios para atender reclamaciones.
-        [COMPLETAR: plazos definidos por la firma].</p>
+        las de conservación de documentos contables) o los necesarios para atender reclamaciones: el expediente de cada
+        proceso y sus documentos, diez (10) años después de terminado el proceso; los datos de contacto de quien solo hizo
+        una consulta inicial y no contrató, dos (2) años.</p>
       <p>La bitácora de auditoría no se borra por partes: su valor como prueba de quién hizo qué depende de que esté
         completa. Por eso los registros de acceso no se suprimen a solicitud, por existir el deber de mantener la seguridad
-        y la trazabilidad de la información. [COMPLETAR: plazo de conservación de la bitácora definido por la firma].</p>
+        y la trazabilidad de la información. La bitácora se conserva cinco (5) años.</p>
 
       <h2>10. Cookies</h2>
       <p>El sistema solo usa las cookies y el almacenamiento del navegador necesarios para funcionar y recordar sus

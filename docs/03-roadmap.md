@@ -484,3 +484,7 @@ Pendiente: reemplazar los `confirm()` del navegador por un diálogo propio, tarj
 El mismo bot de los avisos, ahora como **Toga**, contesta en chat privado `/mis_procesos`, `/terminos`, `/audiencias` y `/proceso <radicado>`, y frases simples. Solo al equipo de la firma activo, solo lo suyo, solo lectura, con límite por minuto y registro de cada consulta (migración `020`) sin guardar el texto. Viene apagado: `TELEGRAM_CONSULTAS=true`. Detalle en `docs/15-bot-telegram.md`.
 
 Pendiente: que la firma revise el envío de datos por Telegram (Ley 1581) antes de encenderlo; decidir si el registro del bot se encadena y sella como la bitácora principal.
+
+## Pregúntale a Toga en el portal (noviembre de 2026)
+
+El botón con la cara de Toga abre una conversación en el portal con el mismo motor del bot de Telegram (`POST /api/notificaciones/toga`, la persona sale de la sesión). En Telegram se encendieron las consultas (`TELEGRAM_CONSULTAS=true`) y el bot tiene su menú de comandos. La política de privacidad ya no tiene `[COMPLETAR]`: lleva los datos ficticios de la firma de la base de pruebas.
