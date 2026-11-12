@@ -88,6 +88,22 @@ Para no repetir avisos, cada uno lleva la clave `evento:id_termino:persona:canal
 
 **Además (F9):** con `audiencia.proxima`, `notificaciones` también avisa al cliente (si tiene cuenta en el portal) en palabras simples: "Su proceso … tiene audiencia mañana a las 9:30 en …". El cliente se obtiene del proceso (`GET /procesos/{id}` con el token de servicio).
 
+### `proceso.reasignado` (noviembre de 2026, implementado)
+
+**Lo publica:** `procesos`, cuando otro abogado queda a cargo del proceso (`POST /procesos/{id}/relevo`).
+
+- `id_abogado_anterior` puede ser `null` (el proceso no tenía responsable).
+- `motivo`: `RENUNCIA`, `REVOCATORIA`, `SUSTITUCION`, `SUCESION`, `RETIRO_DE_LA_FIRMA` o `REORGANIZACION`.
+- `terminos_trasladados`: cuántos términos pendientes pasaron al nuevo responsable.
+
+**Lo consume:** `notificaciones`: avisa al abogado que recibe el proceso (con lo que le pasaron) y al que lo entrega, en la app, por correo y por Telegram, con un enlace al expediente. La clave `proceso.reasignado:id_proceso:persona:canal:ocurrido` evita repetirlo; si el proceso vuelve a cambiar de manos, se avisa de nuevo.
+
+```json
+{ "id_proceso": 34, "radicado": "11001310303220260050100", "asunto": "Incumplimiento de contrato",
+  "id_abogado_anterior": 52345678, "id_abogado_nuevo": 79123456, "motivo": "RENUNCIA",
+  "terminos_trasladados": 3, "ocurrido": "2026-11-11T15:00:00Z" }
+```
+
 ### `notificacion.enviada` (F2, implementado)
 
 **Lo publica:** `notificaciones`.

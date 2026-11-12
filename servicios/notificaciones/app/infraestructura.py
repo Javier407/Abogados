@@ -320,7 +320,7 @@ class Mensajeria:
 
     COLA = "notificaciones.avisos"
     CLAVES = ("termino.por_vencer", "termino.vencido", "actuacion.detectada", "audiencia.proxima",
-              "portal.resumen_publicado", "cuenta.seguridad")
+              "portal.resumen_publicado", "cuenta.seguridad", "proceso.reasignado")
 
     def __init__(self, cfg: Config):
         self.cfg = cfg

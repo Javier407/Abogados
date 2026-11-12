@@ -7,7 +7,8 @@ from datetime import date, datetime, timedelta
 from typing import Callable, Protocol
 from zoneinfo import ZoneInfo
 
-from .dominio import (EVENTO_ACTUACION, EVENTO_AUDIENCIA, EVENTO_RESUMEN, EVENTO_SEGURIDAD, EVENTOS_TERMINO, AvisoActuacion,
+from .dominio import (EVENTO_ACTUACION, EVENTO_AUDIENCIA, EVENTO_RELEVO, EVENTO_RESUMEN, EVENTO_SEGURIDAD,
+                      EVENTOS_TERMINO, AvisoActuacion, AvisoRelevo, contenido_relevo,
                       AvisoSeguridad, contenido_seguridad,
                       AvisoAudiencia, AvisoResumen, AvisoTermino, Canal, Contenido, CuentaCliente, EventoInvalido,
                       NotificacionNueva, Preferencia, canales, contenido_actuacion, contenido_audiencia,
@@ -115,6 +116,11 @@ class ServicioNotificaciones:
             creadas = 0
             for cuenta in await self._cuentas(resumen.id_cliente):
                 creadas += await self._avisar(contenido_resumen_cliente(resumen, cuenta), correo_cliente=cuenta.email)
+            return creadas
+        elif evento == EVENTO_RELEVO:
+            creadas = 0
+            for c in contenido_relevo(AvisoRelevo.desde_mensaje(cuerpo)):
+                creadas += await self._avisar(c)
             return creadas
         elif evento == EVENTO_SEGURIDAD:
             a = AvisoSeguridad.desde_mensaje(cuerpo)
