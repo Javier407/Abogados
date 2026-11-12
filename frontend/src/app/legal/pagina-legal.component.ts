@@ -23,8 +23,7 @@ import { DATOS_LEGALES } from './datos-legales';
         <h1>{{ titulo() }}</h1>
         <p class="meta">{{ datos.responsable }} · versión {{ datos.version }} · vigente desde {{ datos.vigenteDesde }}</p>
         @if (!datos.revisada) {
-          <p class="borrador" role="note">Borrador pendiente de revisión jurídica por la firma. Los datos marcados
-            [COMPLETAR] aún no se han definido.</p>
+          <p class="borrador" role="note">Borrador pendiente de revisión jurídica por la firma.</p>
         }
         <ng-content />
       </main>

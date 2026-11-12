@@ -1,4 +1,4 @@
-"""Consultas al bot de Telegram: Toga responde sobre los procesos de quien le escribe.
+"""Consultas a Toga, por Telegram o desde el portal: responde sobre los procesos de quien le escribe.
 
 Reglas (docs/15-bot-telegram.md):
 - Solo en chat privado y solo a un chat vinculado a una persona de la firma que siga activa. Un cliente, aunque
@@ -66,8 +66,13 @@ def _faltan(dias: int | None) -> str:
     return f"falta{'n' if dias != 1 else ''} {dias} día{'s' if dias != 1 else ''} hábil{'es' if dias != 1 else ''}"
 
 
+# Palabras que en los valores del sistema van sin tilde (como en el portal).
+_TILDES = {"admision": "admisión", "notificacion": "notificación", "contestacion": "contestación",
+           "investigacion": "investigación", "sentencia": "sentencia"}
+
+
 def _etiqueta(valor: str | None) -> str:
-    return (valor or "").replace("_", " ").lower()
+    return " ".join(_TILDES.get(p, p) for p in (valor or "").lower().split("_") if p)
 
 
 class ConsultasBot:
@@ -84,12 +89,20 @@ class ConsultasBot:
 
     async def responder(self, chat_id: str, texto: str) -> str:
         """Responde un mensaje de un chat privado. Nunca lanza: si algo falla, lo dice sin detalles internos."""
-        comando, argumento = self.interpretar(texto)
+        comando, _ = self.interpretar(texto)
         id_persona = await self.repo.persona_de_chat(chat_id)
         if id_persona is None:
             await self._registrar(None, chat_id, comando, "SIN_VINCULO")
             return ("Este chat no está vinculado a Gestión Jurídica. Si trabaja en la firma, entre al portal → "
                     "Avisos → Vincular Telegram y use el enlace que aparece.")
+        return await self._atender(id_persona, chat_id, texto, "telegram")
+
+    async def responder_portal(self, id_persona: int, texto: str) -> str:
+        """Pregunta hecha desde el portal: la persona viene de la sesión (token), no de un chat."""
+        return await self._atender(id_persona, "portal", texto, "portal")
+
+    async def _atender(self, id_persona: int, chat_id: str, texto: str, canal: str) -> str:
+        comando, argumento = self.interpretar(texto)
         try:
             persona = await self.datos.persona(id_persona)
         except Exception:   # noqa: BLE001 - si gabinete no responde, no se arriesga a responder datos
@@ -104,7 +117,7 @@ class ConsultasBot:
             await self._registrar(id_persona, chat_id, comando, "LIMITE")
             return "Recibí muchas consultas seguidas. Espere un minuto y vuelva a preguntar."
         try:
-            respuesta, resultado = await self._despachar(comando, argumento, id_persona, persona)
+            respuesta, resultado = await self._despachar(comando, argumento, id_persona, persona, canal)
         except Exception:   # noqa: BLE001
             log.exception("Falló la consulta %s del bot", comando)
             respuesta, resultado = "No pude consultar eso ahora. Intente de nuevo en unos minutos.", "ERROR"
@@ -135,7 +148,8 @@ class ConsultasBot:
 
     # -------------------------------------------------------------- comandos
 
-    async def _despachar(self, comando: str, argumento: str, id_persona: int, persona: dict) -> tuple[str, str]:
+    async def _despachar(self, comando: str, argumento: str, id_persona: int, persona: dict,
+                         canal: str = "telegram") -> tuple[str, str]:
         if comando == "mis_procesos":
             return await self._mis_procesos(id_persona), "RESPONDIDA"
         if comando == "terminos":
@@ -144,10 +158,15 @@ class ConsultasBot:
             return await self._audiencias(id_persona), "RESPONDIDA"
         if comando == "proceso":
             return await self._proceso(id_persona, argumento)
-        return self._ayuda(persona.get("nombres") or ""), "RESPONDIDA"
+        return self._ayuda(persona.get("nombres") or "", canal), "RESPONDIDA"
 
-    def _ayuda(self, nombre: str) -> str:
+    def _ayuda(self, nombre: str, canal: str = "telegram") -> str:
         saludo = f"Hola, {nombre.split()[0]}. " if nombre else "Hola. "
+        if canal == "portal":
+            return (f"{saludo}Soy {NOMBRE}, la asistente de la firma. Pregúnteme por sus procesos abiertos, los "
+                    "términos que le vencen o sus audiencias de las próximas dos semanas, o escríbame el radicado de "
+                    "un proceso suyo para decirle cómo va. Solo consulto: para registrar o cambiar algo, use las "
+                    "pantallas del portal.")
         return (f"{saludo}Soy {NOMBRE}, la asistente de la firma. Le respondo sobre sus procesos:\n\n"
                 "/mis_procesos — sus procesos abiertos y lo próximo que vence\n"
                 "/terminos — sus términos pendientes, del más urgente al más lejano\n"
@@ -206,7 +225,7 @@ class ConsultasBot:
     async def _proceso(self, id_persona: int, argumento: str) -> tuple[str, str]:
         radicado = re.sub(r"\D", "", argumento or "")
         if len(radicado) != 23:
-            return "Escriba el radicado completo de 23 dígitos, por ejemplo: /proceso 11001310303220260050100", "RESPONDIDA"
+            return ("Escriba el radicado completo de 23 dígitos, por ejemplo: 11001-31-03-032-2026-00501-00"), "RESPONDIDA"
         legible = radicado_legible(radicado)
         # Solo los procesos de la persona: uno ajeno responde igual que uno inexistente.
         suyo = next((p for p in await self.datos.procesos_de(id_persona) if p.get("radicadoLegible") == legible), None)

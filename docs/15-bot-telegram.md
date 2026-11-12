@@ -1,4 +1,6 @@
-# 15. Bot de Telegram: avisos y consultas
+# 15. Toga: avisos y consultas por Telegram y en el portal
+
+**En el portal:** el equipo de la firma ve abajo a la derecha el botón con la cara de Toga. Abre una conversación con las mismas preguntas que el bot (sus procesos, sus términos, sus audiencias o un radicado suyo) y las mismas reglas: solo personal activo, solo lo suyo y solo lectura. La pregunta va por el gateway (`POST /api/notificaciones/toga`), así que queda en la bitácora de auditoría, y también en `consultas_bot` con el chat `portal`. Siempre está encendida; el interruptor `TELEGRAM_CONSULTAS` solo afecta a Telegram.
 
 El bot de la firma (el mismo de los avisos desde F3) también puede **responder consultas** del equipo sobre sus procesos. Habla como **Toga**, la asistente del portal. Las consultas vienen **apagadas** y se encienden con `TELEGRAM_CONSULTAS=true` en `infra/.env`.
 

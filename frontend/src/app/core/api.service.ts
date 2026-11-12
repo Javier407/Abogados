@@ -195,6 +195,10 @@ export class ApiService {
     return this.http.delete<void>(`${API}/procesos/${idProceso}/actuaciones/${idActuacion}`);
   }
 
+  /** Pregunta a Toga (la asistente): la respuesta la arma el servidor con los datos de quien pregunta. */
+  preguntarToga(texto: string): Observable<{ respuesta: string }> {
+    return this.http.post<{ respuesta: string }>(`${API}/notificaciones/toga`, { texto });
+  }
   /** Los procesos en los que está un abogado, con su papel en cada uno. */
   procesosDeAbogado(idPersona: number): Observable<ProcesoDeAbogado[]> {
     return this.http.get<ProcesoDeAbogado[]>(`${API}/procesos/de-abogado/${idPersona}`);

@@ -21,7 +21,7 @@
 - **Secreto profesional:** el texto menciona el del abogado.
 
 **Para dejarla lista falta:**
-1. **Datos de la firma:** llenar los `[COMPLETAR]` de `datos-legales.ts`: NIT, dirección, correo para datos personales y teléfono. El plazo de conservación se completa en la sección 9 de `privacidad.component.ts`.
+1. **Datos de la firma:** en `datos-legales.ts` están los mismos datos FICTICIOS de la base de pruebas (NIT, dirección, correo para datos personales y teléfono), y en la sección 9 de `privacidad.component.ts` unos plazos de conservación de ejemplo (10 años el expediente, 2 años las consultas sin contrato, 5 años la bitácora). Con una firma real se cambian por los suyos.
 2. **Revisión jurídica:** que un abogado de la firma revise el texto. Después, poner `revisada: true` para quitar el aviso de borrador.
 3. **Cambios futuros:** al cambiar el texto, subir `version`. El aviso de cookies vuelve a salir.
 

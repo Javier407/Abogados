@@ -130,7 +130,7 @@ async def test_un_proceso_suyo_si_y_uno_ajeno_como_si_no_existiera():
     ajeno = await b.responder(CHAT, "/proceso 05001310502120260011800")
     assert "No encuentro el proceso 05001-31-05-021-2026-00118-00 entre los suyos" in ajeno
     corto = await b.responder(CHAT, "/proceso 123")
-    assert "23 dígitos" in corto
+    assert "23 dígitos" in corto and "11001-31-03-032-2026-00501-00" in corto
     assert [x[3] for x in repo.registro] == ["RESPONDIDA", "NO_ENCONTRADO", "RESPONDIDA"]
 
 
@@ -180,6 +180,42 @@ async def test_limite_de_consultas_por_minuto():
 
     assert "Espere un minuto" in r
     assert repo.registro[-1][3] == "LIMITE"
+
+
+async def test_en_el_portal_la_persona_viene_de_la_sesion_y_la_ayuda_no_habla_de_comandos():
+    repo, datos = RepoFalso(chats={}), DatosFalsos()
+    b = bot(repo, datos)
+
+    ayuda = await b.responder_portal(CATALINA, "hola")
+    assert ayuda.startswith("Hola, Catalina. Soy Toga") and "/mis_procesos" not in ayuda
+    assert "Tiene 2 procesos abiertos" in await b.responder_portal(CATALINA, "mis procesos")
+    assert "etapa pruebas" in await b.responder_portal(CATALINA, "mis procesos")
+    assert "solo para el equipo" in await b.responder_portal(CLIENTE, "mis procesos")   # un cliente, no
+    assert [x[1] for x in repo.registro] == ["portal"] * 4
+    assert [x[3] for x in repo.registro] == ["RESPONDIDA", "RESPONDIDA", "RESPONDIDA", "NO_AUTORIZADO"]
+
+
+def test_las_etapas_llevan_tilde():
+    from app.consultas_bot import _etiqueta
+    assert _etiqueta("ADMISION") == "admisión"
+    assert _etiqueta("SENTENCIA_ANTICIPADA") == "sentencia anticipada"
+
+
+def test_preguntar_a_toga_desde_el_portal_con_la_sesion():
+    from fastapi.testclient import TestClient
+    from app.main import crear_app
+    from tests.test_actuaciones_y_telegram import servicio as servicio_de_prueba
+    from tests.test_aplicacion import RepoMemoria
+
+    app = crear_app(servicio=servicio_de_prueba(RepoMemoria()), toga=bot(RepoFalso(chats={}), DatosFalsos()))
+    with TestClient(app) as c:
+        r = c.post("/notificaciones/toga", json={"texto": "qué me vence?"}, headers={"X-Usuario-Id": str(CATALINA)})
+        assert r.status_code == 200 and r.json()["respuesta"].startswith("Tiene 2 término(s) pendiente(s)")
+        assert c.post("/notificaciones/toga", json={"texto": "hola"}).status_code == 401           # sin sesión
+        assert c.post("/notificaciones/toga", json={"texto": ""}, headers={"X-Usuario-Id": "1"}).status_code == 400
+        sin_toga = crear_app(servicio=servicio_de_prueba(RepoMemoria()))
+    with TestClient(sin_toga) as c:
+        assert c.post("/notificaciones/toga", json={"texto": "hola"}, headers={"X-Usuario-Id": "1"}).status_code == 503
 
 
 async def test_la_ayuda_saluda_y_explica_los_comandos():
