@@ -56,6 +56,16 @@ class ProvidenciaServicioTest {
 	}
 
 	@Test
+	void unaSentenciaDetectadaLlevaElProcesoALaEtapaSentenciaYUnAutoNo() {
+		servicio.registrarDetectada(actuacion("SIM:1", 34, RADICADO));
+		assertThat(expediente.etapas).isEmpty();
+
+		servicio.registrarDetectada(new ActuacionDetectada(RADICADO, 34, "SIM:2", LocalDate.of(2026, 10, 15), "SENTENCIA",
+				"Sentencia de primera instancia", null, "SIMULADA"));
+		assertThat(expediente.etapas).containsExactly(EtapaProceso.SENTENCIA);
+	}
+
+	@Test
 	void registraLaActuacionComoProvidenciaDeVigilancia() {
 		Optional<Integer> id = servicio.registrarDetectada(actuacion("SIM:1", 34, RADICADO));
 
