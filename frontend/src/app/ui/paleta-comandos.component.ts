@@ -195,7 +195,7 @@ export class PaletaComandosComponent {
       });
     lista.push({
       id: 'ag',
-      texto: 'Ir a la agenda de términos',
+      texto: 'Ir a términos y audiencias',
       icono: 'lucideCalendarClock',
       ruta: '/terminos',
     });

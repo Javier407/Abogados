@@ -148,6 +148,12 @@ export interface Termino {
   idResponsable: number;
   diasHabilesRestantes: number;
   situacion: Situacion;
+  /** La norma que fija el plazo, si se indicó. */
+  norma?: string;
+  tipoProceso?: string;
+  etapa?: string;
+  /** La decisión del juez que abrió el término (su clase), si se creó desde una providencia. */
+  providencia?: string;
 }
 
 export interface TerminoSolicitud {
@@ -156,6 +162,23 @@ export interface TerminoSolicitud {
   diasHabiles: number | null;
   idProvidencia?: number | null;
   idResponsable?: number | null;
+  norma?: string | null;
+}
+
+/** Un plazo de referencia del tipo de proceso (GET /procesos/:id/plazos). */
+export interface PlazoProceso {
+  descripcion: string;
+  diasHabiles: number;
+  norma: string;
+  /** Cuándo empieza a correr, en palabras. */
+  momento?: string;
+  tipoProvidencia: 'AUTO' | 'SENTENCIA';
+  /** «Si procede»: recursos y similares. */
+  opcional: boolean;
+  /** Lo revisó un socio; si no, es de referencia. */
+  validada: boolean;
+  /** La regla es de este tipo de proceso, no heredada de la rama. */
+  propio: boolean;
 }
 
 export interface DiaInhabil { fecha: string; descripcion: string; tipo: 'FESTIVO' | 'VACANCIA' | 'SEMANA_SANTA'; }
@@ -171,6 +194,22 @@ export interface Aviso {
   referencia: { id_proceso?: number; id_termino?: number; portal?: boolean };
   leida: boolean;
   creada: string;
+}
+
+/**
+ * Días del calendario entre la notificación y el vencimiento que no contaron: fines de semana, festivos,
+ * Semana Santa y vacancia judicial.
+ */
+export function diasNoContados(t: { fechaInicio: string; fechaVencimiento: string; diasHabiles: number }): number {
+  const corridos = Math.round((Date.parse(t.fechaVencimiento) - Date.parse(t.fechaInicio)) / 86_400_000);
+  return Math.max(0, corridos - t.diasHabiles);
+}
+
+/** Parte del plazo ya consumida, de 0 a 100 (100 = vencido o cumplido). */
+export function avancePlazo(t: { estado: string; diasHabiles: number; diasHabilesRestantes: number }): number {
+  if (t.estado === 'CUMPLIDO' || t.diasHabiles <= 0) return 100;
+  const usados = t.diasHabiles - Math.max(0, t.diasHabilesRestantes);
+  return Math.min(100, Math.max(0, Math.round((usados / t.diasHabiles) * 100)));
 }
 
 /** Texto para los días hábiles que faltan: 'vence hoy', 'faltan 3 días', 'venció hace 2 días'. */
@@ -218,6 +257,8 @@ export interface Providencia {
   decision?: string;
   sentido?: string;
   fuente: 'MANUAL' | 'VIGILANCIA';
+  /** Sentencia anticipada (CGP art. 278). */
+  anticipada?: boolean;
 }
 
 export interface EstadoTelegram { configurado: boolean; vinculado: boolean; bot: string | null; }
@@ -366,6 +407,7 @@ export interface ProvidenciaSolicitud {
   fechaEstado: string;
   decision?: string | null;
   sentido?: 'FAVORABLE' | 'DESFAVORABLE' | 'PARCIAL' | null;
+  anticipada?: boolean;
 }
 export interface EventoExpediente {
   fecha: string;
@@ -425,6 +467,8 @@ export interface SugerenciaTermino {
   origen: 'REGLA' | 'PROVIDENCIA';
   prioridad: number;
   validada: boolean;
+  /** Cuándo empieza a correr, en palabras (solo las que salen de una regla). */
+  momento?: string;
 }
 
 // ---------- administración, gastos y reportes (F8) ----------

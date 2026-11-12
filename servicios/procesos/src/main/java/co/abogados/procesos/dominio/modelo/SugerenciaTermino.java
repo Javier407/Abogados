@@ -15,5 +15,11 @@ public record SugerenciaTermino(
 		String norma,
 		String origen,
 		int prioridad,
-		boolean validada) {
+		boolean validada,
+		String momento) {
+
+	public SugerenciaTermino(String descripcion, int diasHabiles, LocalDate fechaInicio, LocalDate fechaVencimiento,
+			String norma, String origen, int prioridad, boolean validada) {
+		this(descripcion, diasHabiles, fechaInicio, fechaVencimiento, norma, origen, prioridad, validada, null);
+	}
 }

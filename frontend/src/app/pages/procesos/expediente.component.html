@@ -167,6 +167,15 @@
                       <option value="DESFAVORABLE">Desfavorable</option>
                     </select>
                   </div>
+                  <div class="form-group form-group-full">
+                    <label class="resumen-chip" for="antProv">
+                      <input id="antProv" type="checkbox" name="anticipada" [(ngModel)]="providencia.anticipada" />
+                      Es una sentencia anticipada (CGP art. 278)
+                    </label>
+                    <span class="form-ayuda">El juez falló sin agotar las etapas: porque las partes lo pidieron, porque no había
+                      pruebas por practicar o porque encontró probada la cosa juzgada, la transacción, la caducidad, la
+                      prescripción o la falta de legitimación.</span>
+                  </div>
                 }
                 <div class="form-group form-group-full">
                   <label class="form-label" for="claseProv">Qué decidió el juez <span class="requerido">*</span></label>
@@ -249,8 +258,9 @@
                         <div class="sugerencia" [class.opcional]="s.prioridad > 1">
                           <div>
                             <strong>{{ s.descripcion }}</strong>
-                            <small>{{ s.diasHabiles }} días hábiles · vence {{ s.fechaVencimiento | date:'dd/MM/yyyy' }} · {{ s.norma }}</small>
-                            @if (!s.validada) { <small class="a-validar">Regla de referencia, pendiente de validar por un abogado</small> }
+                            <small>{{ s.diasHabiles }} días hábiles · vence {{ s.fechaVencimiento | date:'EEE dd/MM/yyyy' }} · {{ s.norma }}</small>
+                            @if (s.momento) { <small>Corre: {{ s.momento.charAt(0).toLowerCase() + s.momento.slice(1) }}</small> }
+                            @if (!s.validada) { <small class="a-validar">Plazo de referencia: confírmelo con la norma antes de confiar en él</small> }
                           </div>
                           <button class="btn btn-primary btn-sm" type="button" (click)="crearSugerido(s)">Crear término</button>
                         </div>

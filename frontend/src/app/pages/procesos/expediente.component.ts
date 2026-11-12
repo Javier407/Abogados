@@ -309,10 +309,13 @@ export class ExpedienteComponent implements OnInit {
       return;
     }
     const p = this.limpiar(this.providencia);
-    if (p.tipo === 'AUTO') p.sentido = null;
+    if (p.tipo === 'AUTO') {
+      p.sentido = null;
+      p.anticipada = false;
+    }
     this.enviar(this.api.registrarProvidencia(this.idProceso, p), (creada) => {
       this.mensaje =
-        (p.tipo === 'SENTENCIA' ? 'Sentencia registrada' : 'Auto registrado') +
+        (p.tipo !== 'SENTENCIA' ? 'Auto registrado' : p.anticipada ? 'Sentencia anticipada registrada' : 'Sentencia registrada') +
         '. Revise los términos sugeridos.';
       this.providencia = this.providenciaVacia();
       this.verSugerencias(creada.idProvidencia, true);
@@ -383,6 +386,7 @@ export class ExpedienteComponent implements OnInit {
         fechaInicio: s.fechaInicio,
         diasHabiles: s.diasHabiles,
         idProvidencia,
+        norma: s.norma,
       })
       .subscribe({
         next: (t) => {

@@ -32,7 +32,8 @@ public class ExpedienteRepositorioJdbc implements ExpedienteRepositorio {
 				WHERE a.id_proceso = :id
 				UNION ALL
 				SELECT p.fecha_estado, 'PROVIDENCIA', p.tipo, p.id_providencia, p.clase,
-				       concat_ws(' · ', p.decision, CASE p.sentido WHEN 'FAVORABLE' THEN 'Favorable al cliente'
+				       concat_ws(' · ', CASE WHEN p.anticipada THEN 'Sentencia anticipada (CGP art. 278)' END,
+				                 p.decision, CASE p.sentido WHEN 'FAVORABLE' THEN 'Favorable al cliente'
 				                                                  WHEN 'DESFAVORABLE' THEN 'Desfavorable al cliente'
 				                                                  WHEN 'PARCIAL' THEN 'Parcialmente favorable' END),
 				       p.fuente
@@ -40,7 +41,8 @@ public class ExpedienteRepositorioJdbc implements ExpedienteRepositorio {
 				WHERE p.id_proceso = :id
 				UNION ALL
 				SELECT t.fecha_vencimiento, 'TERMINO', t.estado, t.id_termino, t.descripcion,
-				       t.dias_habiles || ' días hábiles desde ' || to_char(t.fecha_inicio, 'DD/MM/YYYY'), NULL
+				       concat_ws(' · ', t.dias_habiles || ' días hábiles desde ' || to_char(t.fecha_inicio, 'DD/MM/YYYY'),
+				                 t.norma), NULL
 				FROM procesos.terminos t
 				WHERE t.id_proceso = :id
 				ORDER BY 1 DESC, 2, 4 DESC

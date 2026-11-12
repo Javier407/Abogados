@@ -425,3 +425,16 @@ Tres recortes pedidos por la firma después de F17. Ninguno borra historia de pr
 1. **Se retira la facturación electrónica (F14).** Fuera la pantalla, `FacturacionServicio`, el proveedor simulado, sus rutas del gateway y sus tablas (migración `016`, que se niega a borrar si hay facturas guardadas). Quedan honorarios, pagos, liquidación, gastos y cartera. La sección «F14» de arriba queda como registro de lo que se hizo; el código está en el historial de git.
 2. **Se retira la pantalla «Reglas de términos» (F12).** Las reglas, su historial y las sugerencias del expediente siguen funcionando; solo se quitó la pantalla. Desde ahora las reglas se cargan y validan por migración o SQL, y lo mismo los días de contestación de cada tipo de proceso.
 3. **Se desactiva la rama Constitucional.** `procesos.ramas.activa`, `procesos.tipos_proceso.activo`, `gabinete.areas_practica.activa` y `gabinete.tarifas.activa` (migración `017`). Lo desactivado no sale en las listas ni admite procesos nuevos; los procesos, términos, reglas y honorarios que ya lo usan se conservan y se pueden editar.
+
+## Términos que se entienden (noviembre de 2026)
+
+La pantalla de términos no se entendía: no decía qué había que hacer, de dónde salía el plazo ni cómo se había contado.
+
+1. **Un solo nombre.** El menú decía «Agenda» y la página «Términos»; ahora el menú es «Términos y audiencias».
+2. **Cada fila se explica sola.** Qué hay que hacer (con la norma y la providencia que abrió el plazo), en qué proceso (tipo y etapa), cuándo vence, cuánto del plazo se ha consumido y cómo se contó: notificación + días hábiles, y cuántos días no contaron. Una ayuda plegable explica el conteo.
+3. **Filtro por abogado** («De toda la firma», «Solo los míos» o un abogado) y contadores que filtran.
+4. **Plazos distintos por tipo de proceso.** Las reglas llevan `acto` (contestar, subsanar, reposición…) y `momento` (cuándo corre, en palabras). Entre reglas del mismo acto gana la más específica: tipo de proceso > rama > general. La migración `018` carga 18 reglas de referencia para laboral, pensional, penal, contencioso administrativo, ejecutivo y monitorio. **Todas quedan sin validar** hasta que un socio las revise.
+5. **Los plazos del tipo de proceso están en el expediente** (pestaña Términos): `GET /procesos/{id}/plazos`. «Usar» llena el formulario del término, que ahora guarda la **norma**.
+6. **Sentencia anticipada (CGP art. 278).** Una casilla al registrar la sentencia; queda marcada en la línea de tiempo.
+
+Pendiente: que un abogado valide los días y las normas de las reglas nuevas; el umbral de «por vencer» sigue fijo en 5 días hábiles (ahora se ve además el porcentaje del plazo consumido).

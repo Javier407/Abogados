@@ -3,66 +3,106 @@
 
   <div class="page-header">
     <h1>Términos</h1>
-    <p>Plazos de los procesos contados en días hábiles judiciales (sin fines de semana, festivos, Semana Santa ni vacancia)</p>
+    <p>Las fechas límite para actuar en cada proceso: qué hay que presentar, cuándo vence y cómo se contó el plazo.</p>
   </div>
 
-  @if (mensaje) { <div class="alerta alerta-exito">{{ mensaje }}</div> }
-  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+  <details class="como-se-lee">
+    <summary>¿Cómo se cuenta un término?</summary>
+    <ul>
+      <li><strong>Empieza</strong> el día hábil siguiente a la notificación (la fecha del estado electrónico).</li>
+      <li><strong>Solo cuentan los días hábiles judiciales:</strong> no cuentan sábados, domingos, festivos, Semana Santa ni
+        la vacancia judicial.</li>
+      <li><strong>«Vence»</strong> es el último día para presentar el escrito. <strong>«Por vencer»</strong> significa que
+        quedan 5 días hábiles o menos.</li>
+      <li><strong>Cada tipo de proceso tiene sus propios plazos</strong> (no es lo mismo un verbal que un ejecutivo o un
+        laboral). Los de cada proceso están en la pestaña «Términos» de su expediente.</li>
+    </ul>
+  </details>
+
+  @if (mensaje) { <div class="alerta alerta-exito" role="status">{{ mensaje }}</div> }
+  @if (error) { <div class="alerta alerta-error" role="alert">{{ error }}</div> }
 
   <div class="filtros">
+    <select class="form-input" [(ngModel)]="quien" (ngModelChange)="cargar()" aria-label="De quién son los términos">
+      <option value="todos">De toda la firma</option>
+      @if (sesion.idPersona()) { <option value="mios">Solo los míos</option> }
+      @for (a of sesion.abogados(); track a.idPersona) {
+        @if (a.idPersona !== sesion.idPersona()) { <option [value]="a.idPersona">{{ a.nombres }} {{ a.apellidos }}</option> }
+      }
+    </select>
     <select class="form-input" [(ngModel)]="situacion" (ngModelChange)="cargar()" aria-label="Situación">
       <option value="">Todas las situaciones</option>
-      @for (s of situaciones; track s) { <option [value]="s">{{ etiqueta(s) }}</option> }
+      @for (s of situaciones; track s) { <option [value]="s">{{ s === 'AL_DIA' ? 'Con tiempo' : etiqueta(s) }}</option> }
     </select>
-    <label class="resumen-chip">
-      <input type="checkbox" [(ngModel)]="soloMios" (ngModelChange)="cargar()" [disabled]="!sesion.idPersona()" />
-      Solo míos {{ sesion.persona() ? '(' + sesion.persona()!.nombres + ')' : '' }}
-    </label>
-    <button class="btn btn-primary" type="button" (click)="revisar()" [disabled]="revisando" aria-describedby="ayudaRevision">
-      {{ revisando ? 'Revisando...' : 'Enviar avisos ahora' }}
+    <button class="btn btn-secondary" type="button" (click)="revisar()" [disabled]="revisando" aria-describedby="ayudaRevision">
+      {{ revisando ? 'Enviando…' : 'Enviar avisos ahora' }}
     </button>
-    <span id="ayudaRevision" class="form-ayuda">La revisión se hace sola cada día hábil a las 7:00.</span>
+    <span id="ayudaRevision" class="form-ayuda">Los avisos salen solos cada día hábil a las 7:00.</span>
   </div>
 
   <div class="resumen-bar">
-    <span class="resumen-chip"><span class="punto punto-vencido"></span> Vencidos: <strong>{{ contar('VENCIDO') }}</strong></span>
-    <span class="resumen-chip"><span class="punto punto-por-vencer"></span> Por vencer (≤ 5 días): <strong>{{ contar('POR_VENCER') }}</strong></span>
-    <span class="resumen-chip"><span class="punto punto-al-dia"></span> Al día: <strong>{{ contar('AL_DIA') }}</strong></span>
-    <span class="resumen-chip">Cumplidos: <strong>{{ contar('CUMPLIDO') }}</strong></span>
+    <button class="resumen-chip chip-filtro" type="button" [attr.aria-pressed]="situacion === 'VENCIDO'" (click)="filtrar('VENCIDO')">
+      <span class="punto punto-vencido"></span> Vencidos: <strong>{{ contar('VENCIDO') }}</strong></button>
+    <button class="resumen-chip chip-filtro" type="button" [attr.aria-pressed]="situacion === 'POR_VENCER'" (click)="filtrar('POR_VENCER')">
+      <span class="punto punto-por-vencer"></span> Por vencer (5 días hábiles o menos): <strong>{{ contar('POR_VENCER') }}</strong></button>
+    <button class="resumen-chip chip-filtro" type="button" [attr.aria-pressed]="situacion === 'AL_DIA'" (click)="filtrar('AL_DIA')">
+      <span class="punto punto-al-dia"></span> Con tiempo: <strong>{{ contar('AL_DIA') }}</strong></button>
+    <button class="resumen-chip chip-filtro" type="button" [attr.aria-pressed]="situacion === 'CUMPLIDO'" (click)="filtrar('CUMPLIDO')">
+      <span class="punto punto-cumplido"></span> Cumplidos: <strong>{{ contar('CUMPLIDO') }}</strong></button>
   </div>
 
   @if (cargando) {
-    <div class="empty-state">Cargando términos...</div>
+    <div class="empty-state" role="status">Cargando términos…</div>
   } @else if (terminos.length === 0) {
     <div class="empty-state">No hay términos con esos filtros.</div>
   } @else {
     <div class="tabla-wrapper">
-      <table class="tabla">
+      <table class="tabla tabla-terminos">
         <thead>
-          <tr><th>Vence</th><th>Situación</th><th>Término</th><th>Proceso</th><th>Responsable</th><th>Notificado</th><th></th></tr>
+          <tr>
+            <th>Vence</th><th>Qué hay que hacer</th><th>Proceso</th><th>Cómo se contó</th><th>Responsable</th>
+            <th><span class="sr-only">Acciones</span></th>
+          </tr>
         </thead>
         <tbody>
           @for (t of terminos; track t.idTermino) {
             <tr>
-              <td class="fecha-celda"><strong>{{ t.fechaVencimiento | date:'EEE dd/MM/yyyy' }}</strong></td>
-              <td>
+              <td class="fecha-celda">
+                <strong>{{ t.fechaVencimiento | date:'EEE dd/MM/yyyy' }}</strong>
                 <span class="badge"
                   [class.badge-danger]="t.situacion === 'VENCIDO'"
                   [class.badge-warning]="t.situacion === 'POR_VENCER'"
                   [class.badge-success]="t.situacion === 'AL_DIA'"
-                  [class.badge-muted]="t.situacion === 'CUMPLIDO'">{{ etiqueta(t.situacion) }}</span>
-                @if (t.situacion !== 'CUMPLIDO') { <br><small>{{ textoRestantes(t.diasHabilesRestantes) }}</small> }
+                  [class.badge-muted]="t.situacion === 'CUMPLIDO'">{{ t.situacion === 'AL_DIA' ? 'Con tiempo' : etiqueta(t.situacion) }}</span>
+                @if (t.situacion !== 'CUMPLIDO') {
+                  <small>{{ textoRestantes(t.diasHabilesRestantes) }}</small>
+                  <span class="avance" role="img" [attr.aria-label]="'Plazo consumido: ' + avance(t) + ' %'">
+                    <span [class.lleno]="t.situacion === 'VENCIDO'" [class.casi]="t.situacion === 'POR_VENCER'" [style.width.%]="avance(t)"></span>
+                  </span>
+                }
               </td>
-              <td class="titulo-celda">{{ t.descripcion }}<br><small>{{ t.diasHabiles }} días hábiles</small></td>
+              <td class="titulo-celda">
+                {{ t.descripcion }}
+                @if (t.norma) { <small class="norma">{{ t.norma }}</small> }
+                @if (t.providencia) { <small>Lo abrió: {{ t.providencia }}</small> }
+              </td>
               <td>
-                <a class="mono" [routerLink]="['/procesos', t.idProceso, 'editar']">{{ t.radicadoLegible }}</a>
-                <br><small>{{ t.rama }} · {{ t.asunto }}</small>
+                <a class="mono" [routerLink]="['/procesos', t.idProceso]" [queryParams]="{ pestana: 'terminos' }">{{ t.radicadoLegible }}</a>
+                <small>{{ t.tipoProceso || t.rama }}@if (t.etapa) { · etapa {{ etiqueta(t.etapa).toLowerCase() }} }</small>
+                <small>{{ t.asunto }}</small>
+              </td>
+              <td class="conteo">
+                <small>Notificado el <strong>{{ t.fechaInicio | date:'dd/MM/yyyy' }}</strong></small>
+                <small>+ <strong>{{ t.diasHabiles }}</strong> día{{ t.diasHabiles === 1 ? '' : 's' }} hábil{{ t.diasHabiles === 1 ? '' : 'es' }}</small>
+                @if (noContados(t) > 0) {
+                  <small>No contaron {{ noContados(t) }} día{{ noContados(t) === 1 ? '' : 's' }} (fines de semana o festivos)</small>
+                }
               </td>
               <td>{{ nombre(t.idResponsable) }}</td>
-              <td class="fecha-celda">{{ t.fechaInicio | date:'dd/MM/yyyy' }}</td>
               <td class="acciones-celda">
                 @if (t.estado === 'PENDIENTE') {
-                  <button class="btn btn-secondary btn-sm" type="button" (click)="cumplir(t)">Cumplido</button>
+                  <button class="btn btn-secondary btn-sm" type="button" (click)="cumplir(t)"
+                          [attr.aria-label]="'Marcar como cumplido: ' + t.descripcion">Ya se cumplió</button>
                 }
               </td>
             </tr>
