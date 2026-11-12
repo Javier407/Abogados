@@ -103,7 +103,7 @@ async def test_sus_procesos_abiertos_con_su_papel_y_sin_datos_de_mas():
     assert r.startswith("Tiene 2 procesos abiertos:")
     assert "11001-31-03-032-2026-00501-00 — Incumplimiento de contrato" in r
     assert "Verbal, etapa pruebas (a cargo)" in r
-    assert "2 término(s); el próximo vence el 14/11/2026" in r
+    assert "2 término(s), 1 VENCIDO(S); el más antiguo desde el 10/11/2026" in r
     assert "(apoyo)" in r
     assert "Archivado" not in r                                 # los cerrados no salen
     assert "320000000" not in r and "cuantia" not in r          # lista blanca de campos
@@ -130,7 +130,7 @@ async def test_un_proceso_suyo_si_y_uno_ajeno_como_si_no_existiera():
     ajeno = await b.responder(CHAT, "/proceso 05001310502120260011800")
     assert "No encuentro el proceso 05001-31-05-021-2026-00118-00 entre los suyos" in ajeno
     corto = await b.responder(CHAT, "/proceso 123")
-    assert "23 dígitos" in corto and "11001-31-03-032-2026-00501-00" in corto
+    assert "23 dígitos" in corto and "con o sin guiones" in corto
     assert [x[3] for x in repo.registro] == ["RESPONDIDA", "NO_ENCONTRADO", "RESPONDIDA"]
 
 
@@ -372,5 +372,62 @@ async def test_mis_procesos_marca_como_vencido_el_termino_con_fecha_pasada():
         return [PROCESOS[0], vencido]
     datos.procesos_de = procesos_de
     r = await bot(datos=datos).responder(CHAT, "/mis_procesos")
-    assert "1 término(s); hay uno VENCIDO desde el 16/10/2026" in r
-    assert "2 término(s); el próximo vence el 14/11/2026" in r
+    assert "1 término(s), VENCIDO desde el 16/10/2026" in r
+    assert "2 término(s), 1 VENCIDO(S); el más antiguo desde el 10/11/2026" in r
+
+
+async def test_mis_procesos_dice_todos_vencidos_y_el_mas_antiguo():
+    datos = DatosFalsos()
+    proceso = {**PROCESOS[0], "terminosPendientes": 2, "proximoVencimiento": "2026-10-16"}
+    terminos = [{"radicadoLegible": proceso["radicadoLegible"], "estado": "PENDIENTE", "diasHabilesRestantes": d,
+                 "fechaVencimiento": f, "descripcion": "x"} for d, f in ((-16, "2026-10-20"), (-18, "2026-10-16"))]
+
+    async def procesos_de(_):
+        return [proceso]
+
+    async def terminos_de(_):
+        return terminos
+    datos.procesos_de, datos.terminos_de = procesos_de, terminos_de
+    r = await bot(datos=datos).responder(CHAT, "/mis_procesos")
+    assert "2 término(s), todos VENCIDOS; el más antiguo desde el 16/10/2026" in r
+
+
+async def test_si_no_se_pueden_contar_los_vencidos_usa_la_fecha_del_proximo():
+    datos = DatosFalsos()
+    proceso = {**PROCESOS[0], "terminosPendientes": 3, "proximoVencimiento": "2026-10-16"}
+
+    async def procesos_de(_):
+        return [proceso]
+
+    async def terminos_de(_):
+        raise RuntimeError("procesos no responde")
+    datos.procesos_de, datos.terminos_de = procesos_de, terminos_de
+    r = await bot(datos=datos).responder(CHAT, "/mis_procesos")
+    assert "3 término(s), 1 VENCIDO(S); el más antiguo desde el 16/10/2026" in r
+
+
+async def test_la_ayuda_usa_un_radicado_propio_de_ejemplo():
+    ayuda = await bot().responder(CHAT, "/ayuda")
+    assert "/proceso 11001310303220260050100 — cómo va ese proceso suyo" in ayuda    # el primero abierto
+
+    datos = DatosFalsos()
+
+    async def sin_procesos(_):
+        return []
+    datos.procesos_de = sin_procesos
+    assert "/proceso <radicado de 23 dígitos>" in await bot(datos=datos).responder(CHAT, "/ayuda")
+
+    async def falla(_):
+        raise RuntimeError("procesos no responde")
+    datos.procesos_de = falla
+    assert "/proceso <radicado de 23 dígitos>" in await bot(datos=datos).responder(CHAT, "/ayuda")
+
+
+async def test_respuestas_cortas_a_registrar_y_quien_es_toga():
+    registrar = await bot().responder(CHAT, "¿Puedo registrar un término?")
+    assert registrar.startswith("No: solo consulto.") and "/mis_procesos" not in registrar
+    quien = await bot().responder(CHAT, "¿Eres un bot?")
+    assert quien.startswith("Soy Toga") and "No soy una persona" in quien and "/mis_procesos" not in quien
+    portal = await bot().responder_portal(CATALINA, "quiero borrar un proceso")
+    assert portal.startswith("No: solo consulto.") and "/ayuda" not in portal
+    assert "/ayuda" not in await bot().responder_portal(CATALINA, "eres humano?")

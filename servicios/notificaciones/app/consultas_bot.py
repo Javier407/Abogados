@@ -142,6 +142,10 @@ class ConsultasBot:
         digitos = re.sub(r"\D", "", t)
         if len(digitos) == 23:
             return "proceso", digitos
+        if re.search(r"\b(registrar|registro|crear|cambiar|modificar|editar|borrar|eliminar|subir|radicar)\b", n):
+            return "solo_lectura", ""
+        if re.search(r"\b(bot|robot|quien eres|eres|humano|persona real)\b", n):
+            return "quien", ""
         if re.search(r"\b(termino|terminos|vence|vencen|vencimiento|plazo|plazos)\b", n):
             return "terminos", ""
         if re.search(r"\b(audiencia|audiencias|diligencia)\b", n):
@@ -162,9 +166,30 @@ class ConsultasBot:
             return await self._audiencias(id_persona), "RESPONDIDA"
         if comando == "proceso":
             return await self._proceso(id_persona, argumento)
-        return self._ayuda(persona.get("nombres") or "", canal), "RESPONDIDA"
+        if comando == "solo_lectura":
+            return ("No: solo consulto. Para registrar, cambiar o borrar algo, use el portal. Puedo decirle sus "
+                    "procesos, términos y audiencias (escriba /ayuda)."
+                    if canal == "telegram" else
+                    "No: solo consulto. Para registrar, cambiar o borrar algo, use el portal. Puedo decirle sus "
+                    "procesos, términos y audiencias."), "RESPONDIDA"
+        if comando == "quien":
+            return (f"Soy {NOMBRE}, la asistente de la firma: consulto en Lexora sus procesos, términos y audiencias. "
+                    "No soy una persona y no doy asesoría jurídica."
+                    + (" Escriba /ayuda para ver qué puedo responder." if canal == "telegram" else "")), "RESPONDIDA"
+        return self._ayuda(persona.get("nombres") or "", canal, await self._radicado_de_ejemplo(id_persona)), \
+            "RESPONDIDA"
 
-    def _ayuda(self, nombre: str, canal: str = "telegram") -> str:
+    async def _radicado_de_ejemplo(self, id_persona: int) -> str | None:
+        """Un radicado de un proceso abierto de la persona, para que el ejemplo de la ayuda sí funcione."""
+        try:
+            for p in await self.datos.procesos_de(id_persona):
+                if p.get("estado") not in CERRADOS and p.get("radicadoLegible"):
+                    return re.sub(r"\D", "", p["radicadoLegible"])
+        except Exception:   # noqa: BLE001 - la ayuda sale igual, sin ejemplo
+            log.warning("No se pudo leer un radicado de ejemplo para la ayuda")
+        return None
+
+    def _ayuda(self, nombre: str, canal: str = "telegram", ejemplo: str | None = None) -> str:
         saludo = f"Hola, {nombre.split()[0]}. " if nombre else "Hola. "
         if canal == "portal":
             return (f"{saludo}Soy {NOMBRE}, la asistente de la firma. Pregúnteme por sus procesos abiertos, los "
@@ -179,7 +204,8 @@ class ConsultasBot:
                 "/mis_procesos — sus procesos abiertos y lo próximo que vence\n"
                 "/terminos — sus términos pendientes, del más urgente al más lejano\n"
                 "/audiencias — sus audiencias de las próximas dos semanas\n"
-                "/proceso 11001310303220260050100 — cómo va un proceso suyo\n\n"
+                + (f"/proceso {ejemplo} — cómo va ese proceso suyo (o cualquier otro radicado suyo)\n\n"
+                   if ejemplo else "/proceso <radicado de 23 dígitos> — cómo va un proceso suyo\n\n") +
                 "También entiendo frases como «¿qué términos me vencen?». Solo consulto: para registrar o cambiar "
                 "algo, use el portal.")
 
@@ -187,6 +213,13 @@ class ConsultasBot:
         abiertos = [p for p in await self.datos.procesos_de(id_persona) if p.get("estado") not in CERRADOS]
         if not abiertos:
             return "No tiene procesos abiertos."
+        vencidos: dict[str, list[str]] = defaultdict(list)     # radicado -> fechas de sus términos vencidos
+        try:
+            for t in await self.datos.terminos_de(id_persona):
+                if t.get("estado") == "PENDIENTE" and (t.get("diasHabilesRestantes") or 0) < 0:
+                    vencidos[t.get("radicadoLegible") or ""].append(t.get("fechaVencimiento") or "")
+        except Exception:   # noqa: BLE001 - sin el detalle, se usa la fecha del próximo vencimiento
+            log.warning("No se pudieron contar los términos vencidos para /mis_procesos")
         lineas = [f"Tiene {len(abiertos)} proceso{'s' if len(abiertos) != 1 else ''} abierto"
                   f"{'s' if len(abiertos) != 1 else ''}:"]
         for p in abiertos[:MAXIMO_LISTA]:
@@ -194,17 +227,27 @@ class ConsultasBot:
             linea = (f"\n• {p.get('radicadoLegible')} — {p.get('asunto')}\n"
                      f"  {p.get('tipoProceso')}, etapa {_etiqueta(p.get('etapa'))} ({papel})")
             if p.get("terminosPendientes"):
-                proximo = p.get("proximoVencimiento")
-                # Un término pendiente con la fecha ya pasada está vencido: no es «el próximo que vence».
-                if proximo and date.fromisoformat(proximo[:10]) < self.hoy():
-                    linea += (f"\n  {p['terminosPendientes']} término(s); hay uno VENCIDO desde el "
-                              f"{_fecha(proximo)}")
-                else:
-                    linea += f"\n  {p['terminosPendientes']} término(s); el próximo vence el {_fecha(proximo)}"
+                linea += "\n  " + self._resumen_terminos(p, vencidos.get(p.get("radicadoLegible") or "", []))
             lineas.append(linea)
         if len(abiertos) > MAXIMO_LISTA:
             lineas.append(f"\n…y {len(abiertos) - MAXIMO_LISTA} más en el portal.")
         return "".join(lineas)
+
+    def _resumen_terminos(self, p: dict, fechas_vencidos: list[str]) -> str:
+        """«2 término(s), todos VENCIDOS; el más antiguo desde el 16/10/2026» o «…; el próximo vence el …»."""
+        total = p["terminosPendientes"]
+        proximo = p.get("proximoVencimiento")
+        fechas = sorted(f for f in fechas_vencidos if f)
+        if not fechas and proximo and date.fromisoformat(proximo[:10]) < self.hoy():
+            fechas = [proximo]    # la fecha más cercana ya pasó, aunque ese término no esté a su nombre
+        if not fechas:
+            return f"{total} término(s); el próximo vence el {_fecha(proximo)}"
+        vencidos = min(len(fechas), total)
+        if vencidos >= total:
+            cuantos = "VENCIDO desde el" if total == 1 else "todos VENCIDOS; el más antiguo desde el"
+        else:
+            cuantos = f"{vencidos} VENCIDO(S); el más antiguo desde el"
+        return f"{total} término(s), {cuantos} {_fecha(fechas[0])}"
 
     async def _terminos(self, id_persona: int) -> str:
         pendientes = sorted((t for t in await self.datos.terminos_de(id_persona) if t.get("estado") == "PENDIENTE"),
@@ -238,7 +281,8 @@ class ConsultasBot:
     async def _proceso(self, id_persona: int, argumento: str) -> tuple[str, str]:
         radicado = re.sub(r"\D", "", argumento or "")
         if len(radicado) != 23:
-            return ("Escriba el radicado completo de 23 dígitos, por ejemplo: 11001-31-03-032-2026-00501-00"), "RESPONDIDA"
+            return ("Escriba el radicado completo de 23 dígitos, con o sin guiones (como aparece en el "
+                    "portal)."), "RESPONDIDA"
         legible = radicado_legible(radicado)
         # Solo los procesos de la persona: uno ajeno responde igual que uno inexistente.
         suyo = next((p for p in await self.datos.procesos_de(id_persona) if p.get("radicadoLegible") == legible), None)
