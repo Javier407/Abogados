@@ -28,6 +28,7 @@ public class AgendaRepositorioJdbc implements AgendaRepositorio {
 				JOIN procesos.v_procesos v ON v.id_proceso = a.id_proceso
 				LEFT JOIN procesos.asignaciones r ON r.id_proceso = a.id_proceso AND r.rol = 'RESPONSABLE'
 				WHERE a.tipo = 'AUDIENCIA' AND a.fecha BETWEEN :desde AND :hasta
+				  AND v.estado NOT IN ('TERMINADO', 'ARCHIVADO')
 				  AND (CAST(:asistente AS bigint) IS NULL OR coalesce(a.id_persona, r.id_persona) = :asistente)
 				ORDER BY a.fecha, a.hora NULLS LAST, a.id_actuacion
 				""")
