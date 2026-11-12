@@ -112,7 +112,7 @@
       </div>
 
       @if (cargando) {
-        <div class="empty-state" role="status">Cargando abogados…</div>
+        <app-esqueleto texto="Cargando abogados…" [cantidadColumnas]="5" />
       } @else if (abogados.length === 0) {
         <div class="empty-state">No hay abogados registrados.</div>
       } @else {

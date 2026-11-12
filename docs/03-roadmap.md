@@ -468,3 +468,13 @@ La pantalla mostraba la salud de la consulta (fuente, fallos), no el proceso.
 2. **El panel cuenta lo que pasó en el juzgado:** `GET /vigilancia/radicados/{r}/actuaciones` devuelve todo lo visto en la fuente, también lo que ya existía en la primera consulta (antes no se veía en ninguna parte).
 3. **Una sentencia detectada mueve la etapa** a Sentencia, igual que una registrada a mano.
 4. **Datos de ejemplo coherentes:** los radicados con historial están en fuente simulada con su línea base y sus actuaciones; los demás, en Manual y sin consultar. Van en `db/demo/`, que `00-init.sh` corre después de las migraciones (solo en una base nueva).
+
+## Portal más moderno y Toga, la asistente (noviembre de 2026)
+
+1. **Toga:** la gata abogada del portal (dibujo propio en SVG: gatita negra, ojos grandes, cuello blanco y corbata a rayas). Saluda en el inicio con un resumen del día en una frase («Hoy tiene 1 término vencido y 2 por vencer…»), firma el asistente de redacción del expediente y parpadea de vez en cuando. Piensa mientras algo carga y se alegra si no hay nada urgente. El nombre está en una sola constante (`NOMBRE_ASISTENTE`). Su imagen para el bot de Telegram: `docs/marca/toga-512.png` (la sube quien administra el bot en BotFather).
+2. **Anillo de términos** en el inicio: vencidos, por vencer y con tiempo, con su texto equivalente para lectores de pantalla.
+3. **Movimiento en CSS** en lugar de JavaScript: la entrada escalonada del inicio ya no parpadea; las listas y tarjetas aparecen con un fundido corto; las barras crecen desde cero (`@starting-style`); al cambiar de pantalla, un fundido (View Transitions).
+4. **Esqueletos de carga** en Procesos, Términos, Clientes, Abogados y Avisos, en lugar de «Cargando…» (con `role="status"` y `aria-busy`).
+5. **«Reducir movimiento» se respeta del todo:** sin animaciones, sin parpadeo, sin brillo del esqueleto y sin desplazamiento suave.
+
+Pendiente: reemplazar los `confirm()` del navegador por un diálogo propio, tarjetas en el celular para las tablas largas y revisar el contraste del inicio en modo oscuro en el navegador.

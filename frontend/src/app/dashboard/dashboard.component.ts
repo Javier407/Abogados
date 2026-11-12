@@ -1,7 +1,5 @@
 import {
-  AfterViewInit,
   Component,
-  ElementRef,
   OnInit,
   computed,
   inject,
@@ -44,7 +42,8 @@ import {
 } from '../core/modelos';
 import { SesionService } from '../core/sesion.service';
 import { PaletaService } from '../ui/paleta.service';
-import { contar, entrar } from '../core/animacion';
+import { contar } from '../core/animacion';
+import { AnimoMascota, MascotaComponent, NOMBRE_ASISTENTE } from '../ui/mascota.component';
 
 interface ConteoRama {
   rama: string;
@@ -59,7 +58,7 @@ interface ConteoRama {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, DatePipe, NgIcon],
+  imports: [RouterLink, DatePipe, NgIcon, MascotaComponent],
   providers: [
     provideIcons({
       lucideArrowRight,
@@ -77,11 +76,10 @@ interface ConteoRama {
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './dashboard.component.css',
 })
-export class DashboardComponent implements OnInit, AfterViewInit {
+export class DashboardComponent implements OnInit {
   private api = inject(ApiService);
   private auth = inject(AuthService);
   private sesion = inject(SesionService);
-  private host = inject(ElementRef<HTMLElement>);
   readonly paleta = inject(PaletaService);
   /** Lo que muestran las cifras mientras suben (vencidos, esta semana, audiencias, avisos). */
   readonly vista = signal([0, 0, 0, 0]);
@@ -95,6 +93,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   readonly cargando = signal(true);
   readonly error = signal('');
+  readonly asistente = NOMBRE_ASISTENTE;
 
   readonly nombre = computed(() => (this.auth.sesion()?.nombre ?? '').split(/\s+/)[0] ?? '');
   readonly saludo = (() => {
@@ -126,6 +125,43 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       ...this.misTerminos().filter((t) => t.situacion === 'AL_DIA'),
     ].slice(0, 6),
   );
+
+  /** Toga piensa mientras carga y se alegra si no hay nada urgente. */
+  readonly animo = computed<AnimoMascota>(() =>
+    this.cargando() ? 'pensando' : this.vencidos().length || this.estaSemana().length ? 'neutro' : 'contento',
+  );
+
+  /** Lo que Toga le dice a quien entra, en una frase. */
+  readonly resumenToga = computed(() => {
+    if (this.cargando()) return 'Estoy revisando su agenda…';
+    const v = this.vencidos().length;
+    const s = this.estaSemana().length;
+    const a = this.audiencias().length;
+    const partes: string[] = [];
+    if (v) partes.push(`${v} término${v === 1 ? '' : 's'} vencido${v === 1 ? '' : 's'}`);
+    if (s) partes.push(`${s} por vencer en 5 días hábiles`);
+    if (a && this.audienciasMias()) partes.push(`${a} audiencia${a === 1 ? '' : 's'} en los próximos 14 días`);
+    if (!partes.length) return 'Todo está al día. Buen momento para adelantar trabajo.';
+    return `Hoy tiene ${partes.join(', ').replace(/, ([^,]*)$/, ' y $1')}.` + (v ? ' Empiece por los vencidos.' : '');
+  });
+
+  /** Sus términos pendientes por situación, para el anillo. */
+  readonly reparto = computed(() => {
+    const t = this.misTerminos();
+    const vencidos = t.filter((x) => x.situacion === 'VENCIDO').length;
+    const porVencer = t.filter((x) => x.situacion === 'POR_VENCER').length;
+    const conTiempo = t.filter((x) => x.situacion === 'AL_DIA').length;
+    const total = vencidos + porVencer + conTiempo;
+    const p = (n: number) => (total ? (n / total) * 100 : 0);
+    const a = p(vencidos);
+    const b = a + p(porVencer);
+    return {
+      total, vencidos, porVencer, conTiempo,
+      fondo: total
+        ? `conic-gradient(var(--danger) 0 ${a}%, var(--warn) ${a}% ${b}%, var(--ok) ${b}% 100%)`
+        : 'conic-gradient(var(--surface-3) 0 100%)',
+    };
+  });
 
   // La firma
   readonly firma = signal<{
@@ -182,10 +218,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     if (this.veFirma) this.cargarFirma();
   }
 
-  ngAfterViewInit(): void {
-    entrar(this.host.nativeElement.querySelectorAll('.entra'));
-  }
-
   private cargarFirma(): void {
     forkJoin({
       procesos: this.api.procesos(),
@@ -215,7 +247,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     valores.forEach((v, i) =>
       contar(v, (n) => this.vista.update((l) => l.map((x, j) => (j === i ? n : x)))),
     );
-    entrar(this.host.nativeElement.querySelectorAll('.lista-dia li'), 0.03);
   }
 
   ancho(c: ConteoRama, porRama: ConteoRama[]): number {

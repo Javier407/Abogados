@@ -1,8 +1,8 @@
 <div class="inicio">
 
   <!-- Saludo y acciones rápidas -->
-  <header class="saludo entra">
-    <div>
+  <header class="saludo entra" style="--i: 0">
+    <div class="saludo-texto">
       <p class="fecha">{{ fecha }}</p>
       <h1>{{ saludo }}, {{ nombre() }}</h1>
       <p class="sub">
@@ -27,8 +27,30 @@
 
   @if (error()) { <div class="alerta alerta-error" role="alert">{{ error() }}</div> }
 
+  <!-- Toga resume el día -->
+  <section class="toga-dia entra" style="--i: 1" aria-labelledby="t-toga">
+    <app-mascota [tamano]="76" [animo]="animo()" />
+    <div class="toga-texto">
+      <h2 id="t-toga">{{ asistente }} le resume su día</h2>
+      <p role="status">{{ resumenToga() }}</p>
+    </div>
+    @if (!cargando() && reparto(); as r) {
+      <div class="anillo-caja">
+        <div class="anillo" role="img" [style.background]="r.fondo"
+             [attr.aria-label]="r.total ? 'Sus términos pendientes: ' + r.vencidos + ' vencidos, ' + r.porVencer + ' por vencer y ' + r.conTiempo + ' con tiempo' : 'No tiene términos pendientes'">
+          <span class="anillo-centro"><strong>{{ r.total }}</strong><small>pendientes</small></span>
+        </div>
+        <ul class="anillo-leyenda" aria-hidden="true">
+          <li><span class="punto punto-vencido"></span> {{ r.vencidos }} vencidos</li>
+          <li><span class="punto punto-por-vencer"></span> {{ r.porVencer }} por vencer</li>
+          <li><span class="punto punto-al-dia"></span> {{ r.conTiempo }} con tiempo</li>
+        </ul>
+      </div>
+    }
+  </section>
+
   <!-- Cifras del día -->
-  <section class="cifras entra" aria-label="Resumen de hoy">
+  <section class="cifras entra" style="--i: 2" aria-label="Resumen de hoy">
     <a class="cifra" routerLink="/terminos" [class.peligro]="vencidos().length > 0">
       <span class="cifra-icono"><ng-icon name="lucideCircleAlert" size="18" /></span>
       <span class="cifra-valor">{{ cargando() ? '–' : vista()[0] }}</span>
@@ -53,7 +75,7 @@
 
   <!-- Lo urgente -->
   <div class="rejilla-dia">
-    <section class="card tarjeta-dia mis-terminos entra" aria-labelledby="t-terminos">
+    <section class="card tarjeta-dia mis-terminos entra" style="--i: 3" aria-labelledby="t-terminos">
       <div class="card-header">
         <h2 id="t-terminos">Mis términos</h2>
         <a routerLink="/terminos" class="ver-todo">Agenda <ng-icon name="lucideArrowRight" size="14" /></a>
@@ -81,7 +103,7 @@
       }
     </section>
 
-    <section class="card tarjeta-dia entra" aria-labelledby="t-audiencias">
+    <section class="card tarjeta-dia entra" style="--i: 4" aria-labelledby="t-audiencias">
       <div class="card-header">
         <h2 id="t-audiencias">{{ audienciasMias() ? 'Mis audiencias' : 'Audiencias de la firma' }}</h2>
         <a routerLink="/calendario" class="ver-todo">Calendario <ng-icon name="lucideArrowRight" size="14" /></a>
@@ -105,7 +127,7 @@
       }
     </section>
 
-    <section class="card tarjeta-dia entra" aria-labelledby="t-avisos">
+    <section class="card tarjeta-dia entra" style="--i: 5" aria-labelledby="t-avisos">
       <div class="card-header">
         <h2 id="t-avisos">Avisos sin leer</h2>
         <a routerLink="/avisos" class="ver-todo">Todos <ng-icon name="lucideArrowRight" size="14" /></a>
@@ -138,14 +160,14 @@
 
   <!-- La firma (socios y administradores) -->
   @if (firma(); as f) {
-    <h2 class="titulo-seccion">La firma</h2>
-    <section class="cifras cifras-firma" aria-label="Totales de la firma">
+    <h2 class="titulo-seccion entra">La firma</h2>
+    <section class="cifras cifras-firma entra" style="--i: 1" aria-label="Totales de la firma">
       <a class="cifra" routerLink="/procesos"><span class="cifra-valor">{{ f.procesos }}</span><span class="cifra-nombre">Procesos</span></a>
       <a class="cifra" routerLink="/procesos"><span class="cifra-valor">{{ f.activos }}</span><span class="cifra-nombre">Activos</span></a>
       <a class="cifra" routerLink="/clientes"><span class="cifra-valor">{{ f.clientes }}</span><span class="cifra-nombre">Clientes</span></a>
       <a class="cifra" routerLink="/abogados"><span class="cifra-valor">{{ f.abogados }}</span><span class="cifra-nombre">Abogados activos</span></a>
     </section>
-    <div class="rejilla-firma">
+    <div class="rejilla-firma entra" style="--i: 2">
       <section class="card" aria-labelledby="t-ramas">
         <div class="card-header"><h2 id="t-ramas">Procesos por rama</h2><small>activos / total</small></div>
         <div class="card-body ramas">

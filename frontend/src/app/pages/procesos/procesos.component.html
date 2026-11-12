@@ -36,7 +36,7 @@
   </div>
 
   @if (cargando) {
-    <div class="empty-state">Cargando procesos...</div>
+    <app-esqueleto texto="Cargando procesos…" [cantidadColumnas]="5" />
   } @else if (procesos.length === 0) {
     <div class="empty-state">No hay procesos con esos filtros.</div>
   } @else {

@@ -11,6 +11,7 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
+import { MascotaComponent, NOMBRE_ASISTENTE } from '../../ui/mascota.component';
 import { AsistenteService } from '../../core/asistente.service';
 import { EstadoAsistente, Providencia, ResumenPublicado, TipoBorrador } from '../../core/modelos';
 
@@ -22,10 +23,13 @@ import { EstadoAsistente, Providencia, ResumenPublicado, TipoBorrador } from '..
 @Component({
   selector: 'app-asistente-proceso',
   standalone: true,
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, MascotaComponent],
   template: `
     <div class="card">
-      <div class="card-header"><h2>Asistente de redacción</h2></div>
+      <div class="card-header cabecera-toga">
+        <app-mascota [tamano]="44" [animo]="redactando ? 'pensando' : 'neutro'" />
+        <h2>{{ nombreAsistente }}, asistente de redacción</h2>
+      </div>
       <div class="card-body">
         <p class="form-ayuda">
           Modelo local {{ estado?.modelo ?? '' }}: los datos del proceso no salen del servidor.
@@ -182,6 +186,7 @@ import { EstadoAsistente, Providencia, ResumenPublicado, TipoBorrador } from '..
   changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
+      .cabecera-toga { display: flex; align-items: center; gap: 12px; }
       .borrador {
         margin-top: 14px;
         font-family: Georgia, 'Times New Roman', serif;
@@ -204,6 +209,7 @@ export class AsistenteProcesoComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private asistente = inject(AsistenteService);
   private zona = inject(NgZone);
+  readonly nombreAsistente = NOMBRE_ASISTENTE;
   readonly idProceso = input.required<number>();
   readonly radicado = input<string>('');
   /** Si llega, el asistente abre listo para redactar el recurso contra esa providencia (desde la línea de tiempo). */
