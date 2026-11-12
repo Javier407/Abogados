@@ -61,8 +61,9 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
         from psycopg_pool import AsyncConnectionPool
 
         from .config import Config
-        from .infraestructura import (ClienteIdentidad, ClienteProcesos, CorreoSmtp, DirectorioGabinete, Mensajeria,
-                                      RepositorioPostgres, RepositorioServidorPostgres, TelegramBot)
+        from .consultas_bot import ConsultasBot
+        from .infraestructura import (ClienteIdentidad, ClienteProcesos, CorreoSmtp, DatosBotHttp, DirectorioGabinete,
+                                      Mensajeria, RepositorioPostgres, RepositorioServidorPostgres, TelegramBot)
 
         cfg = Config.desde_entorno()
         # check: se comprueba cada conexión antes de usarla; si PostgreSQL se reinició, se abre otra.
@@ -79,14 +80,19 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
         else:
             log.info("Sin TELEGRAM_TOKEN: el canal de Telegram queda apagado")
         token = TokenServicio.desde_entorno("notificaciones")
+        repo = RepositorioPostgres(pool)
         app.state.servicio = ServicioNotificaciones(
-            RepositorioPostgres(pool), CorreoSmtp(cfg), DirectorioGabinete(cfg.gabinete_url, token), vivo, mensajeria,
+            repo, CorreoSmtp(cfg), DirectorioGabinete(cfg.gabinete_url, token), vivo, mensajeria,
             url_app=cfg.url_app, telegram=telegram, procesos=ClienteProcesos(cfg.procesos_url, token),
             cuentas=ClienteIdentidad(cfg.identidad_url, token))
         app.state.servidor = ConsultaServidor(RepositorioServidorPostgres(pool))
         tareas = [asyncio.create_task(mensajeria.iniciar(app.state.servicio.procesar))]
         if telegram is not None:
-            tareas.append(asyncio.create_task(telegram.escuchar(app.state.servicio.vincular_telegram)))
+            consultar = None
+            if cfg.telegram_consultas:
+                consultar = ConsultasBot(repo, DatosBotHttp(cfg.gabinete_url, cfg.procesos_url, token)).responder
+                log.info("El bot de Telegram responde consultas de la firma (TELEGRAM_CONSULTAS)")
+            tareas.append(asyncio.create_task(telegram.escuchar(app.state.servicio.vincular_telegram, consultar)))
         try:
             yield
         finally:

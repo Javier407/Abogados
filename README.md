@@ -223,7 +223,7 @@ Los avisos salen solos cada día hábil a las 7:00, o al pulsar **Enviar avisos 
 
 Los correos van a Mailpit y no salen a internet. Para enviarlos de verdad, definir `SMTP_*` en `infra/.env` (ver `.env.example`), nunca con la base de pruebas: sus correos son ficticios.
 
-**Telegram:** crear un bot en @BotFather y escribir `TELEGRAM_TOKEN=...` en `infra/.env` (nunca en git). Luego cada abogado lo vincula en **Avisos → Vincular Telegram**.
+**Telegram:** crear un bot en @BotFather y escribir `TELEGRAM_TOKEN=...` en `infra/.env` (nunca en git). Luego cada abogado lo vincula en **Avisos → Vincular Telegram**. Con `TELEGRAM_CONSULTAS=true` el bot también responde consultas del equipo sobre sus procesos (`docs/15-bot-telegram.md`).
 
 **Vigilancia:** todo proceso entra como `MANUAL`. En **Vigilancia** se elige la fuente por radicado. Usar `SIMULADA` para demostraciones; `Portal Rama Judicial` solo con radicados reales de la firma, porque los de la base de pruebas pueden coincidir con procesos reales de otras personas.
 

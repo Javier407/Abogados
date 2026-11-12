@@ -119,6 +119,21 @@ class RepositorioPostgres:
                    ON CONFLICT (id_persona, canal) DO UPDATE SET destino = EXCLUDED.destino, activo = true""",
                 (id_persona, chat_id))
 
+    async def persona_de_chat(self, chat_id: str) -> int | None:
+        """La persona dueña de un chat vinculado y activo. Si el chat está a nombre de dos personas, ninguna."""
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                """SELECT id_persona FROM notificaciones.preferencias
+                   WHERE canal = 'TELEGRAM' AND activo AND destino = %s LIMIT 2""", (chat_id,))
+            filas = await cur.fetchall()
+            return filas[0][0] if len(filas) == 1 else None
+
+    async def registrar_consulta_bot(self, id_persona: int | None, chat_id: str, comando: str, resultado: str) -> None:
+        async with self.pool.connection() as con:
+            await con.execute(
+                """INSERT INTO notificaciones.consultas_bot (id_persona, chat_id, comando, resultado)
+                   VALUES (%s, %s, %s, %s)""", (id_persona, chat_id, comando, resultado))
+
     async def quitar_telegram(self, id_persona: int) -> bool:
         async with self.pool.connection() as con:
             cur = await con.execute(
@@ -187,6 +202,43 @@ class ClienteProcesos:
             return r.json().get("idResponsable")
 
 
+class DatosBotHttp:
+    """
+    Lo que lee el bot de consultas, con el token de servicio (solo permite GET). Las consultas van directo a cada
+    servicio, no por el gateway: el filtro «solo lo suyo» lo aplica el bot (consultas_bot.py).
+    """
+
+    def __init__(self, gabinete_url: str, procesos_url: str, token=None):
+        self.gabinete = gabinete_url.rstrip("/")
+        self.procesos = procesos_url.rstrip("/")
+        self.token = token
+
+    async def _get(self, url: str, params: dict | None = None):
+        async with httpx.AsyncClient(timeout=8, headers=await self.token.cabeceras() if self.token else {}) as http:
+            r = await http.get(url, params=params)
+            if r.status_code == 404:
+                return None
+            r.raise_for_status()
+            return r.json()
+
+    async def persona(self, id_persona: int) -> dict | None:
+        p = await self._get(f"{self.gabinete}/abogados/{id_persona}")
+        return {"nombres": p.get("nombres") or "", "activo": bool(p.get("activo"))} if p else None
+
+    async def procesos_de(self, id_persona: int) -> list[dict]:
+        return await self._get(f"{self.procesos}/procesos/de-abogado/{id_persona}") or []
+
+    async def terminos_de(self, id_persona: int) -> list[dict]:
+        return await self._get(f"{self.procesos}/terminos", {"idResponsable": id_persona}) or []
+
+    async def terminos_del_proceso(self, id_proceso: int) -> list[dict]:
+        return await self._get(f"{self.procesos}/terminos", {"idProceso": id_proceso}) or []
+
+    async def audiencias_de(self, id_persona: int, desde, hasta) -> list[dict]:
+        return await self._get(f"{self.procesos}/audiencias",
+                               {"desde": desde.isoformat(), "hasta": hasta.isoformat(), "idAsistente": id_persona}) or []
+
+
 # ------------------------------------------------------------------ servicio identidad
 
 class ClienteIdentidad:
@@ -246,8 +298,11 @@ class TelegramBot:
     async def enviar(self, chat_id: str, texto: str) -> None:
         await self._llamar("sendMessage", chat_id=chat_id, text=texto[:4000], disable_web_page_preview=True)
 
-    async def escuchar(self, vincular) -> None:
-        """Bucle de getUpdates. vincular(codigo, chat_id) -> id_persona | None."""
+    async def escuchar(self, vincular, consultar=None) -> None:
+        """
+        Bucle de getUpdates. vincular(codigo, chat_id) -> id_persona | None. consultar(chat_id, texto) -> respuesta:
+        si se da, el bot también contesta consultas en chats privados (consultas_bot.py).
+        """
         desplazamiento = 0
         while True:
             if not self.activo:
@@ -264,12 +319,24 @@ class TelegramBot:
                 continue
             for u in novedades:
                 desplazamiento = u["update_id"] + 1
-                await self._atender(u.get("message") or {}, vincular)
+                await self._atender(u.get("message") or {}, vincular, consultar)
 
-    async def _atender(self, mensaje: dict, vincular) -> None:
+    async def _atender(self, mensaje: dict, vincular, consultar=None) -> None:
         texto = (mensaje.get("text") or "").strip()
         chat = mensaje.get("chat") or {}
-        if not texto.startswith("/start") or "id" not in chat:
+        if not texto or "id" not in chat:
+            return
+        con_codigo = texto.startswith("/start") and len(texto.split(maxsplit=1)) == 2
+        # /start sin código: con consultas, la ayuda del bot; sin ellas, cómo vincular el chat (como siempre).
+        if not con_codigo and (consultar is not None or not texto.startswith("/start")):
+            if consultar is None:
+                return
+            if chat.get("type") != "private":
+                return                       # en grupos no se responde nada: los datos son de una persona
+            try:
+                await self.enviar(str(chat["id"]), await consultar(str(chat["id"]), texto))
+            except Exception:   # noqa: BLE001
+                log.exception("No se pudo responder una consulta del bot")
             return
         partes = texto.split(maxsplit=1)
         chat_id = str(chat["id"])

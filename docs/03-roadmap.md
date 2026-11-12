@@ -478,3 +478,9 @@ La pantalla mostraba la salud de la consulta (fuente, fallos), no el proceso.
 5. **«Reducir movimiento» se respeta del todo:** sin animaciones, sin parpadeo, sin brillo del esqueleto y sin desplazamiento suave.
 
 Pendiente: reemplazar los `confirm()` del navegador por un diálogo propio, tarjetas en el celular para las tablas largas y revisar el contraste del inicio en modo oscuro en el navegador.
+
+## El bot de Telegram responde consultas (noviembre de 2026)
+
+El mismo bot de los avisos, ahora como **Toga**, contesta en chat privado `/mis_procesos`, `/terminos`, `/audiencias` y `/proceso <radicado>`, y frases simples. Solo al equipo de la firma activo, solo lo suyo, solo lectura, con límite por minuto y registro de cada consulta (migración `020`) sin guardar el texto. Viene apagado: `TELEGRAM_CONSULTAS=true`. Detalle en `docs/15-bot-telegram.md`.
+
+Pendiente: que la firma revise el envío de datos por Telegram (Ley 1581) antes de encenderlo; decidir si el registro del bot se encadena y sella como la bitácora principal.

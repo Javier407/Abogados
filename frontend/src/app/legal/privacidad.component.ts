@@ -87,7 +87,8 @@ import { PaginaLegalComponent } from './pagina-legal.component';
         <li>El asistente de redacción con inteligencia artificial funciona en ese mismo servidor: los datos de los procesos no se
           envían a servicios externos de IA.</li>
         <li><strong>Telegram:</strong> solo si usted vincula su cuenta para recibir avisos. En ese caso, los avisos (por ejemplo,
-          el radicado y la actuación de un proceso o un término por vencer) se envían por Telegram y quedan en sus servidores,
+          el radicado y la actuación de un proceso o un término por vencer) y, si usted es del equipo de la firma, las respuestas
+          a las consultas que haga al bot sobre sus propios procesos, se envían por Telegram y quedan en sus servidores,
           regidos por su propia política. Puede desvincularlo cuando quiera desde «Avisos».</li>
         <li><strong>Google, Microsoft o GitHub:</strong> solo si usted decide entrar con ellos. En ese caso, usted inicia sesión en
           su página, regida por su propia política, y nos devuelve un identificador de su cuenta y, si lo autoriza, su correo y
