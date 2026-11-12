@@ -52,7 +52,7 @@ proceso - Cómo va un proceso suyo (con el radicado)
 ayuda - Qué puede preguntar
 ```
 
-Es un solo bot y un solo token: Telegram solo deja que un proceso lea los mensajes de cada bot, y ese proceso es `notificaciones`. El vigía (`infra/monitoreo/vigia.sh`) usa el mismo token solo para enviar.
+Es un solo bot y un solo token: Telegram solo deja que un proceso lea los mensajes de cada bot. Por defecto ese proceso es `notificaciones`; con `TELEGRAM_ESCUCHA=false` los lee Talki y le pregunta a Lexora por `/api/canales/*` (docs/16-integracion-talki.md, §2.8), con el mismo vínculo y las mismas respuestas. El vigía (`infra/monitoreo/vigia.sh`) usa el mismo token solo para enviar.
 
 ## 6. Pruebas
 

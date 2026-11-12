@@ -211,3 +211,61 @@ def test_sin_motor_de_canales_es_503():
                      headers={"X-Usuario-Id": str(CATALINA)}).status_code == 503
         assert c.post("/canales/toga", json={"canal": "WHATSAPP", "idExterno": WA, "texto": "hola"},
                       headers={"X-Canal-Clave": CLAVE}).status_code == 503
+
+
+# ------------------------------------------------------------------ Telegram por Talki (TELEGRAM_ESCUCHA=false)
+
+TG = "6612345678"
+
+
+def montar_telegram(codigos=None):
+    """El vínculo de Telegram es el de los avisos: el código de /start lo resuelve ServicioNotificaciones."""
+    repo = RepoCanales()
+    chats = {}
+    codigos = dict(codigos or {"Ab3_x-9QzK1": CATALINA})
+
+    async def persona_de_chat(chat):
+        return chats.get(chat)
+    repo.persona_de_chat = persona_de_chat
+
+    async def vincular_telegram(codigo, chat):
+        persona = codigos.pop(codigo, None)
+        if persona:
+            chats[chat] = persona
+        return persona
+
+    toga = ConsultasBot(repo, DatosFalsos())
+    return repo, chats, CanalesExternos(repo, toga, reloj=lambda: 0.0, vincular_telegram=vincular_telegram)
+
+
+async def test_telegram_por_talki_vincula_con_el_codigo_del_enlace_y_responde_con_comandos():
+    repo, chats, canales = montar_telegram()
+    sin = await canales.preguntar("TELEGRAM", TG, "/mis_procesos")
+    assert not sin["vinculado"] and "Vincular Telegram" in sin["respuesta"]
+
+    assert not (await canales.vincular("TELEGRAM", TG, "ab3_x-9qzk1"))["vinculado"]   # distingue mayúsculas
+    r = await canales.vincular("TELEGRAM", TG, " Ab3_x-9QzK1 ")
+    assert r["vinculado"] and "avisos" in r["mensaje"] and chats == {TG: CATALINA}
+    assert repo.registro[-1] == (CATALINA, TG, "vincular", "RESPONDIDA")
+
+    p = await canales.preguntar("TELEGRAM", TG, "/terminos")
+    assert p["vinculado"] and p["respuesta"].startswith("Tiene 2 término(s) pendiente(s)")
+    ayuda = (await canales.preguntar("TELEGRAM", TG, "/start"))["respuesta"]
+    assert "/mis_procesos" in ayuda                                   # en Telegram sí van los comandos
+
+
+async def test_telegram_sin_vinculador_no_vincula():
+    _, canales = montar()
+    r = await canales.vincular("TELEGRAM", TG, "Ab3_x-9QzK1")
+    assert not r["vinculado"] and "no está disponible" in r["mensaje"]
+
+
+def test_api_telegram_solo_chats_privados():
+    _, app = app_de_prueba()
+    talki = {"X-Canal-Clave": CLAVE}
+    with TestClient(app) as c:
+        grupo = {"canal": "TELEGRAM", "idExterno": "-100123456", "texto": "mis procesos"}
+        assert c.post("/canales/toga", json=grupo, headers=talki).status_code == 400
+        privado = {**grupo, "idExterno": TG}
+        r = c.post("/canales/toga", json=privado, headers=talki)
+        assert r.status_code == 200 and r.json()["vinculado"] is False

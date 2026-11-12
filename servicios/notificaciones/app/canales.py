@@ -6,6 +6,10 @@ el portal (ConsultasBot): solo personal activo, solo lo suyo, solo lectura.
 
 Vincular: la persona genera en el portal → Avisos un código de un uso (24 horas) y escribe «vincular <código>» en
 el chat. Los intentos por chat están limitados para que nadie adivine códigos.
+
+Telegram también puede ir por Talki (TELEGRAM_ESCUCHA=false): Talki lee el bot y reenvía «/start <código>» y las
+preguntas de los chats privados. El vínculo es el mismo de los avisos (Portal → Avisos → Vincular Telegram) y Toga
+responde con los comandos de Telegram. Lexora sigue enviando los avisos con el mismo bot.
 """
 from __future__ import annotations
 
@@ -14,12 +18,13 @@ import re
 import secrets
 import time
 from collections import defaultdict, deque
-from typing import Callable, Protocol
+from typing import Awaitable, Callable, Protocol
 
 log = logging.getLogger(__name__)
 
-CANALES = ("WHATSAPP", "INSTAGRAM")
-NOMBRES = {"WHATSAPP": "WhatsApp", "INSTAGRAM": "Instagram"}
+CANALES = ("WHATSAPP", "INSTAGRAM")                 # los que se vinculan con la tarjeta de Talki en el portal
+CANALES_TALKI = (*CANALES, "TELEGRAM")              # los que Talki puede reenviar a Lexora
+NOMBRES = {"WHATSAPP": "WhatsApp", "INSTAGRAM": "Instagram", "TELEGRAM": "Telegram"}
 # Sin letras ni números que se confunden al copiarlos (0/O, 1/I/L).
 ALFABETO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 LARGO_CODIGO = 8
@@ -41,6 +46,14 @@ class RepositorioCanales(Protocol):
 
 class Toga(Protocol):
     async def responder_externo(self, id_persona: int, chat_id: str, texto: str) -> str: ...
+    async def responder(self, chat_id: str, texto: str) -> str: ...          # Telegram (con sus comandos)
+
+
+class RepositorioTelegram(Protocol):
+    async def persona_de_chat(self, chat_id: str) -> int | None: ...
+
+
+VinculadorTelegram = Callable[[str, str], "Awaitable[int | None]"]   # (código, chat_id) -> id_persona | None
 
 
 def chat_id(canal: str, id_externo: str) -> str:
@@ -54,9 +67,11 @@ def normalizar_codigo(codigo: str) -> str:
 
 class CanalesExternos:
     def __init__(self, repo: RepositorioCanales, toga: Toga, reloj: Callable[[], float] = time.monotonic,
-                 intentos_por_hora: int = INTENTOS_POR_HORA):
+                 intentos_por_hora: int = INTENTOS_POR_HORA, vincular_telegram: VinculadorTelegram | None = None):
         self.repo = repo
         self.toga = toga
+        # El mismo caso de uso que usa el bot de Lexora con /start <código> (ServicioNotificaciones).
+        self.vincular_telegram = vincular_telegram
         self.reloj = reloj
         self.intentos_por_hora = intentos_por_hora
         self._intentos: dict[tuple[str, str], deque[float]] = defaultdict(deque)
@@ -83,6 +98,8 @@ class CanalesExternos:
             await self._registrar(None, chat, "LIMITE")
             return {"vinculado": False,
                     "mensaje": "Hubo demasiados intentos desde este chat. Espere una hora y genere un código nuevo."}
+        if canal == "TELEGRAM":
+            return await self._vincular_telegram(id_externo, codigo)
         id_persona = await self.repo.usar_vinculo_canal(normalizar_codigo(codigo), canal)
         if id_persona is None:
             await self._registrar(None, chat, "NO_ENCONTRADO")
@@ -96,12 +113,30 @@ class CanalesExternos:
                            "sus audiencias, o escríbame el radicado de un proceso suyo."}
 
     async def preguntar(self, canal: str, id_externo: str, texto: str) -> dict:
+        if canal == "TELEGRAM":
+            # Mismo vínculo y mismas respuestas que cuando el bot lo leía Lexora (consultas_bot.responder).
+            vinculado = await self.repo.persona_de_chat(id_externo) is not None
+            return {"vinculado": vinculado, "respuesta": await self.toga.responder(id_externo, texto)}
         chat = chat_id(canal, id_externo)
         id_persona = await self.repo.persona_de_canal(canal, id_externo)
         if id_persona is None:
             await self._registrar(None, chat, "SIN_VINCULO", "consulta")
             return {"vinculado": False, "respuesta": SIN_VINCULO.format(canal=NOMBRES[canal])}
         return {"vinculado": True, "respuesta": await self.toga.responder_externo(id_persona, chat, texto)}
+
+    async def _vincular_telegram(self, id_externo: str, codigo: str) -> dict:
+        """El código de Telegram es el del enlace t.me/<bot>?start=<código>: se usa tal cual (distingue mayúsculas)."""
+        if self.vincular_telegram is None:
+            return {"vinculado": False, "mensaje": "El vínculo de Telegram no está disponible en este momento."}
+        id_persona = await self.vincular_telegram((codigo or "").strip(), id_externo)
+        await self._registrar(id_persona, id_externo, "RESPONDIDA" if id_persona else "NO_ENCONTRADO")
+        if id_persona is None:
+            return {"vinculado": False,
+                    "mensaje": "Para vincular este chat, abra Lexora → Avisos → Vincular Telegram y use el enlace que "
+                               "aparece (sirve una vez y por 24 horas)."}
+        return {"vinculado": True,
+                "mensaje": "Listo: este chat quedó vinculado a Lexora. Aquí recibirá los avisos de términos y de "
+                           "actuaciones nuevas, y puede preguntarme por sus procesos (escriba /ayuda)."}
 
     # -------------------------------------------------------------- apoyo
 

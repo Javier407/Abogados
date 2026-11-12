@@ -50,7 +50,7 @@ X-Canal-Clave: …
 200 { "vinculado": false, "respuesta": "Este chat no está vinculado a Lexora. Si trabaja en la firma…" }
 ```
 
-- `canal`: `WHATSAPP`, `INSTAGRAM` (y los que se agreguen).
+- `canal`: `WHATSAPP`, `INSTAGRAM` o `TELEGRAM` (ver §2.8).
 - `idExterno`: el identificador de quien escribe en ese canal (`wa_id` en WhatsApp, IGSID en Instagram).
 - `texto`: hasta 300 caracteres.
 - La respuesta es texto plano listo para enviar (saltos de línea con `\n`, sin formato propio de ningún canal).
@@ -73,7 +73,16 @@ X-Canal-Clave: …
    - Lo que no dispare este flujo sigue por el RAG y el LLM de siempre (preguntas generales de la firma).
 6. **Privacidad en el registro de conversaciones.** `postgres_conv_log` guarda los turnos. Para el flujo «Toga», no guardar el texto de la respuesta de Lexora (guardar solo «respuesta de Lexora»), porque lleva datos de procesos de la firma.
 7. **Instagram.** Usar la API de mensajería de Instagram de Meta: cuenta profesional ligada a una página de Facebook, permiso `instagram_manage_messages` y webhook con `object: "instagram"`. El gateway debe aceptar ese tipo de evento, verificar la firma y encolarlo igual que WhatsApp. El envío se hace por Graph API `/{ig-user-id}/messages`. El mismo flujo «Toga» sirve con `canal = INSTAGRAM`.
-8. **Telegram.** Lexora ya tiene su bot (@javier_asistente_ia_bot) con Toga. Telegram solo deja que un proceso lea los mensajes de cada bot. Si Talki quiere Telegram, debe usar **otro bot con otro token**, o se apaga el de Lexora.
+8. **Telegram con el bot de la firma (@javier_asistente_ia_bot), atendido por Talki.** Telegram solo deja que un proceso lea los mensajes de cada bot, así que los lee Talki y Lexora deja de leerlos (`TELEGRAM_ESCUCHA=false`). Lexora sigue **enviando** los avisos con el mismo token; enviar desde dos procesos no choca.
+   - **Leer el bot:** con `getUpdates` (long polling, recomendado: no expone nada) o con un webhook por ngrok con `secret_token`. Solo uno de los dos: si hay webhook, `getUpdates` falla.
+   - **Solo chats privados** (`message.chat.type == "private"`). En grupos no se responde nada. Lexora rechaza con 400 un `idExterno` que no sea numérico positivo.
+   - `idExterno` = `message.chat.id` (como texto), `canal = TELEGRAM`.
+   - **Vincular:** el vínculo es el mismo de los avisos (Portal → Avisos → Vincular Telegram → enlace `t.me/<bot>?start=<código>`). Cuando llega `/start <código>`, Talki llama a `/api/canales/vinculo` con ese código **tal cual** (distingue mayúsculas y lleva `-` y `_`) y envía el `mensaje`.
+   - **Todo lo demás** (incluido `/start` solo, `/mis_procesos`, `/terminos`, `/audiencias`, `/proceso <radicado>`, `/ayuda` y frases) va a `/api/canales/toga` y se envía la `respuesta`. En Telegram, Toga responde con sus comandos.
+   - Si la pregunta es general de la firma (no de procesos), puede ir por el RAG de Talki, igual que en WhatsApp.
+   - **Envío:** `sendMessage` con `chat_id` y `text` (máximo 4096 caracteres; Lexora ya recorta), sin `parse_mode`.
+   - **Token:** Javier copia `TELEGRAM_TOKEN` del `.env` de Lexora al `.env` de Talki. Nunca va en el JSON del flujo ni en los registros (la URL de la API lleva el token: no registrar URLs de Telegram).
+   - **Orden para no perder mensajes:** (1) Talki listo y probado con el chat de prueba del panel; (2) Javier pone `TELEGRAM_ESCUCHA=false` en el `.env` de Lexora y se recrea `notificaciones`; (3) se enciende la lectura del bot en Talki. Para volver atrás: apagar la lectura en Talki y quitar `TELEGRAM_ESCUCHA=false`.
 9. **Prueba de punta a punta:** webhook firmado simulado («vincular» con un código real generado en Lexora, y luego «mis procesos»), y después con un mensaje real desde un número autorizado en el modo de prueba de Meta.
 
 ## 3. Cómo se alcanzan los dos proyectos sin exponer Lexora
@@ -89,6 +98,7 @@ X-Canal-Clave: …
 - Migración `db/migraciones/021-canales-externos.sql`: `notificaciones.vinculos_canal` (códigos) y `notificaciones.canales_externos` (a quién pertenece cada chat), aparte de las preferencias de avisos.
 - Portal → **Avisos**: tarjeta «Toga por WhatsApp e Instagram», solo para el equipo y solo si el servidor tiene `CANAL_CLAVE`.
 - Política de privacidad 1.3: WhatsApp e Instagram (Meta) y Talki como canales opcionales del equipo.
+- Telegram por Talki: `canal = TELEGRAM` en `/canales/*` (vínculo de los avisos y respuestas con comandos) y `TELEGRAM_ESCUCHA=false` para que Lexora deje de leer el bot. Por defecto Lexora lo sigue leyendo (`true`).
 - Pruebas: `tests/test_canales.py` (notificaciones), `SeguridadTest` (gateway) y `avisos-canales.spec.ts` (portal).
 
 **Para encenderlo:** aplicar la migración 021, desplegar `gateway`, `notificaciones` y `frontend`, y que Javier escriba `CANAL_CLAVE` en `infra/.env` y reinicie `notificaciones`.

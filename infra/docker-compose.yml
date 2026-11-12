@@ -222,6 +222,8 @@ services:
       TELEGRAM_CONSULTAS: ${TELEGRAM_CONSULTAS:-false}
       # Clave compartida con Talki para Toga por WhatsApp e Instagram (docs/16-integracion-talki.md). Vacía = apagado.
       CANAL_CLAVE: ${CANAL_CLAVE:-}
+      # false = los mensajes del bot de Telegram los lee Talki (un solo lector por bot); Lexora solo envía avisos.
+      TELEGRAM_ESCUCHA: ${TELEGRAM_ESCUCHA:-true}
     depends_on:
       postgres:
         condition: service_healthy

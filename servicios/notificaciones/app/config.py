@@ -27,6 +27,8 @@ class Config:
     identidad_url: str = "http://localhost:8005"
     # El bot también responde consultas de la firma (apagado por defecto: ver docs/15-bot-telegram.md).
     telegram_consultas: bool = False
+    # false = los mensajes del bot los lee Talki (docs/16-integracion-talki.md); Lexora solo envía avisos.
+    telegram_escucha: bool = True
     # Clave compartida con Talki para /canales/* (la escribe Javier en infra/.env). Vacía = canales apagados.
     canal_clave: str = field(default="", repr=False)
 
@@ -50,4 +52,5 @@ class Config:
             identidad_url=e("IDENTIDAD_URL", "http://localhost:8005"),
             telegram_consultas=_bool(e("TELEGRAM_CONSULTAS", "false")),
             canal_clave=e("CANAL_CLAVE", "").strip(),
+            telegram_escucha=_bool(e("TELEGRAM_ESCUCHA", "true")),
         )

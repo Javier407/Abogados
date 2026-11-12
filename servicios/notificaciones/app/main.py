@@ -11,7 +11,7 @@ from typing import Literal
 from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from .aplicacion import ConsultaServidor, ServicioNotificaciones
 from .canales import CANALES, CanalesExternos
@@ -27,19 +27,27 @@ LATIDO_SEGUNDOS = 25
 # Talki llama a estas rutas sin token de usuario: se validan con la clave compartida (X-Canal-Clave).
 RUTAS_DE_CANAL = ("/canales/vinculo", "/canales/toga")
 
-Canal = Literal["WHATSAPP", "INSTAGRAM"]
+Canal = Literal["WHATSAPP", "INSTAGRAM", "TELEGRAM"]
 IdExterno = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9_.:+-]+$")
 
 
-class PeticionVinculo(BaseModel):
+class PeticionCanal(BaseModel):
     canal: Canal
     idExterno: str = IdExterno
+
+    @model_validator(mode="after")
+    def solo_chats_privados(self):
+        # En Telegram un chat privado tiene id positivo; los grupos y canales, negativo. Los datos son de una persona.
+        if self.canal == "TELEGRAM" and not self.idExterno.isdigit():
+            raise ValueError("En Telegram solo se atienden chats privados (idExterno numérico positivo)")
+        return self
+
+
+class PeticionVinculo(PeticionCanal):
     codigo: str = Field(min_length=4, max_length=20)
 
 
-class PeticionToga(BaseModel):
-    canal: Canal
-    idExterno: str = IdExterno
+class PeticionToga(PeticionCanal):
     texto: str = Field(min_length=1, max_length=300)
 
 
@@ -149,11 +157,14 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
         # Toga responde en el portal siempre; por Telegram, solo con TELEGRAM_CONSULTAS.
         app.state.toga = ConsultasBot(repo, DatosBotHttp(cfg.gabinete_url, cfg.procesos_url, token))
         # WhatsApp, Instagram… por Talki: solo si Javier escribió CANAL_CLAVE (docs/16-integracion-talki.md).
-        app.state.canales = CanalesExternos(repo, app.state.toga)
+        app.state.canales = CanalesExternos(repo, app.state.toga,
+                                            vincular_telegram=app.state.servicio.vincular_telegram)
         app.state.canal_clave = cfg.canal_clave
         if not cfg.canal_clave:
             log.info("Sin CANAL_CLAVE: Toga no responde por WhatsApp ni Instagram")
-        if telegram is not None:
+        if telegram is not None and not cfg.telegram_escucha:
+            log.info("TELEGRAM_ESCUCHA=false: los mensajes del bot los lee Talki; Lexora solo envía avisos")
+        elif telegram is not None:
             consultar = None
             if cfg.telegram_consultas:
                 consultar = app.state.toga.responder
