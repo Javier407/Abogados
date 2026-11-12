@@ -337,6 +337,10 @@ export interface Providencia {
 
 export interface EstadoTelegram { configurado: boolean; vinculado: boolean; bot: string | null; }
 export interface VinculoTelegram { codigo: string; enlace: string | null; bot: string | null; }
+/** Toga por WhatsApp e Instagram, vía Talki (docs/16-integracion-talki.md). */
+export interface CanalExterno { canal: 'WHATSAPP' | 'INSTAGRAM'; nombre: string; vinculado: boolean; }
+export interface EstadoCanales { configurado: boolean; canales: CanalExterno[]; }
+export interface VinculoCanal { canal: string; nombre: string; codigo: string; mensaje: string; }
 
 // ---------- peritos, tarifas, honorarios y pagos (F4) ----------
 export interface Perito {

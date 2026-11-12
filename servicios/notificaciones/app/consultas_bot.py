@@ -101,6 +101,10 @@ class ConsultasBot:
         """Pregunta hecha desde el portal: la persona viene de la sesión (token), no de un chat."""
         return await self._atender(id_persona, "portal", texto, "portal")
 
+    async def responder_externo(self, id_persona: int, chat_id: str, texto: str) -> str:
+        """WhatsApp, Instagram… (vía Talki): la persona ya viene del vínculo del chat. Mismas reglas."""
+        return await self._atender(id_persona, chat_id, texto, "externo")
+
     async def _atender(self, id_persona: int, chat_id: str, texto: str, canal: str) -> str:
         comando, argumento = self.interpretar(texto)
         try:
@@ -167,6 +171,10 @@ class ConsultasBot:
                     "términos que le vencen o sus audiencias de las próximas dos semanas, o escríbame el radicado de "
                     "un proceso suyo para decirle cómo va. Solo consulto: para registrar o cambiar algo, use las "
                     "pantallas del portal.")
+        if canal == "externo":
+            return (f"{saludo}Soy {NOMBRE}, la asistente de la firma. Escríbame «mis procesos», «términos», "
+                    "«audiencias» o el radicado de 23 dígitos de un proceso suyo. Solo consulto: para registrar o "
+                    "cambiar algo, use el portal.")
         return (f"{saludo}Soy {NOMBRE}, la asistente de la firma. Le respondo sobre sus procesos:\n\n"
                 "/mis_procesos — sus procesos abiertos y lo próximo que vence\n"
                 "/terminos — sus términos pendientes, del más urgente al más lejano\n"

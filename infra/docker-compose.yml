@@ -220,6 +220,8 @@ services:
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN:-}
       # El bot también responde consultas del equipo (docs/15-bot-telegram.md). false = solo avisos.
       TELEGRAM_CONSULTAS: ${TELEGRAM_CONSULTAS:-false}
+      # Clave compartida con Talki para Toga por WhatsApp e Instagram (docs/16-integracion-talki.md). Vacía = apagado.
+      CANAL_CLAVE: ${CANAL_CLAVE:-}
     depends_on:
       postgres:
         condition: service_healthy

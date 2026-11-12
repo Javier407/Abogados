@@ -297,6 +297,9 @@
   .punto-cumplido { background: var(--muted); }
 
   /* Avisos */
+  .lista-canales { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .lista-canales li { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .codigo-vinculo { font-size: 1.15rem; letter-spacing: 0.08em; user-select: all; }
   .lista-avisos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
   .aviso {
     display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;

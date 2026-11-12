@@ -27,6 +27,8 @@ class Config:
     identidad_url: str = "http://localhost:8005"
     # El bot también responde consultas de la firma (apagado por defecto: ver docs/15-bot-telegram.md).
     telegram_consultas: bool = False
+    # Clave compartida con Talki para /canales/* (la escribe Javier en infra/.env). Vacía = canales apagados.
+    canal_clave: str = field(default="", repr=False)
 
     @staticmethod
     def desde_entorno() -> "Config":
@@ -47,4 +49,5 @@ class Config:
             procesos_url=e("PROCESOS_URL", "http://localhost:8082"),
             identidad_url=e("IDENTIDAD_URL", "http://localhost:8005"),
             telegram_consultas=_bool(e("TELEGRAM_CONSULTAS", "false")),
+            canal_clave=e("CANAL_CLAVE", "").strip(),
         )

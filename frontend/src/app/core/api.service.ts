@@ -5,9 +5,9 @@ import { Observable } from 'rxjs';
 import {
   ActuacionVista,
   Abogado, AreaPractica, Aviso, Cargo, Cliente, ConsultaVigilancia, EstadoAsistente, Honorario, HonorarioSolicitud,
-  Pago, Perito, Tarifa, DesgloseRadicado, Despacho, DiaInhabil, EstadoTelegram,
+  Pago, Perito, Tarifa, DesgloseRadicado, Despacho, DiaInhabil, EstadoCanales, EstadoTelegram,
   FuenteVigilancia, Proceso, ProcesoSolicitud, Providencia, RadicadoVigilado, Rama, ResultadoConsulta, Revision, Sede,
-  Termino, TerminoSolicitud, TipoProceso, Vencimiento, VinculoTelegram,
+  Termino, TerminoSolicitud, TipoProceso, Vencimiento, VinculoCanal, VinculoTelegram,
   Actuacion, ActuacionSolicitud, Expediente, Parte, ParteRegistrada, ParteSolicitud, ProvidenciaSolicitud,
   Audiencia, MotivoCierre, PeriodoEquipo, PlazoProceso, ProcesoDeAbogado, Prueba, PruebaSolicitud, RelevoSolicitud,
   ResultadoCierre, ResultadoRelevo, SugerenciaTermino,
@@ -392,6 +392,18 @@ export class ApiService {
   }
   desvincularTelegram(idPersona: number): Observable<unknown> {
     return this.http.delete(`${API}/notificaciones/telegram`, { params: filtros({ idPersona }) });
+  }
+
+  // ---------- Toga por WhatsApp e Instagram (Talki) ----------
+  estadoCanales(idPersona: number): Observable<EstadoCanales> {
+    return this.http.get<EstadoCanales>(`${API}/notificaciones/canales`, { params: filtros({ idPersona }) });
+  }
+  vincularCanal(idPersona: number, canal: string): Observable<VinculoCanal> {
+    return this.http.post<VinculoCanal>(`${API}/notificaciones/canales/${canal.toLowerCase()}/vinculo`, {},
+      { params: filtros({ idPersona }) });
+  }
+  desvincularCanal(idPersona: number, canal: string): Observable<unknown> {
+    return this.http.delete(`${API}/notificaciones/canales/${canal.toLowerCase()}`, { params: filtros({ idPersona }) });
   }
 
   // ---------- peritos, tarifas, honorarios ----------

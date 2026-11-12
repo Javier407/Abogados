@@ -140,6 +140,55 @@ class RepositorioPostgres:
                 "DELETE FROM notificaciones.preferencias WHERE id_persona = %s AND canal = 'TELEGRAM'", (id_persona,))
             return cur.rowcount > 0
 
+    # ------------------------------------------------ WhatsApp, Instagram… vía Talki (migración 021)
+
+    async def crear_vinculo_canal(self, codigo: str, id_persona: int, canal: str) -> None:
+        async with self.pool.connection() as con:
+            await con.execute(
+                "INSERT INTO notificaciones.vinculos_canal (codigo, id_persona, canal) VALUES (%s, %s, %s)",
+                (codigo, id_persona, canal))
+
+    async def usar_vinculo_canal(self, codigo: str, canal: str) -> int | None:
+        """Un código sirve una vez, durante 24 horas y solo para el canal en que se generó."""
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                """UPDATE notificaciones.vinculos_canal SET usado = now()
+                   WHERE codigo = %s AND canal = %s AND usado IS NULL AND creado > now() - interval '24 hours'
+                   RETURNING id_persona""", (codigo, canal))
+            fila = await cur.fetchone()
+            return fila[0] if fila else None
+
+    async def guardar_canal(self, id_persona: int, canal: str, id_externo: str) -> None:
+        """El chat queda solo a nombre de esta persona, y la persona con un solo chat en ese canal."""
+        async with self.pool.connection() as con:
+            await con.execute(
+                """DELETE FROM notificaciones.canales_externos
+                   WHERE canal = %s AND (id_persona = %s OR id_externo = %s)""", (canal, id_persona, id_externo))
+            await con.execute(
+                "INSERT INTO notificaciones.canales_externos (canal, id_externo, id_persona) VALUES (%s, %s, %s)",
+                (canal, id_externo, id_persona))
+
+    async def persona_de_canal(self, canal: str, id_externo: str) -> int | None:
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                "SELECT id_persona FROM notificaciones.canales_externos WHERE canal = %s AND id_externo = %s",
+                (canal, id_externo))
+            fila = await cur.fetchone()
+            return fila[0] if fila else None
+
+    async def canales_de(self, id_persona: int) -> list[str]:
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                "SELECT canal FROM notificaciones.canales_externos WHERE id_persona = %s", (id_persona,))
+            return [f[0] for f in await cur.fetchall()]
+
+    async def quitar_canal(self, id_persona: int, canal: str) -> bool:
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                "DELETE FROM notificaciones.canales_externos WHERE id_persona = %s AND canal = %s",
+                (id_persona, canal))
+            return cur.rowcount > 0
+
 
 # ------------------------------------------------------------------ correo (SMTP)
 

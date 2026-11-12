@@ -64,6 +64,9 @@ public class ConfiguracionSeguridad {
 						.pathMatchers(HttpMethod.GET, "/api/auth/externo/proveedores", "/api/auth/externo/*/vuelta").permitAll()
 						.pathMatchers(HttpMethod.POST, "/api/auth/externo/*/entrar").permitAll()
 						.pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
+						// Toga por WhatsApp e Instagram (Talki, red interna): sin token de usuario; notificaciones exige la
+						// clave compartida (X-Canal-Clave) y la petición queda en la bitácora.
+						.pathMatchers(HttpMethod.POST, "/api/canales/vinculo", "/api/canales/toga").permitAll()
 						.pathMatchers("/api/**").access(politica)
 						.anyExchange().denyAll())
 				.oauth2ResourceServer(o -> o

@@ -90,6 +90,11 @@ import { PaginaLegalComponent } from './pagina-legal.component';
           el radicado y la actuación de un proceso o un término por vencer) y, si usted es del equipo de la firma, las respuestas
           a las consultas que haga al bot sobre sus propios procesos, se envían por Telegram y quedan en sus servidores,
           regidos por su propia política. Puede desvincularlo cuando quiera desde «Avisos».</li>
+        <li><strong>WhatsApp e Instagram (Meta):</strong> solo para el equipo de la firma y solo si vincula su chat desde
+          «Avisos». Sus preguntas a Toga y las respuestas sobre sus propios procesos (radicado, asunto, etapa, términos y
+          audiencias) pasan por los servidores de Meta, regidos por su propia política, y por el asistente de mensajes de la
+          firma (Talki), que funciona en el mismo servidor propio y no guarda el texto de esas respuestas. Puede desvincularlo
+          cuando quiera desde «Avisos».</li>
         <li><strong>Google, Microsoft o GitHub:</strong> solo si usted decide entrar con ellos. En ese caso, usted inicia sesión en
           su página, regida por su propia política, y nos devuelve un identificador de su cuenta y, si lo autoriza, su correo y
           nombre. No recibimos su contraseña de esos servicios.</li>
