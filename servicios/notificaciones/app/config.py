@@ -49,7 +49,7 @@ class Config:
             smtp_usuario=e("SMTP_USUARIO", ""),
             smtp_clave=e("SMTP_CLAVE", ""),
             smtp_starttls=_bool(e("SMTP_STARTTLS", "false")),
-            correo_remitente=e("CORREO_REMITENTE", "Gestion Juridica <avisos@gestion-juridica.local>"),
+            correo_remitente=e("CORREO_REMITENTE", "Lexora <avisos@gestion-juridica.local>"),
             telegram_token=e("TELEGRAM_TOKEN", "").strip(),
             procesos_url=e("PROCESOS_URL", "http://localhost:8082"),
             identidad_url=e("IDENTIDAD_URL", "http://localhost:8005"),
