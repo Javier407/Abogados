@@ -64,7 +64,7 @@
             <label class="form-label" for="rama">Rama</label>
             <select id="rama" class="form-input" name="rama" [(ngModel)]="rama" (ngModelChange)="ramaCambio()">
               <option value="">Todas</option>
-              @for (r of ramas; track r.codigo) { <option [value]="r.codigo">{{ r.nombre }}</option> }
+              @for (r of ramasParaElegir; track r.codigo) { <option [value]="r.codigo">{{ r.nombre }}</option> }
             </select>
           </div>
 

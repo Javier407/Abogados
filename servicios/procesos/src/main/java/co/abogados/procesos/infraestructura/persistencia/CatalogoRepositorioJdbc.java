@@ -30,7 +30,7 @@ public class CatalogoRepositorioJdbc implements CatalogoRepositorio {
 
 	@Override
 	public List<Rama> ramas() {
-		return jdbc.sql("SELECT codigo, nombre, norma FROM procesos.ramas ORDER BY nombre")
+		return jdbc.sql("SELECT codigo, nombre, norma FROM procesos.ramas WHERE activa ORDER BY nombre")
 				.query((rs, i) -> new Rama(rs.getString(1), rs.getString(2), rs.getString(3)))
 				.list();
 	}
@@ -38,9 +38,9 @@ public class CatalogoRepositorioJdbc implements CatalogoRepositorio {
 	@Override
 	public List<TipoProceso> tipos(String rama) {
 		if (rama == null || rama.isBlank()) {
-			return jdbc.sql(SELECT_TIPO + "ORDER BY codigo_rama, nombre").query(this::aTipo).list();
+			return jdbc.sql(SELECT_TIPO + "WHERE activo ORDER BY codigo_rama, nombre").query(this::aTipo).list();
 		}
-		return jdbc.sql(SELECT_TIPO + "WHERE codigo_rama = :rama ORDER BY nombre")
+		return jdbc.sql(SELECT_TIPO + "WHERE activo AND codigo_rama = :rama ORDER BY nombre")
 				.param("rama", rama.toUpperCase())
 				.query(this::aTipo)
 				.list();
@@ -60,6 +60,15 @@ public class CatalogoRepositorioJdbc implements CatalogoRepositorio {
 	@Override
 	public Optional<TipoProceso> tipo(short idTipo) {
 		return jdbc.sql(SELECT_TIPO + "WHERE id_tipo = :id").param("id", idTipo).query(this::aTipo).optional();
+	}
+
+	@Override
+	public boolean tipoDisponible(short idTipo) {
+		return jdbc.sql("SELECT activo FROM procesos.tipos_proceso WHERE id_tipo = :id")
+				.param("id", idTipo)
+				.query(Boolean.class)
+				.optional()
+				.orElse(false);
 	}
 
 	@Override

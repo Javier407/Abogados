@@ -18,7 +18,7 @@ Este mapa cruza los procesos de negocio de una firma de abogados (`docs/01-domin
 | 2 | Gestión del proceso judicial | ✅ | Partes, equipo (F11), actuaciones, providencias, términos sugeridos con reglas editables y validables por un socio (F12), audiencias, pruebas, sentencia, recursos y documentos (F10). Falta que un abogado de la firma valide las reglas (revisión jurídica). |
 | 3 | Vigilancia y alertas | ✅ | Rama Judicial (real o simulada), correo, avisos en la app y Telegram; avisos al cliente y entrega garantizada (F9). |
 | 4 | Redacción asistida (IA) | ✅ | Contestación, demanda, recurso y resumen para el cliente (F10). El resumen de autos en el aviso se decidió no hacerlo. |
-| 5 | Finanzas | 🟡 | Tarifas, acuerdos, pagos con anulación, liquidación de la parte variable, gastos y cartera (F8), facturación electrónica con proveedor simulado (F14). Falta contratar el proveedor tecnológico real. |
+| 5 | Finanzas | 🟡 | Tarifas, acuerdos, pagos con anulación, liquidación de la parte variable, gastos y cartera (F8). La facturación electrónica (F14) se retiró en noviembre de 2026 por decisión de la firma. |
 | 6 | Administración de la firma | ✅ | Abogados, peritos, cuentas de usuario (F8), seguridad y, desde F11, sedes, áreas y cargos editables. |
 | 7 | Portal del cliente | ✅ | Desde F9: sus procesos, novedades, resumen publicado por el abogado, pagos y avisos. |
 | 8 | Reportes e indicadores | ✅ | Panel general, carga por abogado, cumplimiento de términos, resultados por rama y cartera (F8), con CSV por tabla y el informe en PDF (F11). |
@@ -47,7 +47,7 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Providencias detectadas por la vigilancia | ✅ | `ConsumidorActuaciones` → `ProvidenciaServicio.registrarDetectada`, `providencias-proceso.component` | — |
 | Registrar una providencia a mano | ✅ F6 | `POST /procesos/{id}/providencias` | — |
 | Términos (crear, cumplir, revisión diaria, calendario) | ✅ | `TerminoServicio`, `CalendarioServicio`, `RevisionDiariaTerminos`, `pages/terminos`, `pages/calendario` | — |
-| Términos sugeridos al llegar un auto (por ejemplo, admite demanda → 20 días en un verbal) | ✅ F7, F12 | `SugeridorTerminos` con `procesos.reglas_termino`; desde F12 la pantalla "Reglas" las edita y un socio las valida (con historial) | Que un abogado de la firma valide cada regla (revisión jurídica, no de código). |
+| Términos sugeridos al llegar un auto (por ejemplo, admite demanda → 20 días en un verbal) | ✅ F7, F12 | `SugeridorTerminos` con `procesos.reglas_termino`; en F12 hubo una pantalla "Reglas" para editarlas; se retiró en nov. 2026 y ahora se cargan por migración o SQL | Que un abogado de la firma valide cada regla (revisión jurídica, no de código). |
 | Audiencias y agenda | ✅ F7 | Hora y lugar, calendario y aviso `audiencia.proxima` el día hábil anterior. | Actuación tipo `AUDIENCIA` con fecha futura, mostrada en el calendario, con un aviso el día antes (evento `audiencia.proxima`). |
 | Pruebas (documental, pericial, testimonial…) | ✅ F7 | `/procesos/{id}/pruebas` con perito y término de entrega. | CRUD `/procesos/{id}/pruebas`, asignación de perito (lee `gabinete` vía `DirectorioGabinete`) y fecha de entrega del dictamen como término. |
 | Sentencia y resultado | ✅ F6 | Sentencia manual con `sentido`; el proceso pasa a la etapa SENTENCIA | Usar el sentido en la cuota litis (sección 5) y en los reportes (sección 8). |
@@ -84,7 +84,7 @@ Sigue el ciclo poder → demanda → admisión → notificación → contestaci�
 | Anular un pago con motivo | ✅ F8 | `POST /honorarios/{id}/pagos/{pago}/anulacion`: queda en el historial con motivo, fecha y autor | — |
 | Liquidar la cuota litis al terminar el proceso | ✅ F8 | `POST /honorarios/{id}/liquidacion`: porcentaje × valor obtenido (+ fijo en MIXTO); desde ahí el saldo tiene tope | Proponerla al registrar una sentencia favorable. |
 | Gastos procesales (copias, notificaciones, peritos) | ✅ F8 | `gabinete.gastos` y `/gastos`; tarjeta en el expediente; reembolsables en la cartera | — |
-| Facturación electrónica (DIAN) | 🟡 F14 | `FacturacionServicio`: numeración de la resolución, IVA y retención, reembolsos, CUFE, nota crédito, representación gráfica con QR; proveedor SIMULADO detrás de `ProveedorFacturacion` | Contratar un proveedor tecnológico, escribir su adaptador y hacer la habilitación ante la DIAN. |
+| Facturación electrónica (DIAN) | ⛔ retirada (nov. 2026) | Se hizo en F14 con un proveedor simulado y se quitó: la firma no factura desde la app. Tablas eliminadas con la migración 016 | Si se retoma: recuperar F14 del historial de git y contratar un proveedor tecnológico. |
 | Cartera por cliente y vencimientos | ✅ F8 | `GET /honorarios/cartera`: saldo, gastos por reembolsar y días desde el último pago | — |
 
 ## 6. Administración de la firma
@@ -145,6 +145,6 @@ Ordenadas por valor para la firma y por dependencias:
 | **F10. Documentos y redacción** ✅ | Expediente digital con archivos y control de acceso, borradores de demanda y recurso, consulta inicial, copias fuera de la VM. (El resumen del auto en el aviso se decidió no hacerlo.) | Lo que más trabajo ahorra ahora que el núcleo está completo. |
 | **F11. Operación** ✅ | Vigía con avisos por Telegram, análisis de dependencias y cobertura en el CI, sedes/áreas/cargos editables, abogados de apoyo, PDF en reportes. | Lo que faltaba para operar con tranquilidad. |
 | **F15. Operación y respaldo de llaves** ✅ | Llaves cifradas al PC, prueba de restauración semanal, avisos de seguridad de la cuenta, errores de los servicios en Servidor, procedimiento de recuperación. | Perder la VM ya no significa perder las llaves. |
-| **F14. Facturación lista para la DIAN** ✅ | Facturas de honorarios y reembolsos con numeración, IVA, retención, CUFE, nota crédito y QR; proveedor simulado. | Era lo único del mapa que faltaba; el proveedor real queda como un adaptador. |
+| **F14. Facturación lista para la DIAN** ✅ | Facturas de honorarios y reembolsos con numeración, IVA, retención, CUFE, nota crédito y QR; proveedor simulado. | Era lo único del mapa que faltaba; el proveedor real queda como un adaptador. **Retirada en nov. 2026.** |
 | **F13. Verificación en dos pasos** ✅ | TOTP con códigos de recuperación, roles que la exigen, reinicio por el administrador; identidad revisa los revocados. | Una contraseña robada ya no basta para entrar. |
 | **F12. Reglas validadas y calidad** ✅ | Reglas de términos editables y validadas por un socio con historial, historial del vigía con pantalla "Servidor", cobertura ≥ 70 % en todos los servicios. | Las sugerencias de términos necesitaban el respaldo de un abogado y el código, pruebas. |

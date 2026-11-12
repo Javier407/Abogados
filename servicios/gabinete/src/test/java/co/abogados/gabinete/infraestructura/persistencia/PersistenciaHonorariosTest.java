@@ -83,6 +83,25 @@ class PersistenciaHonorariosTest {
 	}
 
 	@Test
+	void unaTarifaDesactivadaNoSaleEnLaListaPeroSigueExistiendo() {
+		TarifaEntidad tutela = new TarifaEntidad();
+		tutela.idTarifa = 24;
+		tutela.fuente = "FIRMA";
+		tutela.codigoRama = "CONSTITUCIONAL";
+		tutela.servicio = "Acción de tutela";
+		tutela.tipoServicio = "CUALQUIERA";
+		tutela.formaCobro = "FIJO";
+		tutela.valorSmmlv = new BigDecimal("1.00");
+		tutela.vigenteDesde = LocalDate.of(2026, 1, 1);
+		tutela.activa = false;
+		em.persistAndFlush(tutela);
+
+		assertThat(tarifas.listar(2026, new BigDecimal("1750905"))).extracting(t -> t.servicio())
+				.containsExactly("Divorcio contencioso");
+		assertThat(tarifas.existe((short) 24)).isTrue();     // los honorarios ya pactados con ella la conservan
+	}
+
+	@Test
 	void honorariosConLoPagadoYFiltros() {
 		int id = honorarios.crear(new Honorario(null, 34, idCliente, (short) 1, FormaCobro.FIJO,
 				new BigDecimal("8754525"), null, null, LocalDate.of(2026, 10, 1), EstadoHonorario.VIGENTE));

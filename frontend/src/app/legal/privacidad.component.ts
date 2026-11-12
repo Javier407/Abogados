@@ -31,7 +31,7 @@ import { PaginaLegalComponent } from './pagina-legal.component';
       <h2>2. Qué datos tratamos</h2>
       <ul>
         <li><strong>Clientes:</strong> nombre o razón social, tipo y número de documento, correo, teléfono, dirección y ciudad;
-          la información de sus procesos, consultas, honorarios, pagos y facturas.</li>
+          la información de sus procesos, consultas, honorarios y pagos.</li>
         <li><strong>Personas que figuran en los procesos</strong> (contrapartes, apoderados, terceros, peritos): los datos que
           constan en el expediente o en las consultas públicas de la Rama Judicial.</li>
         <li><strong>Personal de la firma:</strong> datos de su cuenta (usuario, nombre, correo, rol), la bitácora de ingresos
@@ -46,7 +46,7 @@ import { PaginaLegalComponent } from './pagina-legal.component';
       <ul>
         <li>Prestar los servicios jurídicos contratados: representar al cliente, llevar sus procesos y vigilar sus términos y audiencias.</li>
         <li>Informar al cliente del estado de sus asuntos por el portal y por los avisos que él mismo active.</li>
-        <li>Facturar los honorarios y gastos, y cumplir las obligaciones tributarias y contables (facturación electrónica ante la DIAN).</li>
+        <li>Cobrar los honorarios y gastos pactados, y cumplir las obligaciones tributarias y contables.</li>
         <li>Proteger la seguridad del sistema: controlar el acceso por roles, detectar intentos indebidos y avisar a cada persona de
           los cambios de seguridad de su cuenta.</li>
         <li>Atender requerimientos de autoridades competentes, cuando la ley lo exija.</li>
@@ -86,8 +86,9 @@ import { PaginaLegalComponent } from './pagina-legal.component';
           publicado en internet.</li>
         <li>El asistente de redacción con inteligencia artificial funciona en ese mismo servidor: los datos de los procesos no se
           envían a servicios externos de IA.</li>
-        <li><strong>Facturación electrónica:</strong> los datos de la factura se envían al proveedor tecnológico autorizado por la DIAN que
-          la firma contrate. Mientras no haya uno contratado, el sistema funciona en modo de prueba y no envía nada.</li>
+        <li><strong>Telegram:</strong> solo si usted vincula su cuenta para recibir avisos. En ese caso, los avisos (por ejemplo,
+          el radicado y la actuación de un proceso o un término por vencer) se envían por Telegram y quedan en sus servidores,
+          regidos por su propia política. Puede desvincularlo cuando quiera desde «Avisos».</li>
         <li><strong>Google, Microsoft o GitHub:</strong> solo si usted decide entrar con ellos. En ese caso, usted inicia sesión en
           su página, regida por su propia política, y nos devuelve un identificador de su cuenta y, si lo autoriza, su correo y
           nombre. No recibimos su contraseña de esos servicios.</li>
@@ -105,7 +106,7 @@ import { PaginaLegalComponent } from './pagina-legal.component';
 
       <h2>9. Cuánto tiempo los conservamos</h2>
       <p>Mientras dure la relación con el cliente y, después, durante los plazos que exigen las normas aplicables (por ejemplo,
-        las de conservación de documentos contables y facturas) o los necesarios para atender reclamaciones.
+        las de conservación de documentos contables) o los necesarios para atender reclamaciones.
         [COMPLETAR: plazos definidos por la firma].</p>
       <p>La bitácora de auditoría no se borra por partes: su valor como prueba de quién hizo qué depende de que esté
         completa. Por eso los registros de acceso no se suprimen a solicitud, por existir el deber de mantener la seguridad

@@ -1,4 +1,4 @@
-/* Clientes: lista y ficha lateral con lo que sigue (procesos, facturar). */
+/* Clientes: lista y ficha lateral con lo que sigue (procesos). */
 .nombre-cliente {
   display: flex; align-items: center; gap: 12px; border: 0; background: none; padding: 0; text-align: left; color: inherit;
 }
@@ -27,5 +27,4 @@
 .lista-procesos a { display: flex; flex-direction: column; padding: 8px 10px; border-radius: 10px; text-decoration: none; color: inherit; }
 .lista-procesos a:hover { background: var(--surface-2); }
 .lista-procesos strong { font-size: 13px; font-weight: 600; }
-.total-pendiente { font-size: 22px; font-weight: 800; display: flex; flex-direction: column; }
 .texto-peligro { color: var(--danger); }

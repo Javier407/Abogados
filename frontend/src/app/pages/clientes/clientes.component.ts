@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
@@ -9,7 +9,6 @@ import {
   lucideMapPin,
   lucidePencil,
   lucidePhone,
-  lucideReceipt,
   lucideTrash2,
   lucideUserPlus,
   lucideX,
@@ -20,20 +19,18 @@ import {
   AuthService,
   EDITAN_CLIENTES,
   JURIDICO,
-  MANEJAN_FINANZAS,
-  VEN_HONORARIOS,
 } from '../../core/auth.service';
-import { Cliente, PendienteFacturar, Proceso, Sede, etiqueta } from '../../core/modelos';
+import { Cliente, Proceso, Sede, etiqueta } from '../../core/modelos';
 
 /**
  * Clientes: lista con ficha lateral (estilo School). Desde la ficha se encadena lo que sigue con ese cliente:
- * ver sus procesos, abrir uno nuevo con el cliente ya puesto y facturar lo pendiente. El formulario solo
+ * ver sus procesos y abrir uno nuevo con el cliente ya puesto. El formulario solo
  * aparece al registrar o editar (?nuevo=1 lo abre; ?id=N abre la ficha, como hace la búsqueda Ctrl+K).
  */
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [FormsModule, DatePipe, CurrencyPipe, RouterLink, NgIcon],
+  imports: [FormsModule, DatePipe, RouterLink, NgIcon],
   providers: [
     provideIcons({
       lucideFolderPlus,
@@ -41,7 +38,6 @@ import { Cliente, PendienteFacturar, Proceso, Sede, etiqueta } from '../../core/
       lucideMapPin,
       lucidePencil,
       lucidePhone,
-      lucideReceipt,
       lucideTrash2,
       lucideUserPlus,
       lucideX,
@@ -59,8 +55,6 @@ export class ClientesComponent implements OnInit {
   readonly etiqueta = etiqueta;
   readonly puedeEditar = this.auth.tiene(...EDITAN_CLIENTES);
   readonly creaProcesos = this.auth.tiene(...JURIDICO);
-  readonly puedeFacturar = this.auth.tiene(...MANEJAN_FINANZAS);
-  readonly veHonorarios = this.auth.tiene(...VEN_HONORARIOS);
 
   clientes: Cliente[] = [];
   sedes: Sede[] = [];
@@ -72,7 +66,6 @@ export class ClientesComponent implements OnInit {
   // Ficha lateral
   elegido: Cliente | null = null;
   procesosDe: Proceso[] = [];
-  pendientes: PendienteFacturar[] = [];
   cargandoFicha = false;
 
   cargando = false;
@@ -80,10 +73,6 @@ export class ClientesComponent implements OnInit {
   enviado = false;
   mensaje = '';
   error = '';
-
-  get totalPendiente(): number {
-    return this.pendientes.reduce((s, p) => s + (p.valor ?? 0), 0);
-  }
 
   ngOnInit(): void {
     this.api
@@ -129,7 +118,6 @@ export class ClientesComponent implements OnInit {
     if (this.elegido?.idCliente === c.idCliente && this.procesosDe.length) return;
     this.elegido = c;
     this.procesosDe = [];
-    this.pendientes = [];
     this.cargandoFicha = true;
     this.api.procesos({ idCliente: c.idCliente }).subscribe({
       next: (p) => {
@@ -141,11 +129,6 @@ export class ClientesComponent implements OnInit {
         this.cargandoFicha = false;
       },
     });
-    if (this.veHonorarios) {
-      this.api
-        .pendientesFacturar(c.idCliente!)
-        .subscribe({ next: (p) => (this.pendientes = p), error: () => (this.pendientes = []) });
-    }
   }
 
   cerrarFicha(): void {

@@ -29,9 +29,6 @@
           @if (veFinanzas) {
             <button class="btn btn-secondary btn-sm" type="button" (click)="irA('gastos')"><ng-icon name="lucideWallet" size="14" /> Registrar gasto</button>
           }
-          @if (puedeFacturar) {
-            <button class="btn btn-secondary btn-sm" type="button" (click)="facturar(p)"><ng-icon name="lucideReceipt" size="14" /> Facturar</button>
-          }
           @if (juridico) {
             <button class="btn btn-primary btn-sm" type="button" (click)="irA('asistente')"><ng-icon name="lucideSparkles" size="14" /> Redactar con IA</button>
           }

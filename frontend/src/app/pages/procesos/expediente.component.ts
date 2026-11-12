@@ -11,7 +11,6 @@ import {
   lucideHandCoins,
   lucideListChecks,
   lucidePencil,
-  lucideReceipt,
   lucideSparkles,
   lucideUsers,
   lucideWallet,
@@ -24,7 +23,6 @@ import {
   AuthService,
   JURIDICO,
   JURIDICO_Y_DEPENDIENTES,
-  MANEJAN_FINANZAS,
 } from '../../core/auth.service';
 import {
   ActuacionSolicitud,
@@ -66,7 +64,7 @@ interface OpcionPestana {
 
 /**
  * Expediente de un proceso, de punta a punta: cabecera con la etapa y las acciones encadenadas (providencia →
- * término sugerido → borrador → gasto → factura) y pestañas enlazables por URL (?pestana=asistente).
+ * término sugerido → borrador → gasto) y pestañas enlazables por URL (?pestana=asistente).
  */
 @Component({
   selector: 'app-expediente',
@@ -90,7 +88,6 @@ interface OpcionPestana {
       lucideHandCoins,
       lucideListChecks,
       lucidePencil,
-      lucideReceipt,
       lucideSparkles,
       lucideUsers,
       lucideWallet,
@@ -116,7 +113,6 @@ export class ExpedienteComponent implements OnInit {
   readonly juridico = this.auth.tiene(...JURIDICO);
   readonly registraActuaciones = this.auth.tiene(...JURIDICO_Y_DEPENDIENTES);
   readonly veFinanzas = this.auth.tiene('ADMIN', 'SOCIO', 'ABOGADO', 'ADMINISTRATIVO');
-  readonly puedeFacturar = this.auth.tiene(...MANEJAN_FINANZAS);
   readonly etapas = ETAPAS;
 
   pestana: Pestana = 'resumen';
@@ -219,13 +215,6 @@ export class ExpedienteComponent implements OnInit {
     this.providenciaParaBorrador = idProvidencia;
     this.versionAsistente++;
     this.irA('asistente');
-  }
-
-  /** Encadenado: facturar a este cliente lo pendiente de este proceso. */
-  facturar(p: Proceso): void {
-    this.router.navigate(['/facturacion'], {
-      queryParams: { nueva: 1, idCliente: p.idCliente, idProceso: p.idProceso },
-    });
   }
 
   indiceEtapa(p: Proceso): number {
