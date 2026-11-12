@@ -60,6 +60,9 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			// portal del cliente: solo lectura y solo lo suyo
 			r(GET, "/api/portal/**", Set.of("CLIENTE")),
 			r(null, "/api/usuarios/**", Set.of("ADMIN")),        // administración de cuentas
+			// bitácora de auditoría (la atiende el propio gateway): solo se consulta; nadie la cambia por la API
+			r(GET, "/api/auditoria/**", Set.of("ADMIN")),
+			r(null, "/api/auditoria/**", Set.of()),
 			// gabinete
 			r(GET, "/api/clientes/**", INTERNOS),
 			r(null, "/api/clientes/**", Set.of("ADMIN", "SOCIO", "ABOGADO", "ADMINISTRATIVO")),

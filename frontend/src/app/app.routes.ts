@@ -53,6 +53,8 @@ export const routes: Routes = [
         title: 'Reglas de términos', canActivate: [personal] },
       { path: 'servidor', loadComponent: () => import('./pages/servidor/servidor.component').then(m => m.ServidorComponent),
         title: 'Servidor', canActivate: [conRol('ADMIN')] },
+      { path: 'auditoria', loadComponent: () => import('./pages/auditoria/auditoria.component').then(m => m.AuditoriaComponent),
+        title: 'Auditoría', canActivate: [conRol('ADMIN')] },
       { path: 'peritos', loadComponent: () => import('./pages/peritos/peritos.component').then(m => m.PeritosComponent), title: 'Peritos', canActivate: [personal] },
       { path: '**', redirectTo: '' }
     ]
