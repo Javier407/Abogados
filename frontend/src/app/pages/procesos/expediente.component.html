@@ -32,8 +32,53 @@
           @if (juridico) {
             <button class="btn btn-primary btn-sm" type="button" (click)="irA('asistente')"><ng-icon name="lucideSparkles" size="14" /> Redactar con IA</button>
           }
+          @if (juridico && !estaCerrado && !cerrando) {
+            <button class="btn btn-ghost btn-sm" type="button" (click)="abrirCierre()"><ng-icon name="lucideArchive" size="14" /> Cerrar proceso</button>
+          }
+          @if (direccion && estaCerrado) {
+            <button class="btn btn-secondary btn-sm" type="button" (click)="reabrirProceso()"><ng-icon name="lucideArchiveRestore" size="14" /> Reabrir</button>
+          }
         </div>
       </div>
+
+      @if (estaCerrado && p.motivoCierre) {
+        <p class="cierre-dato" role="note">
+          <strong>Cerrado el {{ p.fechaCierre | date:'dd/MM/yyyy' }}</strong> · {{ nombreMotivoCierre(p.motivoCierre) }}
+          @if (p.notaCierre) { · {{ p.notaCierre }} }
+        </p>
+      }
+
+      @if (cerrando) {
+        <form class="form-cierre" #formCierre="ngForm" (ngSubmit)="cerrarProceso(formCierre)" novalidate aria-labelledby="titulo-cierre">
+          <h2 id="titulo-cierre">Cerrar el proceso</h2>
+          <p class="form-ayuda">Sus términos pendientes y audiencias dejan de avisar y de salir en la agenda (no se borran), y deja de
+            vigilarse. Los honorarios no cambian: liquídelos aparte si corresponde.</p>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="motivoCierre">Por qué se cierra <span class="requerido">*</span></label>
+              <select id="motivoCierre" class="form-input" name="motivo" [(ngModel)]="cierre.motivo" required aria-describedby="ayudaCierre">
+                <option [ngValue]="null" disabled>Elija el motivo</option>
+                @for (m of motivosCierre; track m.valor) { <option [ngValue]="m.valor">{{ m.etiqueta }}</option> }
+              </select>
+              @if (cierre.motivo) { <span id="ayudaCierre" class="form-ayuda">{{ ayudaMotivoCierre(cierre.motivo) }}</span> }
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="fechaCierre">Fecha</label>
+              <input id="fechaCierre" class="form-input" type="date" name="fecha" [(ngModel)]="cierre.fecha" [max]="hoy" />
+            </div>
+            <div class="form-group form-group-full">
+              <label class="form-label" for="notaCierre">Nota @if (cierre.motivo === 'OTRO') { <span class="requerido">*</span> }</label>
+              <input id="notaCierre" class="form-input" name="nota" [(ngModel)]="cierre.nota" maxlength="300"
+                     [required]="cierre.motivo === 'OTRO'" placeholder="Ej.: auto del 10/11 aprueba la transacción" />
+            </div>
+          </div>
+          @if (errorFormulario) { <div class="alerta alerta-error" role="alert">{{ errorFormulario }}</div> }
+          <div class="form-actions">
+            <button class="btn btn-danger" type="submit" [disabled]="guardando">{{ guardando ? 'Cerrando…' : 'Cerrar proceso' }}</button>
+            <button class="btn btn-secondary" type="button" (click)="cerrando = false">Cancelar</button>
+          </div>
+        </form>
+      }
 
       <!-- Etapa como barra de pasos -->
       <ol class="etapas" aria-label="Etapas del proceso">
@@ -441,7 +486,7 @@
 
       @case ('terminos') { @for (v of [version]; track v) { <app-terminos-proceso [idProceso]="idProceso" /> } }
       @case ('documentos') { <app-documentos-proceso [idProceso]="idProceso" /> }
-      @case ('equipo') { <app-equipo-proceso [idProceso]="idProceso" /> }
+      @case ('equipo') { <app-equipo-proceso [idProceso]="idProceso" [cerrado]="estaCerrado" (cambio)="cargar()" /> }
       @case ('gastos') { <app-gastos-proceso [idProceso]="idProceso" /> }
       @case ('asistente') {
         @for (v of [versionAsistente]; track v) {
