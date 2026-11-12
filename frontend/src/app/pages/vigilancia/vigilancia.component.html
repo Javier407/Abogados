@@ -2,11 +2,11 @@
 
   <div class="page-header">
     <h1>Vigilancia de la Rama Judicial</h1>
-    <p>Radicados que se consultan para enterarse de autos y sentencias sin entrar al portal</p>
+    <p>Cómo va cada proceso y qué ha pasado en el juzgado, sin entrar al portal de la Rama Judicial.</p>
   </div>
 
-  @if (mensaje) { <div class="alerta alerta-exito">{{ mensaje }}</div> }
-  @if (error) { <div class="alerta alerta-error">{{ error }}</div> }
+  @if (mensaje) { <div class="alerta alerta-exito" role="status">{{ mensaje }}</div> }
+  @if (error) { <div class="alerta alerta-error" role="alert">{{ error }}</div> }
 
   <div class="resumen-bar">
     <span class="resumen-chip">Manual: <strong>{{ contar('MANUAL') }}</strong></span>
@@ -24,14 +24,36 @@
     <div class="tabla-wrapper">
       <table class="tabla">
         <thead>
-          <tr><th>Radicado</th><th>Fuente</th><th>Última consulta</th><th>Última actuación</th><th>Estado</th><th></th></tr>
+          <tr><th>Proceso</th><th>Cómo va</th><th>Lo último en el juzgado</th><th>Lo próximo que vence</th><th>Vigilancia</th><th><span class="sr-only">Acciones</span></th></tr>
         </thead>
         <tbody>
           @for (r of visibles; track r.radicado) {
             <tr [class.fila-elegida]="seleccionado?.radicado === r.radicado">
               <td>
                 <button type="button" class="enlace mono" (click)="elegir(r)">{{ r.radicadoLegible }}</button>
-                <br><a class="form-ayuda" [routerLink]="['/procesos', r.idProceso]">Ver expediente</a>
+                @if (avance(r); as a) { <small class="asunto">{{ a.asunto }}</small> }
+                <a class="form-ayuda" [routerLink]="['/procesos', r.idProceso]">Ver expediente</a>
+              </td>
+              <td>
+                @if (avance(r); as a) {
+                  <strong class="etapa">{{ a.estado === 'ACTIVO' ? etiqueta(a.etapa) : etiqueta(a.estado) }}</strong>
+                  <span class="barra-etapa" role="img" [attr.aria-label]="'Avance del proceso: etapa ' + etiqueta(a.etapa)">
+                    <span [style.width.%]="a.progreso * 100"></span>
+                  </span>
+                } @else { <span class="sin">—</span> }
+              </td>
+              <td class="fecha-celda">
+                @if (r.ultimaActuacion) {
+                  {{ r.ultimaActuacion | date:'dd/MM/yyyy' }}
+                  @if (novedad(r)) { <span class="badge badge-primary">Novedad</span> }
+                } @else { <span class="sin">Sin actuaciones vistas</span> }
+              </td>
+              <td>
+                @if (avance(r)?.proximo; as t) {
+                  <strong>{{ t.descripcion }}</strong>
+                  <small [class.texto-peligro]="t.diasHabilesRestantes < 0">{{ t.fechaVencimiento | date:'dd/MM' }} · {{ textoRestantes(t.diasHabilesRestantes) }}</small>
+                  @if (avance(r)!.pendientes > 1) { <small>y {{ avance(r)!.pendientes - 1 }} más</small> }
+                } @else { <span class="sin">Nada pendiente</span> }
               </td>
               <td>
                 <select class="form-input select-fuente" [ngModel]="r.fuente" (ngModelChange)="cambiarFuente(r, $event)"
@@ -40,19 +62,16 @@
                     <option [value]="f.valor" [disabled]="!disponibles.includes(f.valor)">{{ f.etiqueta }}</option>
                   }
                 </select>
-              </td>
-              <td class="fecha-celda">{{ r.ultimaConsulta ? (r.ultimaConsulta | date:'dd/MM/yyyy h:mm a') : '—' }}</td>
-              <td class="fecha-celda">{{ r.ultimaActuacion ? (r.ultimaActuacion | date:'dd/MM/yyyy') : '—' }}</td>
-              <td>
                 @if (r.enAlerta) {
                   <span class="badge badge-danger" [title]="r.ultimoError ?? ''">{{ r.fallosConsecutivos }} fallos seguidos</span>
                 } @else if (r.fuente === 'MANUAL') {
-                  <span class="badge badge-muted">Sin consulta</span>
+                  <span class="badge badge-muted">Sin consulta automática</span>
                 } @else if (!r.lineaBaseHecha) {
-                  <span class="badge badge-warning">Sin línea base</span>
+                  <span class="badge badge-warning">Falta la primera consulta</span>
                 } @else {
-                  <span class="badge badge-success">Vigilando</span>
+                  <span class="badge badge-success">Al día</span>
                 }
+                @if (r.ultimaConsulta) { <small>Consultado {{ r.ultimaConsulta | date:'dd/MM h:mm a' }}</small> }
               </td>
               <td class="acciones-celda">
                 @if (r.fuente !== 'MANUAL') {
@@ -96,6 +115,31 @@
             <div class="form-actions">
               <button class="btn btn-primary btn-sm" type="button" (click)="agregarSimulada()">Agregar</button>
             </div>
+          }
+
+          @if (avance(r); as a) {
+            <h3 class="subtitulo">Cómo va el proceso</h3>
+            <p class="como-va"><strong>{{ a.asunto }}</strong><br>
+              Etapa: {{ etiqueta(a.etapa) }}@if (a.estado !== 'ACTIVO') { · {{ etiqueta(a.estado) }} }
+              @if (a.proximo; as t) { <br>Próximo término: {{ t.descripcion }}, vence el {{ t.fechaVencimiento | date:'dd/MM/yyyy' }} ({{ textoRestantes(t.diasHabilesRestantes) }}) }
+            </p>
+          }
+
+          @if (r.fuente !== 'MANUAL') {
+            <h3 class="subtitulo">Lo que pasó en el juzgado</h3>
+            @if (cargandoActuaciones) { <p class="form-ayuda" role="status">Cargando…</p> }
+            @else if (actuaciones.length === 0) { <p class="form-ayuda">La vigilancia aún no ha visto actuaciones de este proceso.</p> }
+            @else {
+              <ol class="linea-tiempo">
+                @for (a of actuaciones; track a.fecha + a.actuacion) {
+                  <li [class.nueva]="a.nueva">
+                    <small>{{ a.fecha | date:'dd/MM/yyyy' }}@if (!a.nueva) { · ya estaba al empezar a vigilar }</small>
+                    <strong>{{ a.actuacion }}</strong>
+                    @if (a.anotacion) { <span>{{ a.anotacion }}</span> }
+                  </li>
+                }
+              </ol>
+            }
           }
 
           <h3 class="subtitulo">Providencias recientes</h3>

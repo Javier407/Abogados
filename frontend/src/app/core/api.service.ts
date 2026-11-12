@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Observable } from 'rxjs';
 
 import {
+  ActuacionVista,
   Abogado, AreaPractica, Aviso, Cargo, Cliente, ConsultaVigilancia, EstadoAsistente, Honorario, HonorarioSolicitud,
   Pago, Perito, Tarifa, DesgloseRadicado, Despacho, DiaInhabil, EstadoTelegram,
   FuenteVigilancia, Proceso, ProcesoSolicitud, Providencia, RadicadoVigilado, Rama, ResultadoConsulta, Revision, Sede,
@@ -366,6 +367,10 @@ export class ApiService {
   }
   consultarRadicado(radicado: string): Observable<ResultadoConsulta> {
     return this.http.post<ResultadoConsulta>(`${API}/vigilancia/radicados/${radicado}/consultar`, {});
+  }
+  /** Lo que se ha visto del proceso en la Rama Judicial, también lo que ya existía en la primera consulta. */
+  actuacionesVigiladas(radicado: string, limite = 15): Observable<ActuacionVista[]> {
+    return this.http.get<ActuacionVista[]>(`${API}/vigilancia/radicados/${radicado}/actuaciones`, { params: filtros({ limite }) });
   }
   historialVigilancia(radicado: string): Observable<ConsultaVigilancia[]> {
     return this.http.get<ConsultaVigilancia[]>(`${API}/vigilancia/radicados/${radicado}/consultas`);

@@ -21,6 +21,26 @@
 .sugerencia { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .sugerencia span { display: flex; flex-direction: column; min-width: 0; font-size: 13px; }
 
+/* Cómo va cada proceso */
+.tabla td small { display: block; color: var(--muted); }
+.asunto { max-width: 26ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.etapa { font-size: 13px; }
+.barra-etapa { display: block; width: 90px; height: 6px; margin-top: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.barra-etapa > span { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+.sin { color: var(--muted); font-size: 13px; }
+.texto-peligro { color: var(--danger) !important; }
+.select-fuente + .badge { margin-top: 6px; }
+.como-va { font-size: 13.5px; line-height: 1.6; }
+.linea-tiempo { list-style: none; margin: 0 0 8px; padding: 0 0 0 4px; display: flex; flex-direction: column; gap: 10px; }
+.linea-tiempo li { position: relative; display: flex; flex-direction: column; gap: 2px; padding-left: 16px; font-size: 13px; }
+.linea-tiempo li::before {
+  content: ''; position: absolute; left: 0; top: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--line);
+}
+.linea-tiempo li.nueva::before { background: var(--accent); }
+.linea-tiempo small { color: var(--muted); }
+.linea-tiempo span { color: var(--ink-2); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
 @media (max-width: 1000px) {
   .vigilancia-grid.con-detalle { grid-template-columns: 1fr; }
   .detalle { position: static; }
