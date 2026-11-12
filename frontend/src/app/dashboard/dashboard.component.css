@@ -34,6 +34,36 @@ kbd {
 .cifras-firma .cifra { padding: 14px 18px; grid-template-areas: "valor valor" "nombre nombre"; }
 .cifras-firma .cifra-valor { font-size: 24px; }
 
+/* Toga resume el día */
+.toga-dia {
+  display: flex; align-items: center; gap: 18px; padding: 16px 20px; border-radius: var(--radius-lg);
+  background: linear-gradient(120deg, var(--accent-soft), var(--surface) 70%);
+  border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+}
+.toga-texto { flex: 1; min-width: 0; }
+.toga-texto h2 { font-size: 15px; font-weight: 700; }
+.toga-texto p { color: var(--ink-2); margin-top: 2px; font-size: 14px; }
+.anillo-caja { display: flex; align-items: center; gap: 14px; flex: none; }
+.anillo {
+  width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; flex: none;
+}
+.anillo-centro {
+  width: 58px; height: 58px; border-radius: 50%; background: var(--surface);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05;
+}
+.anillo-centro strong { font-size: 20px; font-weight: 800; }
+.anillo-centro small { font-size: 10.5px; }
+.anillo-leyenda { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 12.5px; color: var(--ink-2); }
+.anillo-leyenda li { display: flex; align-items: center; gap: 6px; }
+@media (prefers-reduced-motion: no-preference) {
+  .anillo { animation: girar-entrada .7s cubic-bezier(.22, 1, .36, 1) both; }
+}
+@keyframes girar-entrada { from { transform: rotate(-90deg) scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (max-width: 700px) {
+  .toga-dia { flex-wrap: wrap; }
+  .anillo-caja { width: 100%; }
+}
+
 /* Tarjetas del día */
 .rejilla-dia { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; align-items: start; }
 .tarjeta-dia { display: flex; flex-direction: column; }
