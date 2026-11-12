@@ -15,6 +15,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideArrowRight,
+  lucideBriefcase,
   lucideCalendarClock,
   lucideFolderOpen,
   lucideFolderPlus,
@@ -28,6 +29,7 @@ import type { BrnDialogState } from '@spartan-ng/brain/dialog';
 import { BrnCommand } from '@spartan-ng/brain/command';
 
 import { ApiService } from '../core/api.service';
+import { SesionService } from '../core/sesion.service';
 import { AuthService, EDITAN_CLIENTES, JURIDICO, VEN_HONORARIOS } from '../core/auth.service';
 import { Cliente, Proceso } from '../core/modelos';
 import { PaletaService } from './paleta.service';
@@ -51,6 +53,7 @@ interface Accion {
   providers: [
     provideIcons({
       lucideArrowRight,
+      lucideBriefcase,
       lucideCalendarClock,
       lucideFolderOpen,
       lucideFolderPlus,
@@ -65,7 +68,7 @@ interface Accion {
       [state]="estado()"
       (stateChange)="cambio($event)"
       title="Buscar en Lexora"
-      description="Busque procesos y clientes, o elija una acción"
+      description="Busque procesos, clientes y abogados, o elija una acción"
       dialogContentClass="w-[min(640px,calc(100vw-2rem))] max-w-none sm:max-w-none"
     >
       <!-- Se recrea en cada apertura: búsqueda vacía y sin elemento activo viejo -->
@@ -116,6 +119,19 @@ interface Accion {
                 }
               </hlm-command-group>
             }
+            @if (abogados().length) {
+              <hlm-command-group>
+                <hlm-command-group-label>Abogados</hlm-command-group-label>
+                @for (a of abogados(); track a.idPersona) {
+                  <button hlm-command-item [value]="'a:' + a.idPersona" (selected)="ir(['/abogados', a.idPersona])">
+                    <ng-icon name="lucideBriefcase" />
+                    <span class="resultado"
+                      ><strong>{{ a.nombres }} {{ a.apellidos }}</strong><small>{{ a.cargo }}</small></span
+                    >
+                  </button>
+                }
+              </hlm-command-group>
+            }
             <hlm-command-group>
               <hlm-command-group-label>Acciones</hlm-command-group-label>
               @for (a of acciones(); track a.id) {
@@ -157,6 +173,7 @@ interface Accion {
 })
 export class PaletaComandosComponent {
   private api = inject(ApiService);
+  private sesion = inject(SesionService);
   private auth = inject(AuthService);
   private router = inject(Router);
   readonly paleta = inject(PaletaService);
@@ -169,11 +186,20 @@ export class PaletaComandosComponent {
   readonly buscando = signal(false);
   readonly procesos = signal<Proceso[]>([]);
   readonly clientes = signal<Cliente[]>([]);
+  /** Abogados de la firma cuyo nombre contiene lo escrito (ya están en memoria: no se consulta al servidor). */
+  readonly abogados = computed(() => {
+    const q = normalizar(this.texto().trim());
+    if (q.length < 2) return [];
+    return this.sesion
+      .abogados()
+      .filter((a) => normalizar(`${a.nombres} ${a.apellidos}`).includes(q))
+      .slice(0, 4);
+  });
   private readonly consultas = new Subject<string>();
 
   /** Los resultados del servidor ya vienen filtrados; las acciones se filtran por su texto. */
   readonly filtro = (valor: string, busqueda: string) =>
-    /^[pc]:\d+$/.test(valor) || normalizar(valor).includes(normalizar(busqueda));
+    /^[pca]:\d+$/.test(valor) || normalizar(valor).includes(normalizar(busqueda));
 
   readonly acciones = computed<Accion[]>(() => {
     const a = this.auth;
@@ -238,6 +264,7 @@ export class PaletaComandosComponent {
       read: () => {
         this.procesos();
         this.clientes();
+        this.abogados();
         this.texto();
         this.apertura();
         this.comando();

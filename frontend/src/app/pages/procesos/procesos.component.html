@@ -15,6 +15,10 @@
       <option value="">Todas las ramas</option>
       @for (r of ramas; track r.codigo) { <option [value]="r.codigo">{{ r.nombre }}</option> }
     </select>
+    <select class="form-input" [(ngModel)]="filtro.idAbogado" (ngModelChange)="cargar()" aria-label="Abogado del equipo">
+      <option [ngValue]="null">Todos los abogados</option>
+      @for (a of listaAbogados; track a.id) { <option [ngValue]="a.id">{{ a.nombre }}</option> }
+    </select>
     <select class="form-input" [(ngModel)]="filtro.estado" (ngModelChange)="cargar()" aria-label="Estado">
       <option value="">Todos los estados</option>
       @for (e of estados; track e) { <option [value]="e">{{ etiqueta(e) }}</option> }

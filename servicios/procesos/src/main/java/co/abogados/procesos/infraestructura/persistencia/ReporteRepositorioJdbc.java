@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import co.abogados.procesos.dominio.modelo.Reportes.CargaAbogado;
 import co.abogados.procesos.dominio.modelo.Reportes.CumplimientoTerminos;
+import co.abogados.procesos.dominio.modelo.Reportes.ProcesoDeAbogado;
 import co.abogados.procesos.dominio.modelo.Reportes.ResultadoRama;
 import co.abogados.procesos.dominio.puertos.ReporteRepositorio;
 
@@ -18,6 +19,30 @@ public class ReporteRepositorioJdbc implements ReporteRepositorio {
 
 	public ReporteRepositorioJdbc(JdbcClient jdbc) {
 		this.jdbc = jdbc;
+	}
+
+	@Override
+	public List<ProcesoDeAbogado> procesosDe(long idPersona) {
+		return jdbc.sql("""
+				SELECT v.id_proceso, v.radicado_legible, v.asunto, v.codigo_rama, v.rama, v.tipo_proceso, v.etapa,
+				       v.estado, a.rol, a.desde, coalesce(t.pendientes, 0) AS pendientes, t.proximo
+				FROM procesos.asignaciones a
+				JOIN procesos.v_procesos v ON v.id_proceso = a.id_proceso
+				LEFT JOIN (
+				    SELECT id_proceso, count(*) AS pendientes, min(fecha_vencimiento) AS proximo
+				    FROM procesos.terminos WHERE estado = 'PENDIENTE' GROUP BY id_proceso
+				) t ON t.id_proceso = a.id_proceso
+				WHERE a.id_persona = :persona
+				ORDER BY v.estado IN ('TERMINADO', 'ARCHIVADO'), a.rol <> 'RESPONSABLE', t.proximo NULLS LAST,
+				         v.fecha_radicacion DESC, v.id_proceso DESC
+				""")
+				.param("persona", idPersona)
+				.query((rs, i) -> new ProcesoDeAbogado(rs.getInt("id_proceso"), rs.getString("radicado_legible"),
+						rs.getString("asunto"), rs.getString("codigo_rama"), rs.getString("rama"),
+						rs.getString("tipo_proceso"), rs.getString("etapa"), rs.getString("estado"), rs.getString("rol"),
+						rs.getObject("desde", LocalDate.class), rs.getInt("pendientes"),
+						rs.getObject("proximo", LocalDate.class)))
+				.list();
 	}
 
 	@Override

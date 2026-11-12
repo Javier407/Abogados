@@ -31,6 +31,8 @@ export const routes: Routes = [
       { path: 'consultas', loadComponent: () => import('./pages/consultas/consultas.component').then(m => m.ConsultasComponent),
         title: 'Consultas iniciales', canActivate: [personal] },
       { path: 'abogados', loadComponent: () => import('./pages/abogados/abogados.component').then(m => m.AbogadosComponent), title: 'Abogados', canActivate: [personal] },
+      { path: 'abogados/:id', loadComponent: () => import('./pages/abogados/ficha-abogado.component').then(m => m.FichaAbogadoComponent),
+        title: 'Ficha del abogado', canActivate: [personal] },
       { path: 'terminos', loadComponent: () => import('./pages/terminos/terminos.component').then(m => m.TerminosComponent), title: 'Términos', canActivate: [personal] },
       { path: 'calendario', loadComponent: () => import('./pages/calendario/calendario.component').then(m => m.CalendarioComponent), title: 'Calendario judicial', canActivate: [personal] },
       { path: 'vigilancia', loadComponent: () => import('./pages/vigilancia/vigilancia.component').then(m => m.VigilanciaComponent), title: 'Vigilancia', canActivate: [conRol(...JURIDICO_Y_DEPENDIENTES)] },

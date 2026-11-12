@@ -438,3 +438,15 @@ La pantalla de términos no se entendía: no decía qué había que hacer, de d�
 6. **Sentencia anticipada (CGP art. 278).** Una casilla al registrar la sentencia; queda marcada en la línea de tiempo.
 
 Pendiente: que un abogado valide los días y las normas de las reglas nuevas; el umbral de «por vencer» sigue fijo en 5 días hábiles (ahora se ve además el porcentaje del plazo consumido).
+
+## Ficha del abogado (noviembre de 2026)
+
+La lista de abogados era un directorio: no decía qué casos lleva cada uno.
+
+1. **Ficha** en `/abogados/:id` (desde la lista, desde «Carga por abogado» en Reportes y desde la búsqueda Ctrl+K): procesos a su cargo y en apoyo, términos que corren a su nombre y audiencias de los próximos 30 días.
+2. **Rango de respuesta:** sus términos pendientes repartidos en vencidos, de hoy a 5 días hábiles, de 6 a 15 y más de 15, con lo más próximo.
+3. **Sus procesos por tipo** y la lista de procesos con su papel en cada uno (a cargo, apoyo o dependiente), filtrable. `GET /procesos/de-abogado/{idPersona}`.
+4. **Filtro por abogado** en Procesos y en Términos (`/terminos?abogado=documento`).
+5. Aviso cuando un abogado inactivo sigue a cargo de procesos abiertos.
+
+Pendiente: reasignar o suceder a un abogado con historial y motivo, y cerrar un proceso con su motivo (siguiente entrega).

@@ -112,7 +112,7 @@
       </div>
 
       @if (cargando) {
-        <div class="empty-state">Cargando abogados...</div>
+        <div class="empty-state" role="status">Cargando abogados…</div>
       } @else if (abogados.length === 0) {
         <div class="empty-state">No hay abogados registrados.</div>
       } @else {
@@ -124,7 +124,10 @@
             <tbody>
               @for (a of abogados; track a.idPersona) {
                 <tr>
-                  <td class="titulo-celda">{{ a.nombres }} {{ a.apellidos }}<br><small>{{ a.email }}</small></td>
+                  <td class="titulo-celda">
+                    <a [routerLink]="['/abogados', a.idPersona]" title="Ver sus procesos y su rango de respuesta">{{ a.nombres }} {{ a.apellidos }}</a>
+                    <br><small>{{ a.email }}</small>
+                  </td>
                   <td class="mono">{{ a.idPersona }}</td>
                   <td class="mono">{{ a.tarjetaProfesional }}</td>
                   <td>{{ a.cargo }}</td>
@@ -137,6 +140,7 @@
                     </span>
                   </td>
                   <td class="acciones-celda">
+                    <a class="btn btn-secondary btn-sm" [routerLink]="['/abogados', a.idPersona]">Ver ficha</a>
                     <button class="btn btn-secondary btn-sm" type="button" (click)="editar(a)">Editar</button>
                     @if (a.activo) {
                       <button class="btn btn-danger btn-sm" type="button" (click)="desactivar(a)">Desactivar</button>

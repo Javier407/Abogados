@@ -8,12 +8,14 @@ import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import co.abogados.procesos.dominio.excepciones.ReglaNegocioException;
 import co.abogados.procesos.dominio.modelo.Reportes.CargaAbogado;
 import co.abogados.procesos.dominio.modelo.Reportes.CumplimientoTerminos;
+import co.abogados.procesos.dominio.modelo.Reportes.ProcesoDeAbogado;
 import co.abogados.procesos.dominio.modelo.Reportes.ResultadoRama;
 import co.abogados.procesos.dominio.puertos.ReporteRepositorio;
 
@@ -36,6 +38,15 @@ public class ReportesRecurso {
 	@GetMapping("/reportes/carga")
 	public List<CargaAbogado> carga() {
 		return reportes.carga(LocalDate.now(reloj));
+	}
+
+	/**
+	 * Los procesos de un abogado con su papel en cada uno (ficha del abogado). Va bajo /procesos porque lo consulta
+	 * todo el personal, igual que la lista de procesos; los reportes de /reportes son solo de la dirección.
+	 */
+	@GetMapping("/procesos/de-abogado/{idPersona}")
+	public List<ProcesoDeAbogado> procesosDe(@PathVariable long idPersona) {
+		return reportes.procesosDe(idPersona);
 	}
 
 	@GetMapping("/reportes/terminos")

@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
@@ -16,7 +17,7 @@ import {
 @Component({
   selector: 'app-reportes',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, DatePipe, DecimalPipe],
+  imports: [FormsModule, CurrencyPipe, DatePipe, DecimalPipe, RouterLink],
   templateUrl: './reportes.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './reportes.component.css',

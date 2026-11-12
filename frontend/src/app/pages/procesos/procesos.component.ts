@@ -23,7 +23,9 @@ export class ProcesosComponent implements OnInit {
 
   procesos: Proceso[] = [];
   ramas: Rama[] = [];
-  filtro = { estado: '', rama: '', q: '' };
+  filtro: { estado: string; rama: string; q: string; idAbogado: number | null } = this.sinFiltro();
+  /** Para el filtro «De quién»: los abogados por nombre. */
+  listaAbogados: { id: number; nombre: string }[] = [];
   private clientes = new Map<number, string>();
   private abogados = new Map<number, string>();
 
@@ -42,6 +44,9 @@ export class ProcesosComponent implements OnInit {
         this.ramas = r.ramas;
         r.clientes.forEach((c) => this.clientes.set(c.idCliente!, c.nombre));
         r.abogados.forEach((a) => this.abogados.set(a.idPersona, `${a.nombres} ${a.apellidos}`));
+        this.listaAbogados = r.abogados
+          .map((a) => ({ id: a.idPersona, nombre: `${a.nombres} ${a.apellidos}` }))
+          .sort((a, b) => a.nombre.localeCompare(b.nombre));
       },
       error: (e) => (this.error = mensajeDeError(e)),
     });
@@ -50,7 +55,7 @@ export class ProcesosComponent implements OnInit {
 
   cargar(): void {
     this.cargando = true;
-    this.api.procesos(this.filtro).subscribe({
+    this.api.procesos({ ...this.filtro, idAbogado: this.filtro.idAbogado ?? undefined }).subscribe({
       next: (p) => {
         this.procesos = p;
         this.cargando = false;
@@ -63,8 +68,12 @@ export class ProcesosComponent implements OnInit {
   }
 
   limpiar(): void {
-    this.filtro = { estado: '', rama: '', q: '' };
+    this.filtro = this.sinFiltro();
     this.cargar();
+  }
+
+  private sinFiltro() {
+    return { estado: '', rama: '', q: '', idAbogado: null as number | null };
   }
 
   eliminar(p: Proceso): void {
