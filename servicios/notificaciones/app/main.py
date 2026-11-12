@@ -110,7 +110,7 @@ def canal_valido(canal: str) -> str:
 def crear_app(servicio: ServicioNotificaciones | None = None,
               en_vivo: AvisosEnVivoMemoria | None = None, verificador: VerificadorTokens | None = None,
               servidor: ConsultaServidor | None = None, toga=None, canales: CanalesExternos | None = None,
-              canal_clave: str = "") -> FastAPI:
+              canal_clave: str = "", canales_en_portal: bool = True) -> FastAPI:
     """Sin argumentos conecta PostgreSQL, SMTP y RabbitMQ; en las pruebas se pasan dobles."""
 
     @asynccontextmanager
@@ -122,6 +122,7 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
             app.state.toga = toga
             app.state.canales = canales
             app.state.canal_clave = canal_clave
+            app.state.canales_en_portal = canales_en_portal
             yield
             return
 
@@ -160,6 +161,7 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
         app.state.canales = CanalesExternos(repo, app.state.toga,
                                             vincular_telegram=app.state.servicio.vincular_telegram)
         app.state.canal_clave = cfg.canal_clave
+        app.state.canales_en_portal = cfg.canales_en_portal
         if not cfg.canal_clave:
             log.info("Sin CANAL_CLAVE: Toga no responde por WhatsApp ni Instagram")
         if telegram is not None and not cfg.telegram_escucha:
@@ -240,8 +242,10 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
     @app.get("/notificaciones/canales")
     async def estado_canales(request: Request, idPersona: int = Depends(persona_autorizada)):
         canales = canales_del_portal(request)
-        return {"configurado": bool(getattr(request.app.state, "canal_clave", "")),
-                "canales": await canales.estado(idPersona)}
+        # Sin CANAL_CLAVE o con CANALES_EN_PORTAL=false, el portal no muestra la tarjeta.
+        visible = bool(getattr(request.app.state, "canal_clave", "")) and \
+            getattr(request.app.state, "canales_en_portal", False)
+        return {"configurado": visible, "canales": await canales.estado(idPersona)}
 
     @app.post("/notificaciones/canales/{canal}/vinculo")
     async def vinculo_canal(request: Request, canal: str, idPersona: int = Depends(persona_autorizada)):

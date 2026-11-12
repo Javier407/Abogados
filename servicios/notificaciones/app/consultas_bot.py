@@ -93,7 +93,7 @@ class ConsultasBot:
         id_persona = await self.repo.persona_de_chat(chat_id)
         if id_persona is None:
             await self._registrar(None, chat_id, comando, "SIN_VINCULO")
-            return ("Este chat no está vinculado a Gestión Jurídica. Si trabaja en la firma, entre al portal → "
+            return ("Este chat no está vinculado a Lexora. Si trabaja en la firma, entre al portal → "
                     "Avisos → Vincular Telegram y use el enlace que aparece.")
         return await self._atender(id_persona, chat_id, texto, "telegram")
 

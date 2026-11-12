@@ -391,10 +391,10 @@ class TelegramBot:
         chat_id = str(chat["id"])
         try:
             if len(partes) == 2 and await vincular(partes[1].strip(), chat_id) is not None:
-                respuesta = ("Listo: este chat quedó vinculado a Gestión Jurídica. Aquí recibirá los avisos de "
+                respuesta = ("Listo: este chat quedó vinculado a Lexora. Aquí recibirá los avisos de "
                              "términos y de actuaciones nuevas en sus procesos.")
             else:
-                respuesta = ("Para vincular este chat, abra Gestión Jurídica → Avisos → Vincular Telegram y use el "
+                respuesta = ("Para vincular este chat, abra Lexora → Avisos → Vincular Telegram y use el "
                              "enlace que aparece (sirve una vez y por 24 horas).")
             await self.enviar(chat_id, respuesta)
         except Exception:   # noqa: BLE001

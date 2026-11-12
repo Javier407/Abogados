@@ -147,13 +147,13 @@ def test_ayudas():
 
 # ------------------------------------------------------------------ API
 
-def app_de_prueba(clave=CLAVE, con_canales=True):
+def app_de_prueba(clave=CLAVE, con_canales=True, en_portal=True):
     from tests.test_actuaciones_y_telegram import servicio as servicio_de_prueba
     from tests.test_aplicacion import RepoMemoria
 
     repo, canales = montar()
     app = crear_app(servicio=servicio_de_prueba(RepoMemoria()), canales=canales if con_canales else None,
-                    canal_clave=clave)
+                    canal_clave=clave, canales_en_portal=en_portal)
     return repo, app
 
 
@@ -202,6 +202,17 @@ def test_de_punta_a_punta_portal_y_talki():
         assert c.delete("/notificaciones/canales/sms", params={"idPersona": CATALINA}, headers=yo).status_code == 404
         assert c.delete("/notificaciones/canales/whatsapp", params={"idPersona": CATALINA},
                         headers=yo).json() == {"desvinculado": True}
+
+
+def test_con_la_tarjeta_apagada_el_portal_no_la_muestra_pero_talki_sigue():
+    _, app = app_de_prueba(en_portal=False)
+    with TestClient(app) as c:
+        estado = c.get("/notificaciones/canales", params={"idPersona": CATALINA},
+                       headers={"X-Usuario-Id": str(CATALINA)})
+        assert estado.json()["configurado"] is False
+        r = c.post("/canales/toga", json={"canal": "WHATSAPP", "idExterno": WA, "texto": "hola"},
+                   headers={"X-Canal-Clave": CLAVE})
+        assert r.status_code == 200
 
 
 def test_sin_motor_de_canales_es_503():

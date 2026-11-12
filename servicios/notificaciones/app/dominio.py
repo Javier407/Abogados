@@ -448,13 +448,13 @@ def texto_telegram(n: NotificacionNueva, url_app: str) -> str:
 
 def correo_de(n: NotificacionNueva, url_app: str) -> tuple[str, str, str]:
     """Asunto, texto plano y HTML del correo."""
-    asunto = f"[Gestión Jurídica] {n.titulo}"
+    asunto = f"[Lexora] {n.titulo}"
     enlace, texto_enlace = enlace_de(n, url_app)
     texto = f"{n.titulo}\n\n{n.mensaje}\n"
     if enlace:
         texto += f"\n{texto_enlace}: {enlace}\n"
-    pie = ("Aviso automático del portal de clientes de Gestión Jurídica." if n.referencia.get("portal")
-           else "Aviso automático de Gestión Jurídica. Los términos se cuentan en días hábiles judiciales.")
+    pie = ("Aviso automático del portal de clientes de Lexora." if n.referencia.get("portal")
+           else "Aviso automático de Lexora. Los términos se cuentan en días hábiles judiciales.")
     texto += "\n" + pie
     color = "#c0392b" if "vencid" in n.titulo.lower() or "hoy" in n.titulo.lower() else "#1e3a5f"
     boton = (f'<p><a href="{html.escape(enlace)}" style="background:#1e3a5f;color:#fff;padding:10px 16px;'

@@ -127,7 +127,7 @@ async def test_un_termino_por_vencer_genera_aviso_en_la_app_y_correo():
 
     assert await s.procesar("termino.por_vencer", EVENTO) == 2
 
-    assert correo.enviados == [("arodriguez@firma.co", "[Gestión Jurídica] Término por vencer")]
+    assert correo.enviados == [("arodriguez@firma.co", "[Lexora] Término por vencer")]
     assert repo.por_canal(Canal.EMAIL)[0]["estado"] == "ENVIADA"
     assert repo.por_canal(Canal.APP)[0]["estado"] == "PENDIENTE"          # no leída
     assert en_vivo.datos[0][0] == ABOGADO                                  # llegó a la pestaña abierta
