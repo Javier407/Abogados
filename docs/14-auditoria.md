@@ -24,6 +24,8 @@ CORS y `/actuator/health` tampoco se anotan, porque no son acciones de nadie.
 **Detalle del inicio de sesión:** los ingresos se siguen guardando con su motivo (clave incorrecta, bloqueado…) en
 `identidad.ingresos`. La bitácora de auditoría los ve como `anonimo` → `POST /api/auth/login`.
 
+**Lo que no pasa por el gateway** no queda en esta bitácora. En particular, las consultas al bot de Telegram tienen su propio registro, sin el texto de la consulta: `notificaciones.consultas_bot` (ver `docs/15-bot-telegram.md`).
+
 ## 2. Cómo funciona la cadena
 
 ```mermaid
