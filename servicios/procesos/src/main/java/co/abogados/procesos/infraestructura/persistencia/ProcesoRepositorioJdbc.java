@@ -28,7 +28,8 @@ public class ProcesoRepositorioJdbc implements ProcesoRepositorio {
 			SELECT v.id_proceso, v.radicado, v.radicado_legible, p.id_tipo, v.tipo_proceso, v.codigo_rama, v.rama,
 			       v.despacho_origen, p.id_despacho_actual, v.despacho_actual, v.instancia, v.id_cliente,
 			       v.rol_cliente, v.asunto, v.cuantia, v.clase_cuantia, v.tipo_servicio, v.estado, v.etapa,
-			       v.fecha_radicacion, v.vigilado, a.id_persona AS id_responsable
+			       v.fecha_radicacion, v.vigilado, a.id_persona AS id_responsable,
+			       p.fecha_cierre, p.motivo_cierre, p.nota_cierre, p.etapa_antes_cierre
 			FROM procesos.v_procesos v
 			JOIN procesos.procesos p ON p.id_proceso = v.id_proceso
 			LEFT JOIN procesos.asignaciones a ON a.id_proceso = v.id_proceso AND a.rol = 'RESPONSABLE'
@@ -128,7 +129,12 @@ public class ProcesoRepositorioJdbc implements ProcesoRepositorio {
 				SET radicado = :radicado, id_tipo = :tipo, id_despacho_actual = :despacho, id_cliente = :cliente,
 				    rol_cliente = :rol, asunto = :asunto, cuantia = :cuantia, clase_cuantia = :clase,
 				    tipo_servicio = :servicio, estado = :estado, etapa = :etapa, fecha_radicacion = :fecha,
-				    vigilado = :vigilado
+				    vigilado = :vigilado,
+				    fecha_cierre = CASE WHEN :estado IN ('TERMINADO', 'ARCHIVADO') THEN fecha_cierre END,
+				    motivo_cierre = CASE WHEN :estado IN ('TERMINADO', 'ARCHIVADO') THEN motivo_cierre END,
+				    nota_cierre = CASE WHEN :estado IN ('TERMINADO', 'ARCHIVADO') THEN nota_cierre END,
+				    cerrado_por = CASE WHEN :estado IN ('TERMINADO', 'ARCHIVADO') THEN cerrado_por END,
+				    etapa_antes_cierre = CASE WHEN :estado IN ('TERMINADO', 'ARCHIVADO') THEN etapa_antes_cierre END
 				WHERE id_proceso = :id
 				""")
 				.params(params)
@@ -209,7 +215,11 @@ public class ProcesoRepositorioJdbc implements ProcesoRepositorio {
 				rs.getString("etapa"),
 				rs.getObject("fecha_radicacion", java.time.LocalDate.class),
 				rs.getBoolean("vigilado"),
-				rs.getObject("id_responsable") == null ? null : rs.getLong("id_responsable"));
+				rs.getObject("id_responsable") == null ? null : rs.getLong("id_responsable"),
+				rs.getObject("fecha_cierre", java.time.LocalDate.class),
+				rs.getString("motivo_cierre"),
+				rs.getString("nota_cierre"),
+				rs.getString("etapa_antes_cierre"));
 	}
 
 	static Short corto(ResultSet rs, String columna) throws SQLException {

@@ -355,6 +355,43 @@ paths:
         '422': { $ref: '#/components/responses/Error' }
 
   # ---------------------------------------------------------------- agenda, pruebas y términos sugeridos (F7)
+  /procesos/{idProceso}/relevo:
+    post:
+      summary: Otro abogado queda a cargo del proceso, con el motivo (relevo del responsable)
+      description: |
+        Cuerpo { idResponsable, motivo (RENUNCIA | REVOCATORIA | SUSTITUCION | SUCESION | RETIRO_DE_LA_FIRMA |
+        REORGANIZACION), nota?, anteriorQuedaDeApoyo? (false), trasladarPendientes? (true) }. Con trasladarPendientes,
+        los términos pendientes y las audiencias futuras del anterior pasan al nuevo. Queda en el historial del equipo
+        y publica proceso.reasignado. 422: el proceso está cerrado, ese abogado ya está a cargo, o está inactivo.
+      parameters: [ { name: idProceso, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        '200': { description: '{ idAnterior, idNuevo, terminosTrasladados, audienciasTrasladadas }' }
+        '422': { $ref: '#/components/responses/Error' }
+  /procesos/{idProceso}/asignaciones/historial:
+    get:
+      summary: 'Quién estuvo en el equipo: cada periodo con su papel, desde, hasta, motivo y nota. Primero los vigentes'
+      parameters: [ { name: idProceso, in: path, required: true, schema: { type: integer } } ]
+      responses: { '200': { description: Periodos del equipo } }
+  /procesos/{idProceso}/cierre:
+    post:
+      summary: Cierra el proceso con su motivo
+      description: |
+        Cuerpo { motivo (SENTENCIA | SENTENCIA_ANTICIPADA | CONCILIACION | TRANSACCION | DESISTIMIENTO |
+        RETIRO_DE_LA_DEMANDA | PAGO | LIQUIDACION | RENUNCIA_AL_PODER | ARCHIVO | OTRO), fecha? (hoy), nota? (obligatoria
+        con OTRO) }. Queda TERMINADO (ARCHIVADO si el motivo es ARCHIVO) en la etapa CERRADO; sus términos pendientes y
+        audiencias dejan de avisar y de salir en la agenda, y deja de vigilarse. 409 si ya estaba cerrado.
+      parameters: [ { name: idProceso, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        '200': { description: '{ proceso, efectos: { terminosPendientes, audienciasFuturas, seApagoLaVigilancia } }' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /procesos/{idProceso}/reapertura:
+    post:
+      summary: 'Reabre un proceso cerrado (solo la dirección). Cuerpo opcional { etapa }; sin ella, vuelve a la que tenía'
+      parameters: [ { name: idProceso, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        '200': { description: El proceso, ACTIVO }
+        '409': { $ref: '#/components/responses/Error' }
   /procesos/de-abogado/{idPersona}:
     get:
       summary: Los procesos en los que está un abogado, con su papel en cada uno (ficha del abogado)

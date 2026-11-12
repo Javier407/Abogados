@@ -12,7 +12,9 @@ import co.abogados.procesos.dominio.modelo.AvisoAudiencia;
 import co.abogados.procesos.dominio.modelo.AvisoTermino;
 import co.abogados.procesos.dominio.modelo.Portal.ResumenAvisado;
 import co.abogados.procesos.dominio.modelo.ProcesoCreado;
+import co.abogados.procesos.dominio.modelo.Relevo;
 import co.abogados.procesos.dominio.puertos.PublicadorAgenda;
+import co.abogados.procesos.dominio.puertos.PublicadorEquipo;
 import co.abogados.procesos.dominio.puertos.PublicadorEventos;
 import co.abogados.procesos.dominio.puertos.PublicadorPortal;
 
@@ -22,7 +24,8 @@ import co.abogados.procesos.dominio.puertos.PublicadorPortal;
  * Formato de cada mensaje: docs/contratos/eventos.md.
  */
 @Component
-public class PublicadorEventosOutbox implements PublicadorEventos, PublicadorAgenda, PublicadorPortal {
+public class PublicadorEventosOutbox implements PublicadorEventos, PublicadorAgenda, PublicadorPortal,
+		PublicadorEquipo {
 
 	private final Outbox outbox;
 	private final ObjectMapper json;
@@ -80,6 +83,20 @@ public class PublicadorEventosOutbox implements PublicadorEventos, PublicadorAge
 		cuerpo.put("id_cliente", r.idCliente());
 		cuerpo.put("ocurrido", r.ocurrido().toString());
 		agregar("portal.resumen_publicado", cuerpo);
+	}
+
+	@Override
+	public void procesoReasignado(Relevo.Reasignado e) {
+		Map<String, Object> cuerpo = new LinkedHashMap<>();
+		cuerpo.put("id_proceso", e.idProceso());
+		cuerpo.put("radicado", e.radicado());
+		cuerpo.put("asunto", e.asunto());
+		cuerpo.put("id_abogado_anterior", e.idAnterior());
+		cuerpo.put("id_abogado_nuevo", e.idNuevo());
+		cuerpo.put("motivo", e.motivo());
+		cuerpo.put("terminos_trasladados", e.terminosTrasladados());
+		cuerpo.put("ocurrido", e.ocurrido().toString());
+		agregar("proceso.reasignado", cuerpo);
 	}
 
 	private void agregar(String clave, Map<String, Object> cuerpo) {

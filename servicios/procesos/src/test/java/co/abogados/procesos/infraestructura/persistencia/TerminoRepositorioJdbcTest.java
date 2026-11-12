@@ -45,10 +45,19 @@ class TerminoRepositorioJdbcTest {
 	}
 
 	@Test
-	void sinFiltrosNoHayWhere() {
+	void laAgendaNoTraeLosPendientesDeProcesosCerradosPeroElExpedienteSi() {
 		repo.listar(new FiltroTerminos(null, null, null, null, null));
-		assertThat(jdbc.ultima().sql()).doesNotContain("WHERE");
+		assertThat(jdbc.ultima().sql())
+				.contains("WHERE (t.estado = 'CUMPLIDO' OR v.estado NOT IN ('TERMINADO', 'ARCHIVADO'))");
 		assertThat(jdbc.ultima().params()).isEmpty();
+
+		// dentro de un proceso se ven todos sus términos, también si está cerrado
+		repo.listar(new FiltroTerminos(null, null, 31, null, null));
+		assertThat(jdbc.ultima().sql()).contains("WHERE t.id_proceso = :proceso").doesNotContain("NOT IN");
+
+		// y los avisos diarios tampoco salen para procesos cerrados
+		repo.paraAvisar(5, 3);
+		assertThat(jdbc.ultima().sql()).contains("AND v.estado NOT IN ('TERMINADO', 'ARCHIVADO')");
 	}
 
 	@Test

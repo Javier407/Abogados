@@ -8,7 +8,8 @@ import {
   FuenteVigilancia, Proceso, ProcesoSolicitud, Providencia, RadicadoVigilado, Rama, ResultadoConsulta, Revision, Sede,
   Termino, TerminoSolicitud, TipoProceso, Vencimiento, VinculoTelegram,
   Actuacion, ActuacionSolicitud, Expediente, Parte, ParteRegistrada, ParteSolicitud, ProvidenciaSolicitud,
-  Audiencia, PlazoProceso, ProcesoDeAbogado, Prueba, PruebaSolicitud, SugerenciaTermino,
+  Audiencia, MotivoCierre, PeriodoEquipo, PlazoProceso, ProcesoDeAbogado, Prueba, PruebaSolicitud, RelevoSolicitud,
+  ResultadoCierre, ResultadoRelevo, SugerenciaTermino,
   CambioCuenta, CargaAbogado, CarteraCliente, Cuenta, CuentaSolicitud, CumplimientoTerminos, Gasto, GastoSolicitud,
   ResultadoRama, ProcesoPortal, DetallePortal, FinanzasPortal, ResumenPublicado,
   CategoriaDocumento, Consulta, ConsultaConAvisos, Documento, EstadoConsulta, Integrante, RolEquipo,
@@ -247,6 +248,21 @@ export class ApiService {
   }
   agregarIntegrante(idProceso: number, idPersona: number, rol: RolEquipo): Observable<Integrante> {
     return this.http.post<Integrante>(`${API}/procesos/${idProceso}/asignaciones`, { idPersona, rol });
+  }
+  /** Quién estuvo en el equipo y por qué salió. */
+  historialEquipo(idProceso: number): Observable<PeriodoEquipo[]> {
+    return this.http.get<PeriodoEquipo[]>(`${API}/procesos/${idProceso}/asignaciones/historial`);
+  }
+  /** Otro abogado queda a cargo, con el motivo. */
+  relevarResponsable(idProceso: number, s: RelevoSolicitud): Observable<ResultadoRelevo> {
+    return this.http.post<ResultadoRelevo>(`${API}/procesos/${idProceso}/relevo`, s);
+  }
+  cerrarProceso(idProceso: number, s: { motivo: MotivoCierre; fecha?: string | null; nota?: string | null }): Observable<ResultadoCierre> {
+    return this.http.post<ResultadoCierre>(`${API}/procesos/${idProceso}/cierre`, s);
+  }
+  /** Solo la dirección. Sin etapa, vuelve a la que tenía al cerrarse. */
+  reabrirProceso(idProceso: number, etapa?: string | null): Observable<Proceso> {
+    return this.http.post<Proceso>(`${API}/procesos/${idProceso}/reapertura`, etapa ? { etapa } : {});
   }
   quitarIntegrante(idProceso: number, idPersona: number): Observable<void> {
     return this.http.delete<void>(`${API}/procesos/${idProceso}/asignaciones/${idPersona}`);

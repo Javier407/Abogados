@@ -234,7 +234,7 @@ docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/migra
 docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/migraciones/002-f3-vigilancia.sql
 ```
 
-Las que borran o desactivan algo (`016`, `017`) se aplican **después** de desplegar el código nuevo, con un respaldo reciente y con `-v ON_ERROR_STOP=1`; cada archivo trae su comando en el encabezado.
+Las que borran, desactivan o cambian el comportamiento (`016`, `017`, `019`) se aplican **después** de desplegar el código nuevo, con un respaldo reciente y con `-v ON_ERROR_STOP=1`; cada archivo trae su comando en el encabezado.
 
 **Desarrollo del frontend** con recarga en vivo, contra el gateway del servidor:
 

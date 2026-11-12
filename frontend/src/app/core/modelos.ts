@@ -114,7 +114,62 @@ export interface Proceso {
   fechaRadicacion: string;
   vigilado: boolean;
   idResponsable?: number;
+  /** Solo en un proceso cerrado con «Cerrar proceso». */
+  fechaCierre?: string | null;
+  motivoCierre?: MotivoCierre | null;
+  notaCierre?: string | null;
+  /** La etapa que tenía al cerrarse (a la que vuelve si se reabre). */
+  etapaAntesCierre?: string | null;
 }
+
+// ---------- relevo del abogado a cargo y cierre del proceso ----------
+export type MotivoRelevo =
+  | 'RENUNCIA' | 'REVOCATORIA' | 'SUSTITUCION' | 'SUCESION' | 'RETIRO_DE_LA_FIRMA' | 'REORGANIZACION';
+
+export const MOTIVOS_RELEVO: { valor: MotivoRelevo; etiqueta: string; ayuda: string }[] = [
+  { valor: 'RENUNCIA', etiqueta: 'Renuncia al poder', ayuda: 'El abogado renuncia al poder (CGP art. 76).' },
+  { valor: 'REVOCATORIA', etiqueta: 'Revocatoria del poder', ayuda: 'El cliente le revoca el poder al abogado.' },
+  { valor: 'SUSTITUCION', etiqueta: 'Sustitución del poder', ayuda: 'El abogado sustituye el poder en otro (CGP art. 75).' },
+  { valor: 'SUCESION', etiqueta: 'Sucesión', ayuda: 'Otro abogado continúa porque el anterior no puede seguir (licencia, incapacidad, sanción).' },
+  { valor: 'RETIRO_DE_LA_FIRMA', etiqueta: 'Retiro de la firma', ayuda: 'El abogado deja de trabajar en la firma.' },
+  { valor: 'REORGANIZACION', etiqueta: 'Reorganización del trabajo', ayuda: 'La firma redistribuye la carga entre sus abogados.' },
+];
+
+export interface RelevoSolicitud {
+  idResponsable: number | null;
+  motivo: MotivoRelevo | null;
+  nota?: string;
+  anteriorQuedaDeApoyo: boolean;
+  trasladarPendientes: boolean;
+}
+export interface ResultadoRelevo { idAnterior?: number | null; idNuevo: number; terminosTrasladados: number; audienciasTrasladadas: number; }
+
+/** Un periodo de una persona en el equipo del proceso. hasta vacío = sigue. */
+export interface PeriodoEquipo {
+  idCambio: number; idPersona: number; rol: string; desde: string; hasta?: string | null; motivo?: string | null;
+  nota?: string | null; registradoPor?: number | null; cerradoPor?: number | null; nombre?: string | null;
+}
+
+export type MotivoCierre =
+  | 'SENTENCIA' | 'SENTENCIA_ANTICIPADA' | 'CONCILIACION' | 'TRANSACCION' | 'DESISTIMIENTO' | 'RETIRO_DE_LA_DEMANDA'
+  | 'PAGO' | 'LIQUIDACION' | 'RENUNCIA_AL_PODER' | 'ARCHIVO' | 'OTRO';
+
+export const MOTIVOS_CIERRE: { valor: MotivoCierre; etiqueta: string; ayuda: string }[] = [
+  { valor: 'SENTENCIA', etiqueta: 'Sentencia en firme', ayuda: 'El proceso terminó con sentencia ejecutoriada.' },
+  { valor: 'SENTENCIA_ANTICIPADA', etiqueta: 'Sentencia anticipada', ayuda: 'El juez falló sin agotar las etapas (CGP art. 278).' },
+  { valor: 'CONCILIACION', etiqueta: 'Conciliación', ayuda: 'Las partes conciliaron y el juez la aprobó.' },
+  { valor: 'TRANSACCION', etiqueta: 'Transacción', ayuda: 'Las partes transigieron el litigio (CGP art. 312).' },
+  { valor: 'DESISTIMIENTO', etiqueta: 'Desistimiento', ayuda: 'El demandante desistió de las pretensiones (CGP art. 314).' },
+  { valor: 'RETIRO_DE_LA_DEMANDA', etiqueta: 'Retiro de la demanda', ayuda: 'Se retiró la demanda antes de notificarla (CGP art. 92).' },
+  { valor: 'PAGO', etiqueta: 'Pago total', ayuda: 'Se pagó la obligación (procesos ejecutivos).' },
+  { valor: 'LIQUIDACION', etiqueta: 'Liquidación terminada', ayuda: 'Terminó la liquidación del crédito, de la sociedad o de la sucesión.' },
+  { valor: 'RENUNCIA_AL_PODER', etiqueta: 'La firma deja el caso', ayuda: 'La firma renunció al poder o el cliente cambió de abogado.' },
+  { valor: 'ARCHIVO', etiqueta: 'Archivo', ayuda: 'Se archivó sin decisión de fondo (por ejemplo, desistimiento tácito).' },
+  { valor: 'OTRO', etiqueta: 'Otro motivo', ayuda: 'Explíquelo en la nota.' },
+];
+
+export interface EfectosCierre { terminosPendientes: number; audienciasFuturas: number; seApagoLaVigilancia: boolean; }
+export interface ResultadoCierre { proceso: Proceso; efectos: EfectosCierre; }
 
 export interface DesgloseRadicado {
   radicado: string;

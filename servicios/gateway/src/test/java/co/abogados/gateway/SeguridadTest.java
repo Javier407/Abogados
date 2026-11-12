@@ -94,6 +94,14 @@ class SeguridadTest {
 		assertThat(permitido("GET", "/api/gabinete/areas", "DEPENDIENTE")).isTrue();
 		assertThat(permitido("POST", "/api/procesos/34/asignaciones", "ABOGADO")).isTrue();
 		assertThat(permitido("POST", "/api/procesos/34/asignaciones", "DEPENDIENTE")).isFalse();
+		// relevo del responsable y cierre: los abogados; reabrir un proceso cerrado: solo la dirección
+		assertThat(permitido("POST", "/api/procesos/34/relevo", "ABOGADO")).isTrue();
+		assertThat(permitido("POST", "/api/procesos/34/relevo", "DEPENDIENTE")).isFalse();
+		assertThat(permitido("GET", "/api/procesos/34/asignaciones/historial", "ADMINISTRATIVO")).isTrue();
+		assertThat(permitido("POST", "/api/procesos/34/cierre", "ABOGADO")).isTrue();
+		assertThat(permitido("POST", "/api/procesos/34/cierre", "ADMINISTRATIVO")).isFalse();
+		assertThat(permitido("POST", "/api/procesos/34/reapertura", "ABOGADO")).isFalse();
+		assertThat(permitido("POST", "/api/procesos/34/reapertura", "SOCIO")).isTrue();
 		// F10: documentos y consultas iniciales
 		assertThat(permitido("POST", "/api/procesos/34/documentos", "DEPENDIENTE")).isTrue();
 		assertThat(permitido("DELETE", "/api/procesos/34/documentos/2", "DEPENDIENTE")).isFalse();

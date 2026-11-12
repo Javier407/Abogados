@@ -31,7 +31,7 @@ public class ReporteRepositorioJdbc implements ReporteRepositorio {
 				LEFT JOIN (
 				    SELECT id_proceso, count(*) AS pendientes, min(fecha_vencimiento) AS proximo
 				    FROM procesos.terminos WHERE estado = 'PENDIENTE' GROUP BY id_proceso
-				) t ON t.id_proceso = a.id_proceso
+				) t ON t.id_proceso = a.id_proceso AND v.estado NOT IN ('TERMINADO', 'ARCHIVADO')
 				WHERE a.id_persona = :persona
 				ORDER BY v.estado IN ('TERMINADO', 'ARCHIVADO'), a.rol <> 'RESPONSABLE', t.proximo NULLS LAST,
 				         v.fecha_radicacion DESC, v.id_proceso DESC
@@ -51,6 +51,8 @@ public class ReporteRepositorioJdbc implements ReporteRepositorio {
 				WITH personas AS (
 				    SELECT id_persona FROM procesos.asignaciones WHERE rol = 'RESPONSABLE'
 				    UNION SELECT id_responsable FROM procesos.terminos WHERE estado = 'PENDIENTE'
+				), abiertos AS (
+				    SELECT id_proceso FROM procesos.procesos WHERE estado NOT IN ('TERMINADO', 'ARCHIVADO')
 				), carga_procesos AS (
 				    SELECT a.id_persona,
 				           count(*) FILTER (WHERE p.estado = 'ACTIVO') AS activos,
@@ -60,12 +62,15 @@ public class ReporteRepositorioJdbc implements ReporteRepositorio {
 				), terminos AS (
 				    SELECT id_responsable AS id_persona, count(*) AS pendientes,
 				           count(*) FILTER (WHERE fecha_vencimiento < :hoy) AS vencidos
-				    FROM procesos.terminos WHERE estado = 'PENDIENTE' GROUP BY id_responsable
+				    FROM procesos.terminos
+				    WHERE estado = 'PENDIENTE' AND id_proceso IN (SELECT id_proceso FROM abiertos)
+				    GROUP BY id_responsable
 				), audiencias AS (
 				    SELECT coalesce(ac.id_persona, r.id_persona) AS id_persona, count(*) AS proximas
 				    FROM procesos.actuaciones ac
 				    LEFT JOIN procesos.asignaciones r ON r.id_proceso = ac.id_proceso AND r.rol = 'RESPONSABLE'
 				    WHERE ac.tipo = 'AUDIENCIA' AND ac.fecha BETWEEN :hoy AND :hoy + 30
+				      AND ac.id_proceso IN (SELECT id_proceso FROM abiertos)
 				    GROUP BY 1
 				)
 				SELECT pe.id_persona, coalesce(p.activos, 0) AS activos, coalesce(p.suspendidos, 0) AS suspendidos,

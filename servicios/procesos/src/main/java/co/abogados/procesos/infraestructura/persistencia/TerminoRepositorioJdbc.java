@@ -30,6 +30,9 @@ public class TerminoRepositorioJdbc implements TerminoRepositorio {
 			LEFT JOIN procesos.providencias pr ON pr.id_providencia = t.id_providencia
 			""";
 
+	/** Un término cumplido es historia y siempre se ve; uno pendiente solo cuenta si su proceso sigue abierto. */
+	private static final String SIN_CERRADOS = "(t.estado = 'CUMPLIDO' OR v.estado NOT IN ('TERMINADO', 'ARCHIVADO'))";
+
 	private final JdbcClient jdbc;
 
 	public TerminoRepositorioJdbc(JdbcClient jdbc) {
@@ -51,6 +54,9 @@ public class TerminoRepositorioJdbc implements TerminoRepositorio {
 		if (f.idProceso() != null) {
 			condiciones.add("t.id_proceso = :proceso");
 			params.put("proceso", f.idProceso());
+		} else {
+			// En la agenda no salen los pendientes de un proceso cerrado; dentro de su expediente sí se ven.
+			condiciones.add(SIN_CERRADOS);
 		}
 		if (f.desde() != null) {
 			condiciones.add("t.fecha_vencimiento >= :desde");
@@ -117,6 +123,7 @@ public class TerminoRepositorioJdbc implements TerminoRepositorio {
 	public List<TerminoVista> paraAvisar(int diasAviso, int diasRecordarVencidos) {
 		return jdbc.sql(SELECT_VISTA + """
 				WHERE t.estado = 'PENDIENTE' AND t.dias_habiles_restantes BETWEEN :minimo AND :maximo
+				  AND v.estado NOT IN ('TERMINADO', 'ARCHIVADO')
 				ORDER BY t.fecha_vencimiento, t.id_termino
 				""")
 				.param("minimo", -diasRecordarVencidos)
