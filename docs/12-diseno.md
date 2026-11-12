@@ -60,7 +60,7 @@ El rediseño sigue los criterios que pidió Javier:
 | Diario | Inicio · Agenda (términos y calendario en pestañas) · Procesos · Vigilancia |
 | Clientes | Clientes · Consultas |
 | Honorarios | Honorarios y pagos (la facturación se retiró en nov. 2026) |
-| La firma (plegable) | Abogados · Peritos · Reportes · Datos de la firma |
+| La firma (plegable) | Abogados (con ficha: sus procesos y su rango de respuesta) · Peritos · Reportes · Datos de la firma |
 | Administración (plegable) | Usuarios · Servidor |
 
 - **Escritorio:** el menú se contrae a iconos y lo recuerda.
