@@ -362,3 +362,15 @@ async def test_un_chat_a_nombre_de_dos_personas_no_es_de_nadie():
     await RepositorioPostgres(registro).registrar_consulta_bot(CATALINA, CHAT, "terminos", "RESPONDIDA")
     assert registro.sql[0][1] == (CATALINA, CHAT, "terminos", "RESPONDIDA")
     assert "INSERT INTO notificaciones.consultas_bot" in registro.sql[0][0]
+
+
+async def test_mis_procesos_marca_como_vencido_el_termino_con_fecha_pasada():
+    datos = DatosFalsos()
+    vencido = {**PROCESOS[1], "terminosPendientes": 1, "proximoVencimiento": "2026-10-16"}
+
+    async def procesos_de(_):
+        return [PROCESOS[0], vencido]
+    datos.procesos_de = procesos_de
+    r = await bot(datos=datos).responder(CHAT, "/mis_procesos")
+    assert "1 término(s); hay uno VENCIDO desde el 16/10/2026" in r
+    assert "2 término(s); el próximo vence el 14/11/2026" in r

@@ -194,8 +194,13 @@ class ConsultasBot:
             linea = (f"\n• {p.get('radicadoLegible')} — {p.get('asunto')}\n"
                      f"  {p.get('tipoProceso')}, etapa {_etiqueta(p.get('etapa'))} ({papel})")
             if p.get("terminosPendientes"):
-                linea += (f"\n  {p['terminosPendientes']} término(s); el próximo vence el "
-                          f"{_fecha(p.get('proximoVencimiento'))}")
+                proximo = p.get("proximoVencimiento")
+                # Un término pendiente con la fecha ya pasada está vencido: no es «el próximo que vence».
+                if proximo and date.fromisoformat(proximo[:10]) < self.hoy():
+                    linea += (f"\n  {p['terminosPendientes']} término(s); hay uno VENCIDO desde el "
+                              f"{_fecha(proximo)}")
+                else:
+                    linea += f"\n  {p['terminosPendientes']} término(s); el próximo vence el {_fecha(proximo)}"
             lineas.append(linea)
         if len(abiertos) > MAXIMO_LISTA:
             lineas.append(f"\n…y {len(abiertos) - MAXIMO_LISTA} más en el portal.")
