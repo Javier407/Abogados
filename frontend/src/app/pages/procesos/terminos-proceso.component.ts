@@ -4,9 +4,12 @@ import { FormsModule, NgForm } from '@angular/forms';
 import { Subject, catchError, debounceTime, of, switchMap } from 'rxjs';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
-import { Termino, TerminoSolicitud, etiqueta, textoRestantes } from '../../core/modelos';
+import { PlazoProceso, Termino, TerminoSolicitud, etiqueta, textoRestantes } from '../../core/modelos';
 
-/** Términos de un proceso y formulario para agregar uno con su vencimiento calculado en días hábiles. */
+/**
+ * Términos de un proceso: los plazos de referencia de su tipo de proceso (cada tipo tiene los suyos), los términos
+ * que ya corren y el formulario para agregar uno con su vencimiento calculado en días hábiles.
+ */
 @Component({
   selector: 'app-terminos-proceso',
   standalone: true,
@@ -22,6 +25,41 @@ import { Termino, TerminoSolicitud, etiqueta, textoRestantes } from '../../core/
           <div class="alerta alerta-error">{{ error }}</div>
         }
 
+        @if (plazos.length) {
+          <details class="plazos" open>
+            <summary>Plazos de este tipo de proceso ({{ plazos.length }})</summary>
+            <p class="form-ayuda">
+              Lo que fija la ley para un proceso como este, según el lado del cliente. «Usar» llena el
+              formulario de abajo; usted pone la fecha en que se notificó.
+            </p>
+            <ul>
+              @for (p of plazos; track p.tipoProvidencia + p.descripcion) {
+                <li [class.opcional]="p.opcional">
+                  <div>
+                    <strong>{{ p.descripcion }}</strong>
+                    <small>{{ p.diasHabiles }} días hábiles · {{ p.norma }}</small>
+                    @if (p.momento) {
+                      <small>Corre: {{ minuscula(p.momento) }}</small>
+                    }
+                    @if (!p.validada) {
+                      <small class="a-validar">De referencia: confírmelo con la norma</small>
+                    }
+                  </div>
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    type="button"
+                    (click)="usar(p)"
+                    [attr.aria-label]="'Usar el plazo: ' + p.descripcion"
+                  >
+                    Usar
+                  </button>
+                </li>
+              }
+            </ul>
+          </details>
+        }
+
+        <h3 class="subtitulo">Términos que corren en este proceso</h3>
         @if (terminos.length === 0) {
           <p class="form-ayuda">Este proceso no tiene términos registrados.</p>
         } @else {
@@ -29,7 +67,7 @@ import { Termino, TerminoSolicitud, etiqueta, textoRestantes } from '../../core/
             <table class="tabla">
               <thead>
                 <tr>
-                  <th>Término</th>
+                  <th>Qué hay que hacer</th>
                   <th>Notificado</th>
                   <th>Días</th>
                   <th>Vence</th>
@@ -40,7 +78,12 @@ import { Termino, TerminoSolicitud, etiqueta, textoRestantes } from '../../core/
               <tbody>
                 @for (t of terminos; track t.idTermino) {
                   <tr>
-                    <td class="titulo-celda">{{ t.descripcion }}</td>
+                    <td class="titulo-celda">
+                      {{ t.descripcion }}
+                      @if (t.norma) {
+                        <br /><small class="norma">{{ t.norma }}</small>
+                      }
+                    </td>
                     <td class="fecha-celda">{{ t.fechaInicio | date: 'dd/MM/yyyy' }}</td>
                     <td>{{ t.diasHabiles }}</td>
                     <td class="fecha-celda">
@@ -62,7 +105,7 @@ import { Termino, TerminoSolicitud, etiqueta, textoRestantes } from '../../core/
                     <td class="acciones-celda">
                       @if (t.estado === 'PENDIENTE') {
                         <button class="btn btn-secondary btn-sm" type="button" (click)="cumplir(t)">
-                          Cumplido
+                          Ya se cumplió
                         </button>
                       }
                       <button class="btn btn-danger btn-sm" type="button" (click)="eliminar(t)">
@@ -126,6 +169,18 @@ import { Termino, TerminoSolicitud, etiqueta, textoRestantes } from '../../core/
               />
             </div>
             <div class="form-group">
+              <label class="form-label" for="normaTermino">Norma que lo fija</label>
+              <input
+                id="normaTermino"
+                class="form-input"
+                name="norma"
+                [(ngModel)]="nuevo.norma"
+                maxlength="120"
+                placeholder="Ej: CGP art. 369"
+              />
+              <span class="form-ayuda">Opcional. Sirve para que cualquiera sepa de dónde sale el plazo.</span>
+            </div>
+            <div class="form-group">
               <span class="form-label">Vence</span>
               <span class="vence-calculado">{{
                 vence ? (vence | date: 'EEEE dd/MM/yyyy') : '—'
@@ -154,6 +209,51 @@ import { Termino, TerminoSolicitud, etiqueta, textoRestantes } from '../../core/
         padding: 8px 0;
         text-transform: capitalize;
       }
+      .subtitulo {
+        font-size: 14px;
+        font-weight: 700;
+        margin: 18px 0 8px;
+      }
+      .plazos {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 14px;
+        background: var(--surface-2);
+      }
+      .plazos summary {
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .plazos ul {
+        list-style: none;
+        margin: 8px 0 0;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      }
+      .plazos li {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+      .plazos li.opcional {
+        border-style: dashed;
+      }
+      .plazos small {
+        display: block;
+        color: var(--muted);
+      }
+      .plazos .a-validar,
+      .norma {
+        color: var(--accent-ink);
+        font-weight: 600;
+      }
     `,
   ],
 })
@@ -164,6 +264,8 @@ export class TerminosProcesoComponent implements OnInit {
   readonly textoRestantes = textoRestantes;
 
   terminos: Termino[] = [];
+  /** Los plazos de referencia del tipo de proceso (rama, tipo y lado del cliente). */
+  plazos: PlazoProceso[] = [];
   nuevo: TerminoSolicitud = this.vacio();
   vence: string | null = null;
   errorVence = '';
@@ -174,6 +276,10 @@ export class TerminosProcesoComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargar();
+    // Si no se pueden leer los plazos, la pestaña sigue sirviendo: solo no se muestran.
+    this.api
+      .plazosProceso(this.idProceso())
+      .subscribe({ next: (p) => (this.plazos = p), error: () => (this.plazos = []) });
     this.calculo$
       .pipe(
         debounceTime(250),
@@ -200,6 +306,17 @@ export class TerminosProcesoComponent implements OnInit {
 
   calcular(): void {
     this.calculo$.next();
+  }
+
+  /** Llena el formulario con un plazo del tipo de proceso; la fecha de notificación la pone quien lo registra. */
+  usar(p: PlazoProceso): void {
+    this.nuevo = { ...this.nuevo, descripcion: p.descripcion, diasHabiles: p.diasHabiles, norma: p.norma };
+    this.calcular();
+    setTimeout(() => document.getElementById('fechaTermino')?.focus());
+  }
+
+  minuscula(texto: string): string {
+    return texto.charAt(0).toLowerCase() + texto.slice(1);
   }
 
   cargar(): void {

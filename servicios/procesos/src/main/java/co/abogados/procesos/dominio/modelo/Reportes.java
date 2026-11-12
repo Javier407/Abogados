@@ -9,6 +9,15 @@ public final class Reportes {
 	private Reportes() {
 	}
 
+	/**
+	 * Un proceso en el que participa un abogado, con su papel (RESPONSABLE, APOYO o DEPENDIENTE), desde cuándo y lo
+	 * que tiene pendiente: cuántos términos corren y cuándo vence el más próximo (null si ninguno).
+	 */
+	public record ProcesoDeAbogado(int idProceso, String radicadoLegible, String asunto, String codigoRama, String rama,
+			String tipoProceso, String etapa, String estado, String rol, java.time.LocalDate desde,
+			int terminosPendientes, java.time.LocalDate proximoVencimiento) {
+	}
+
 	/** Carga de cada abogado responsable: procesos, términos y audiencias de los próximos 30 días. */
 	public record CargaAbogado(long idAbogado, int procesosActivos, int procesosSuspendidos, int terminosPendientes,
 			int terminosVencidos, int audienciasProximas) {

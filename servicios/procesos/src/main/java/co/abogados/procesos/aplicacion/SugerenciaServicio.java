@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import co.abogados.procesos.dominio.excepciones.RecursoNoEncontradoException;
 import co.abogados.procesos.dominio.modelo.FiltroTerminos;
+import co.abogados.procesos.dominio.modelo.PlazoProceso;
 import co.abogados.procesos.dominio.modelo.ProcesoVista;
 import co.abogados.procesos.dominio.modelo.ProvidenciaVista;
 import co.abogados.procesos.dominio.modelo.SugerenciaTermino;
@@ -53,6 +54,13 @@ public class SugerenciaServicio {
 		return SugeridorTerminos.sugerir(proceso, providencia, reglas.reglas(),
 				reglas.diasContestacion(proceso.idTipo()).orElse(null), yaCreados,
 				dias -> calendario.vencimiento(providencia.fechaEstado(), dias));
+	}
+
+	/** Los plazos de referencia del tipo de proceso (su rama, su tipo y el lado del cliente). */
+	public List<PlazoProceso> plazos(int idProceso) {
+		ProcesoVista proceso = procesos.buscar(idProceso)
+				.orElseThrow(() -> new RecursoNoEncontradoException("No existe el proceso " + idProceso));
+		return SugeridorTerminos.plazos(proceso, reglas.reglas(), reglas.diasContestacion(proceso.idTipo()).orElse(null));
 	}
 
 }

@@ -117,5 +117,5 @@ flowchart LR
 
 ## Lo que queda abierto
 
-- **No repudio:** la bitácora `AUDITORIA` no es inalterable (ver `docs/04`, brecha de no repudio).
+- ~~**No repudio:**~~ resuelto: bitácora de auditoría con hash encadenado, solo anexar y sellos guardados en el PC (`docs/14-auditoria.md`). Ahora también quedan los intentos negados (401 y 403) a nombre de quien los hizo.
 - **Límites en memoria:** los dos límites, por IP y por usuario, viven en memoria. Si algún día hay varias instancias, deben pasar a un almacén compartido.

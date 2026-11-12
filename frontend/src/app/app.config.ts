@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localeEsCo from '@angular/common/locales/es-CO';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withViewTransitions } from '@angular/router';
 import { provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
 
 import { routes } from './app.routes';
@@ -23,7 +23,8 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes),
+    // Fundido corto al cambiar de pantalla; sin soporte del navegador o con «reducir movimiento», cambia sin más.
+    provideRouter(routes, withViewTransitions({ skipInitialTransition: true })),
     provideHttpClient(withXhr(), withInterceptors([autenticacion])),
     { provide: LOCALE_ID, useValue: 'es-CO' },
     provideSpartanHlm(),

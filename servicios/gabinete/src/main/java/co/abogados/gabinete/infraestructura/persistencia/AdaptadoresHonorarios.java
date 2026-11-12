@@ -87,7 +87,7 @@ final class AdaptadoresHonorarios {
 
 		@Override
 		public List<TarifaVista> listar(int anio, BigDecimal valorSmmlv) {
-			return tarifas.findAll(Sort.by("fuente", "codigoRama", "servicio")).stream()
+			return tarifas.findByActivaTrue(Sort.by("fuente", "codigoRama", "servicio")).stream()
 					.map(t -> new TarifaVista(t.idTarifa, t.fuente, t.codigoRama, t.servicio, t.tipoServicio,
 							t.formaCobro, t.valorSmmlv, t.valorSmmlvMax, t.porcentaje, t.nota, t.vigenteDesde,
 							t.vigenteHasta, anio, pesos(t.valorSmmlv, valorSmmlv), pesos(t.valorSmmlvMax, valorSmmlv)))

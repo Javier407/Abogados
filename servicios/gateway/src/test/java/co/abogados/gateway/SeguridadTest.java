@@ -68,16 +68,10 @@ class SeguridadTest {
 		assertThat(permitido("POST", "/api/abogados", "SOCIO")).isTrue();
 		assertThat(permitido("POST", "/api/asistente/borradores", "ADMINISTRATIVO")).isFalse();
 		assertThat(permitido("PUT", "/api/vigilancia/radicados/1", "DEPENDIENTE")).isTrue();
-		// F14: facturación
-		assertThat(permitido("GET", "/api/facturas/5", "ABOGADO")).isTrue();
-		assertThat(permitido("POST", "/api/facturas", "ABOGADO")).isFalse();
-		assertThat(permitido("POST", "/api/facturas", "ADMINISTRATIVO")).isTrue();
-		assertThat(permitido("POST", "/api/facturas/5/anulacion", "ADMINISTRATIVO")).isTrue();
-		assertThat(permitido("GET", "/api/facturas", "DEPENDIENTE")).isFalse();
-		assertThat(permitido("PUT", "/api/facturacion/config", "ADMINISTRATIVO")).isFalse();
-		assertThat(permitido("PUT", "/api/facturacion/config", "SOCIO")).isTrue();
-		assertThat(permitido("POST", "/api/facturacion/config/validacion", "ADMINISTRATIVO")).isTrue();
-		assertThat(permitido("GET", "/api/facturacion/config", "ABOGADO")).isFalse();
+		// la facturación electrónica se retiró: sus rutas ya no existen y se niegan a todos
+		assertThat(permitido("GET", "/api/facturas/5", "ADMIN")).isFalse();
+		assertThat(permitido("POST", "/api/facturas", "ADMINISTRATIVO")).isFalse();
+		assertThat(permitido("GET", "/api/facturacion/config", "SOCIO")).isFalse();
 		// F13: cada quien configura su verificación en dos pasos; reiniciarla es del administrador
 		assertThat(permitido("POST", "/api/auth/mfa/inicio", "CLIENTE")).isTrue();
 		assertThat(permitido("GET", "/api/auth/mfa", "DEPENDIENTE")).isTrue();
@@ -100,6 +94,14 @@ class SeguridadTest {
 		assertThat(permitido("GET", "/api/gabinete/areas", "DEPENDIENTE")).isTrue();
 		assertThat(permitido("POST", "/api/procesos/34/asignaciones", "ABOGADO")).isTrue();
 		assertThat(permitido("POST", "/api/procesos/34/asignaciones", "DEPENDIENTE")).isFalse();
+		// relevo del responsable y cierre: los abogados; reabrir un proceso cerrado: solo la dirección
+		assertThat(permitido("POST", "/api/procesos/34/relevo", "ABOGADO")).isTrue();
+		assertThat(permitido("POST", "/api/procesos/34/relevo", "DEPENDIENTE")).isFalse();
+		assertThat(permitido("GET", "/api/procesos/34/asignaciones/historial", "ADMINISTRATIVO")).isTrue();
+		assertThat(permitido("POST", "/api/procesos/34/cierre", "ABOGADO")).isTrue();
+		assertThat(permitido("POST", "/api/procesos/34/cierre", "ADMINISTRATIVO")).isFalse();
+		assertThat(permitido("POST", "/api/procesos/34/reapertura", "ABOGADO")).isFalse();
+		assertThat(permitido("POST", "/api/procesos/34/reapertura", "SOCIO")).isTrue();
 		// F10: documentos y consultas iniciales
 		assertThat(permitido("POST", "/api/procesos/34/documentos", "DEPENDIENTE")).isTrue();
 		assertThat(permitido("DELETE", "/api/procesos/34/documentos/2", "DEPENDIENTE")).isFalse();

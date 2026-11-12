@@ -56,6 +56,16 @@ class ProvidenciaServicioTest {
 	}
 
 	@Test
+	void unaSentenciaDetectadaLlevaElProcesoALaEtapaSentenciaYUnAutoNo() {
+		servicio.registrarDetectada(actuacion("SIM:1", 34, RADICADO));
+		assertThat(expediente.etapas).isEmpty();
+
+		servicio.registrarDetectada(new ActuacionDetectada(RADICADO, 34, "SIM:2", LocalDate.of(2026, 10, 15), "SENTENCIA",
+				"Sentencia de primera instancia", null, "SIMULADA"));
+		assertThat(expediente.etapas).containsExactly(EtapaProceso.SENTENCIA);
+	}
+
+	@Test
 	void registraLaActuacionComoProvidenciaDeVigilancia() {
 		Optional<Integer> id = servicio.registrarDetectada(actuacion("SIM:1", 34, RADICADO));
 
@@ -126,6 +136,11 @@ class ProvidenciaServicioTest {
 		LocalDate dia = LocalDate.of(2026, 10, 14);
 		assertThatThrownBy(() -> new NuevaProvidencia("SENTENCIA", "Fallo", dia, dia, null, null))
 				.isInstanceOf(ReglaNegocioException.class).hasMessageContaining("favorable");
+		assertThatThrownBy(() -> new NuevaProvidencia("AUTO", "Admite", dia, dia, null, null, true))
+				.isInstanceOf(ReglaNegocioException.class).hasMessageContaining("anticipada");
+		assertThat(new NuevaProvidencia("SENTENCIA", "Sentencia anticipada", dia, dia, null, "FAVORABLE", true).anticipada())
+				.isTrue();
+		assertThat(new NuevaProvidencia("SENTENCIA", "Fallo", dia, dia, null, "FAVORABLE").anticipada()).isFalse();
 		assertThatThrownBy(() -> new NuevaProvidencia("AUTO", "Admite", dia, dia, null, "FAVORABLE"))
 				.isInstanceOf(ReglaNegocioException.class);
 		assertThatThrownBy(() -> new NuevaProvidencia("AUTO", "Admite", dia, dia.minusDays(1), null, null))

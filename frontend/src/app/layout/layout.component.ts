@@ -12,7 +12,6 @@ import { filter, map } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideBell,
-  lucideBookOpenCheck,
   lucideBriefcase,
   lucideBuilding2,
   lucideCalendarClock,
@@ -31,9 +30,9 @@ import {
   lucideMoon,
   lucidePanelLeftClose,
   lucidePanelLeftOpen,
-  lucideReceipt,
   lucideSearch,
   lucideServer,
+  lucideShieldCheck,
   lucideSun,
   lucideUser,
   lucideUsers,
@@ -92,7 +91,6 @@ const NOMBRES_ROL: Record<string, string> = {
   providers: [
     provideIcons({
       lucideBell,
-      lucideBookOpenCheck,
       lucideBriefcase,
       lucideBuilding2,
       lucideCalendarClock,
@@ -111,9 +109,9 @@ const NOMBRES_ROL: Record<string, string> = {
       lucideMoon,
       lucidePanelLeftClose,
       lucidePanelLeftOpen,
-      lucideReceipt,
       lucideSearch,
       lucideServer,
+      lucideShieldCheck,
       lucideSun,
       lucideUser,
       lucideUsers,
@@ -192,7 +190,7 @@ export class LayoutComponent {
           { ruta: '/', etiqueta: 'Inicio', icono: 'lucideLayoutDashboard', exacta: true },
           {
             ruta: '/terminos',
-            etiqueta: 'Agenda',
+            etiqueta: 'Términos y audiencias',
             icono: 'lucideCalendarClock',
             activoEn: ['/terminos', '/calendario'],
           },
@@ -214,16 +212,8 @@ export class LayoutComponent {
     if (a.tiene(...CON_FINANZAS)) {
       grupos.push({
         id: 'finanzas',
-        titulo: 'Finanzas',
-        opciones: [
-          { ruta: '/honorarios', etiqueta: 'Honorarios', icono: 'lucideHandCoins' },
-          {
-            ruta: '/facturacion',
-            etiqueta: 'Facturación',
-            icono: 'lucideReceipt',
-            activoEn: ['/facturacion', '/facturas'],
-          },
-        ],
+        titulo: 'Honorarios',
+        opciones: [{ ruta: '/honorarios', etiqueta: 'Honorarios y pagos', icono: 'lucideHandCoins' }],
       });
     }
     grupos.push({
@@ -233,7 +223,6 @@ export class LayoutComponent {
       opciones: [
         { ruta: '/abogados', etiqueta: 'Abogados', icono: 'lucideBriefcase' },
         { ruta: '/peritos', etiqueta: 'Peritos', icono: 'lucideFlaskConical' },
-        { ruta: '/reglas', etiqueta: 'Reglas de términos', icono: 'lucideBookOpenCheck' },
         ...(a.tiene('ADMIN', 'SOCIO')
           ? [
               { ruta: '/reportes', etiqueta: 'Reportes', icono: 'lucideChartColumn' },
@@ -250,6 +239,7 @@ export class LayoutComponent {
         opciones: [
           { ruta: '/usuarios', etiqueta: 'Usuarios', icono: 'lucideKeyRound' },
           { ruta: '/servidor', etiqueta: 'Servidor', icono: 'lucideServer' },
+          { ruta: '/auditoria', etiqueta: 'Auditoría', icono: 'lucideShieldCheck' },
         ],
       });
     }

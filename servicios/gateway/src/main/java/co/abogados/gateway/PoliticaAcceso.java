@@ -54,9 +54,15 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			r(GET, "/api/auth/yo", TODOS),
 			r(HttpMethod.POST, "/api/auth/clave", TODOS),
 			r(null, "/api/auth/mfa/**", TODOS),                  // la propia verificación en dos pasos (F13)
+			// cuentas externas enlazadas (Google, Microsoft, GitHub): cada persona administra las suyas
+			r(HttpMethod.POST, "/api/auth/externo/*/enlazar", TODOS),
+			r(null, "/api/auth/externo/enlaces/**", TODOS),
 			// portal del cliente: solo lectura y solo lo suyo
 			r(GET, "/api/portal/**", Set.of("CLIENTE")),
 			r(null, "/api/usuarios/**", Set.of("ADMIN")),        // administración de cuentas
+			// bitácora de auditoría (la atiende el propio gateway): solo se consulta; nadie la cambia por la API
+			r(GET, "/api/auditoria/**", Set.of("ADMIN")),
+			r(null, "/api/auditoria/**", Set.of()),
 			// gabinete
 			r(GET, "/api/clientes/**", INTERNOS),
 			r(null, "/api/clientes/**", Set.of("ADMIN", "SOCIO", "ABOGADO", "ADMINISTRATIVO")),
@@ -72,12 +78,6 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			// consultas iniciales (F10): las registra el personal; convertirlas en cliente, quien crea clientes
 			r(HttpMethod.POST, "/api/consultas/*/contratacion", Set.of("ADMIN", "SOCIO", "ABOGADO", "ADMINISTRATIVO")),
 			r(null, "/api/consultas/**", INTERNOS),
-			// facturación electrónica (F14): la ven quienes ven finanzas; la emiten y anulan quienes las manejan;
-			// la configuración (resolución, IVA, retenciones) la cambia la dirección y la valida finanzas (el contador)
-			r(GET, "/api/facturas/**", VEN_FINANZAS),
-			r(null, "/api/facturas/**", MANEJAN_FINANZAS),
-			r(HttpMethod.PUT, "/api/facturacion/config", DIRECCION),
-			r(null, "/api/facturacion/**", MANEJAN_FINANZAS),
 			r(GET, "/api/gastos/**", VEN_FINANZAS),
 			r(HttpMethod.POST, "/api/gastos", VEN_FINANZAS),               // quien incurre en el gasto lo registra
 			r(null, "/api/gastos/**", MANEJAN_FINANZAS),                   // reembolsos y borrado: administración
@@ -86,6 +86,7 @@ public class PoliticaAcceso implements ReactiveAuthorizationManager<Authorizatio
 			r(HttpMethod.POST, "/api/procesos/*/terminos", JURIDICO_Y_DEPENDIENTES),
 			r(HttpMethod.POST, "/api/procesos/*/actuaciones", JURIDICO_Y_DEPENDIENTES),   // el dependiente radica memoriales
 			r(HttpMethod.POST, "/api/procesos/*/documentos", JURIDICO_Y_DEPENDIENTES),    // y sube los documentos (F10)
+			r(HttpMethod.POST, "/api/procesos/*/reapertura", DIRECCION),                  // reabrir lo cerrado: la dirección
 			r(null, "/api/procesos/**", JURIDICO),
 			r(GET, "/api/terminos/**", INTERNOS),
 			r(null, "/api/terminos/**", JURIDICO_Y_DEPENDIENTES),

@@ -60,7 +60,12 @@ public class TerminoServicio {
 
 	/** Lo que llega del formulario: el vencimiento lo calcula el servicio. */
 	public record NuevoTermino(String descripcion, LocalDate fechaInicio, int diasHabiles, Integer idProvidencia,
-			Long idResponsable) {
+			Long idResponsable, String norma) {
+
+		public NuevoTermino(String descripcion, LocalDate fechaInicio, int diasHabiles, Integer idProvidencia,
+				Long idResponsable) {
+			this(descripcion, fechaInicio, diasHabiles, idProvidencia, idResponsable, null);
+		}
 	}
 
 	/** Resultado de una revisión de vencimientos. */
@@ -97,7 +102,7 @@ public class TerminoServicio {
 		LocalDate vence = calendario.vencimiento(nuevo.fechaInicio(), nuevo.diasHabiles());
 
 		int id = terminos.crear(new Termino(null, idProceso, nuevo.idProvidencia(), nuevo.descripcion(),
-				nuevo.fechaInicio(), nuevo.diasHabiles(), vence, EstadoTermino.PENDIENTE, responsable));
+				nuevo.fechaInicio(), nuevo.diasHabiles(), vence, EstadoTermino.PENDIENTE, responsable, nuevo.norma()));
 		return obtener(id);
 	}
 

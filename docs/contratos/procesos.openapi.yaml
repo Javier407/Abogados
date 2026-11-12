@@ -172,6 +172,7 @@ paths:
                 diasHabiles: { type: integer, minimum: 1, maximum: 365 }
                 idProvidencia: { type: integer, description: Debe ser del mismo proceso }
                 idResponsable: { type: integer, format: int64, description: Por defecto, el responsable del proceso }
+                norma: { type: string, maxLength: 120, nullable: true, description: 'La norma que fija el plazo (p. ej. CGP art. 369)' }
       responses:
         '201': { description: Creado, content: { application/json: { schema: { $ref: '#/components/schemas/Termino' } } } }
         '400': { $ref: '#/components/responses/Error' }
@@ -347,12 +348,107 @@ paths:
                 fechaProvidencia: { type: string, format: date }
                 fechaEstado: { type: string, format: date }
                 decision: { type: string, maxLength: 300, nullable: true }
+                anticipada: { type: boolean, description: 'Sentencia anticipada (CGP art. 278). Solo en una SENTENCIA; en un AUTO da 422' }
                 sentido: { type: string, enum: [FAVORABLE, DESFAVORABLE, PARCIAL], nullable: true }
       responses:
         '201': { description: Registrada }
         '422': { $ref: '#/components/responses/Error' }
 
   # ---------------------------------------------------------------- agenda, pruebas y términos sugeridos (F7)
+  /procesos/{idProceso}/relevo:
+    post:
+      summary: Otro abogado queda a cargo del proceso, con el motivo (relevo del responsable)
+      description: |
+        Cuerpo { idResponsable, motivo (RENUNCIA | REVOCATORIA | SUSTITUCION | SUCESION | RETIRO_DE_LA_FIRMA |
+        REORGANIZACION), nota?, anteriorQuedaDeApoyo? (false), trasladarPendientes? (true) }. Con trasladarPendientes,
+        los términos pendientes y las audiencias futuras del anterior pasan al nuevo. Queda en el historial del equipo
+        y publica proceso.reasignado. 422: el proceso está cerrado, ese abogado ya está a cargo, o está inactivo.
+      parameters: [ { name: idProceso, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        '200': { description: '{ idAnterior, idNuevo, terminosTrasladados, audienciasTrasladadas }' }
+        '422': { $ref: '#/components/responses/Error' }
+  /procesos/{idProceso}/asignaciones/historial:
+    get:
+      summary: 'Quién estuvo en el equipo: cada periodo con su papel, desde, hasta, motivo y nota. Primero los vigentes'
+      parameters: [ { name: idProceso, in: path, required: true, schema: { type: integer } } ]
+      responses: { '200': { description: Periodos del equipo } }
+  /procesos/{idProceso}/cierre:
+    post:
+      summary: Cierra el proceso con su motivo
+      description: |
+        Cuerpo { motivo (SENTENCIA | SENTENCIA_ANTICIPADA | CONCILIACION | TRANSACCION | DESISTIMIENTO |
+        RETIRO_DE_LA_DEMANDA | PAGO | LIQUIDACION | RENUNCIA_AL_PODER | ARCHIVO | OTRO), fecha? (hoy), nota? (obligatoria
+        con OTRO) }. Queda TERMINADO (ARCHIVADO si el motivo es ARCHIVO) en la etapa CERRADO; sus términos pendientes y
+        audiencias dejan de avisar y de salir en la agenda, y deja de vigilarse. 409 si ya estaba cerrado.
+      parameters: [ { name: idProceso, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        '200': { description: '{ proceso, efectos: { terminosPendientes, audienciasFuturas, seApagoLaVigilancia } }' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /procesos/{idProceso}/reapertura:
+    post:
+      summary: 'Reabre un proceso cerrado (solo la dirección). Cuerpo opcional { etapa }; sin ella, vuelve a la que tenía'
+      parameters: [ { name: idProceso, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        '200': { description: El proceso, ACTIVO }
+        '409': { $ref: '#/components/responses/Error' }
+  /procesos/de-abogado/{idPersona}:
+    get:
+      summary: Los procesos en los que está un abogado, con su papel en cada uno (ficha del abogado)
+      description: |
+        Primero los abiertos y, entre ellos, los que tiene a cargo; los cerrados al final. Lo consulta todo el
+        personal, igual que la lista de procesos.
+      parameters:
+        - { name: idPersona, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '200':
+          description: Procesos del abogado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    idProceso: { type: integer }
+                    radicadoLegible: { type: string }
+                    asunto: { type: string }
+                    codigoRama: { type: string }
+                    rama: { type: string }
+                    tipoProceso: { type: string }
+                    etapa: { type: string }
+                    estado: { type: string }
+                    rol: { type: string, enum: [RESPONSABLE, APOYO, DEPENDIENTE] }
+                    desde: { type: string, format: date }
+                    terminosPendientes: { type: integer }
+                    proximoVencimiento: { type: string, format: date, nullable: true }
+  /procesos/{idProceso}/plazos:
+    get:
+      summary: Los plazos de referencia del tipo de proceso (rama, tipo y lado del cliente); no crea nada
+      description: |
+        Salen de procesos.reglas_termino. Entre reglas del mismo acto procesal gana la más específica: la del tipo de
+        proceso sobre la de la rama, y esta sobre la general. Primero lo que abren los autos y después la sentencia.
+      parameters:
+        - { name: idProceso, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Plazos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    descripcion: { type: string }
+                    diasHabiles: { type: integer }
+                    norma: { type: string }
+                    momento: { type: string, description: Cuándo empieza a correr, en palabras }
+                    tipoProvidencia: { type: string, enum: [AUTO, SENTENCIA] }
+                    opcional: { type: boolean, description: «Si procede» (recursos) }
+                    validada: { type: boolean, description: La revisó un socio }
+                    propio: { type: boolean, description: 'La regla es del tipo de proceso, no heredada de la rama' }
+        '404': { $ref: '#/components/responses/Error' }
   /procesos/{idProceso}/providencias/{idProvidencia}/sugerencias:
     get:
       summary: Términos que abre la providencia (reglas de referencia y plazos escritos en ella); no crea nada
@@ -797,6 +893,10 @@ components:
         idResponsable: { type: integer, format: int64 }
         diasHabilesRestantes: { type: integer, description: Negativo si ya venció }
         situacion: { $ref: '#/components/schemas/Situacion' }
+        norma: { type: string, description: La norma que fija el plazo, si se indicó }
+        tipoProceso: { type: string }
+        etapa: { type: string }
+        providencia: { type: string, description: Clase de la providencia que abrió el término, si se creó desde una }
 
     Rama:
       type: object

@@ -14,6 +14,7 @@ EVENTO_ACTUACION = "actuacion.detectada"
 EVENTO_AUDIENCIA = "audiencia.proxima"
 EVENTO_RESUMEN = "portal.resumen_publicado"
 EVENTO_SEGURIDAD = "cuenta.seguridad"
+EVENTO_RELEVO = "proceso.reasignado"
 DIAS_SEMANA = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 LARGO_MENSAJE = 1000
 
@@ -171,6 +172,47 @@ class AvisoAudiencia:
             raise EventoInvalido(f"Mensaje audiencia.proxima incompleto o mal formado: {e}") from e
 
 
+# Por qué el abogado deja el proceso, en palabras.
+MOTIVOS_RELEVO = {
+    "RENUNCIA": "renuncia al poder",
+    "REVOCATORIA": "revocatoria del poder",
+    "SUSTITUCION": "sustitución del poder",
+    "SUCESION": "sucesión procesal",
+    "RETIRO_DE_LA_FIRMA": "retiro de la firma",
+    "REORGANIZACION": "reorganización del trabajo",
+}
+
+
+@dataclass(frozen=True)
+class AvisoRelevo:
+    """Evento proceso.reasignado: otro abogado quedó a cargo del proceso (lo publica procesos)."""
+    id_proceso: int
+    radicado: str
+    asunto: str
+    id_anterior: int | None
+    id_nuevo: int
+    motivo: str
+    terminos_trasladados: int
+    ocurrido: str
+
+    @staticmethod
+    def desde_mensaje(cuerpo: dict) -> "AvisoRelevo":
+        try:
+            anterior = cuerpo.get("id_abogado_anterior")
+            return AvisoRelevo(
+                id_proceso=int(cuerpo["id_proceso"]),
+                radicado=str(cuerpo["radicado"]),
+                asunto=str(cuerpo.get("asunto") or ""),
+                id_anterior=int(anterior) if anterior is not None else None,
+                id_nuevo=int(cuerpo["id_abogado_nuevo"]),
+                motivo=str(cuerpo["motivo"]),
+                terminos_trasladados=int(cuerpo.get("terminos_trasladados") or 0),
+                ocurrido=str(cuerpo["ocurrido"]),
+            )
+        except (KeyError, TypeError, ValueError) as e:
+            raise EventoInvalido(f"Mensaje proceso.reasignado incompleto o mal formado: {e}") from e
+
+
 @dataclass(frozen=True)
 class AvisoResumen:
     """Evento portal.resumen_publicado: el abogado publicó un resumen para el cliente en el portal."""
@@ -233,6 +275,12 @@ TEXTOS_SEGURIDAD = {
     "CODIGOS_RENOVADOS": ("Se generaron nuevos códigos de recuperación",
                           "El {cuando} se generaron nuevos códigos de recuperación para su cuenta {usuario}; los "
                           "anteriores ya no sirven." + NO_FUE_USTED),
+    "CUENTA_EXTERNA_ENLAZADA": ("Se enlazó una cuenta externa a la suya",
+                                "El {cuando} se enlazó una cuenta de Google, Microsoft o GitHub a su cuenta {usuario}: "
+                                "desde ahora también puede entrar con ella. Puede quitarla en Mi cuenta." + NO_FUE_USTED),
+    "CUENTA_EXTERNA_QUITADA": ("Se quitó una cuenta externa de la suya",
+                               "El {cuando} se quitó una cuenta externa (Google, Microsoft o GitHub) de su cuenta "
+                               "{usuario}: ya no sirve para entrar." + NO_FUE_USTED),
 }
 
 
@@ -298,6 +346,28 @@ def contenido_audiencia(a: AvisoAudiencia, hoy: date) -> Contenido:
                      f"{EVENTO_AUDIENCIA}:{a.id_actuacion}:{a.id_abogado}:{{canal}}:{a.fecha.isoformat()}")
 
 
+def contenido_relevo(a: AvisoRelevo) -> list[Contenido]:
+    """
+    Al abogado que recibe el proceso (con lo que le pasaron) y al que lo entrega. La clave lleva el momento del
+    evento: si el proceso vuelve a cambiar de manos, se avisa de nuevo.
+    """
+    motivo = MOTIVOS_RELEVO.get(a.motivo, a.motivo.replace("_", " ").lower())
+    proceso = radicado_legible(a.radicado)
+    asunto = f" ({a.asunto})" if a.asunto else ""
+    referencia = {"id_proceso": a.id_proceso}
+    recibe = f"Ahora está a su cargo el proceso {proceso}{asunto}. Motivo: {motivo}."
+    if a.terminos_trasladados:
+        n = a.terminos_trasladados
+        recibe += f" Le pasaron {n} término{'s' if n != 1 else ''} pendiente{'s' if n != 1 else ''}: revíselos."
+    avisos = [Contenido(EVENTO_RELEVO, a.id_nuevo, "Recibió un proceso", recibe[:LARGO_MENSAJE], referencia,
+                        f"{EVENTO_RELEVO}:{a.id_proceso}:{a.id_nuevo}:{{canal}}:{a.ocurrido}")]
+    if a.id_anterior is not None and a.id_anterior != a.id_nuevo:
+        entrega = f"El proceso {proceso}{asunto} pasó a otro abogado. Motivo: {motivo}."
+        avisos.append(Contenido(EVENTO_RELEVO, a.id_anterior, "Un proceso cambió de abogado", entrega[:LARGO_MENSAJE],
+                                referencia, f"{EVENTO_RELEVO}:{a.id_proceso}:{a.id_anterior}:{{canal}}:{a.ocurrido}"))
+    return avisos
+
+
 def canales(c: Contenido, preferencias: list[Preferencia], correo_respaldo: str | None,
             telegram_activo: bool = False) -> list[NotificacionNueva]:
     """
@@ -339,7 +409,7 @@ def enlace_de(n: NotificacionNueva, url_app: str) -> tuple[str, str]:
         return f"{base}/cuenta", "Revisar mi cuenta"
     if n.referencia.get("portal") and n.referencia.get("id_proceso"):
         return f"{base}/portal/procesos/{n.referencia['id_proceso']}", "Ver su proceso"
-    if n.evento in (EVENTO_ACTUACION, EVENTO_AUDIENCIA) and n.referencia.get("id_proceso"):
+    if n.evento in (EVENTO_ACTUACION, EVENTO_AUDIENCIA, EVENTO_RELEVO) and n.referencia.get("id_proceso"):
         return f"{base}/procesos/{n.referencia['id_proceso']}", "Ver el expediente"
     return f"{base}/terminos", "Ver la agenda de términos"
 

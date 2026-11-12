@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import co.abogados.procesos.dominio.modelo.NuevaProvidencia;
 import co.abogados.procesos.dominio.modelo.Parte;
 import co.abogados.procesos.dominio.modelo.Prueba;
 import co.abogados.procesos.dominio.modelo.Radicado;
+import co.abogados.procesos.dominio.modelo.Reportes;
 import co.abogados.procesos.dominio.modelo.RolParte;
 import co.abogados.procesos.dominio.modelo.TipoActuacion;
 
@@ -117,10 +119,13 @@ class RepositoriosJdbcTest {
 		CatalogoRepositorioJdbc repo = new CatalogoRepositorioJdbc(jdbc.cliente);
 
 		assertThat(repo.ramas()).singleElement().satisfies(r -> assertThat(r.norma()).isEqualTo("CGP"));
+		assertThat(jdbc.ultima().sql()).contains("WHERE activa");          // solo las ramas que la firma ofrece
 		assertThat(repo.tipos(null)).singleElement()
 				.satisfies(t -> assertThat(t.terminoContestacionDias()).isNull());
 		assertThat(jdbc.ultima().params()).isEmpty();
+		assertThat(jdbc.ultima().sql()).contains("WHERE activo");
 		assertThat(repo.tipos("civil")).hasSize(1);
+		assertThat(jdbc.ultima().sql()).contains("WHERE activo AND codigo_rama = :rama");
 		assertThat(jdbc.ultima().params()).containsEntry("rama", "CIVIL");
 		assertThat(repo.despachos(" ")).singleElement().satisfies(d -> assertThat(d.codDespacho()).isEqualTo("032"));
 		assertThat(repo.despachos("laboral")).hasSize(1);
@@ -130,6 +135,18 @@ class RepositoriosJdbcTest {
 		assertThat(repo.despachoDeRadicado(Radicado.de("11001310303220260050100"))).isPresent();
 		assertThat(jdbc.ultima().params()).containsEntry("dane", "11001").containsEntry("entidad", "31")
 				.containsEntry("especialidad", "03").containsEntry("despacho", "032");
+	}
+
+	@Test
+	void unTipoDesactivadoOInexistenteNoEstaDisponibleParaProcesosNuevos() {
+		CatalogoRepositorioJdbc repo = new CatalogoRepositorioJdbc(jdbc.cliente);
+
+		assertThat(repo.tipoDisponible((short) 99)).isFalse();             // no existe: sin filas
+		jdbc.responderValor("SELECT activo FROM procesos.tipos_proceso", false);
+		assertThat(repo.tipoDisponible((short) 32)).isFalse();             // existe, pero la firma ya no lo ofrece
+		assertThat(jdbc.ultima().params()).containsEntry("id", (short) 32);
+		jdbc.responderValor("SELECT activo FROM procesos.tipos_proceso", true);
+		assertThat(repo.tipoDisponible((short) 1)).isTrue();
 	}
 
 	@Test
@@ -201,6 +218,28 @@ class RepositoriosJdbcTest {
 		assertThat(jdbc.ultima().params()).containsEntry("hoy", hoy);
 		assertThat(repo.resultados(hoy.minusYears(1), hoy)).singleElement()
 				.satisfies(r -> assertThat(r.total()).isEqualTo(6));
+	}
+
+	@Test
+	void losProcesosDeUnAbogadoTraenSuRolYLoPendiente() {
+		jdbc.responder("FROM procesos.asignaciones a", fila("id_proceso", 31, "radicado_legible",
+				"11001-31-03-032-2026-00501-00", "asunto", "Incumplimiento de contrato", "codigo_rama", "CIVIL", "rama",
+				"Civil y comercial", "tipo_proceso", "Verbal", "etapa", "PRUEBAS", "estado", "ACTIVO", "rol", "RESPONSABLE",
+				"desde", LocalDate.of(2026, 9, 1), "pendientes", 2, "proximo", LocalDate.of(2026, 11, 20)),
+				fila("id_proceso", 34, "radicado_legible", "11001-40-03-015-2026-00777-00", "asunto", "Cobro", "codigo_rama",
+						"CIVIL", "rama", "Civil y comercial", "tipo_proceso", "Ejecutivo", "etapa", "DEMANDA", "estado",
+						"ACTIVO", "rol", "APOYO", "desde", LocalDate.of(2026, 10, 1), "pendientes", 0, "proximo", null));
+		ReporteRepositorioJdbc repo = new ReporteRepositorioJdbc(jdbc.cliente);
+
+		List<Reportes.ProcesoDeAbogado> procesos = repo.procesosDe(52345678L);
+
+		assertThat(procesos).extracting(Reportes.ProcesoDeAbogado::rol).containsExactly("RESPONSABLE", "APOYO");
+		assertThat(procesos.get(0).proximoVencimiento()).isEqualTo(LocalDate.of(2026, 11, 20));
+		assertThat(procesos.get(0).terminosPendientes()).isEqualTo(2);
+		assertThat(procesos.get(1).proximoVencimiento()).isNull();
+		assertThat(jdbc.ultima().params()).containsEntry("persona", 52345678L);
+		// primero los abiertos y, entre ellos, los que tiene a cargo
+		assertThat(jdbc.ultima().sql()).contains("ORDER BY v.estado IN ('TERMINADO', 'ARCHIVADO'), a.rol <> 'RESPONSABLE'");
 	}
 
 	@Test

@@ -23,6 +23,7 @@ class Repositorio(Protocol):
                                  despacho: str | None = None, ultima_actuacion=None) -> None: ...
     """Una consulta exitosa deja hecha la línea base y pone en cero los fallos."""
     async def consultas(self, radicado: str, limite: int) -> list[dict]: ...
+    async def actuaciones(self, radicado: str, limite: int) -> list[dict]: ...
     async def agregar_simulada(self, radicado: str, fecha, actuacion: str, anotacion: str) -> int: ...
 
 
@@ -159,3 +160,12 @@ class ServicioVigilancia:
 
     async def historial(self, radicado: str, limite: int = 20) -> list[dict]:
         return await self.repo.consultas(radicado, limite)
+
+    async def actuaciones(self, radicado: str, limite: int = 30) -> list[dict]:
+        """
+        Lo que se ha visto del proceso en la fuente, de lo más reciente a lo más antiguo. Incluye la línea base (lo
+        que ya existía en la primera consulta, que no se avisa) para que se vea la historia completa.
+        """
+        if await self.repo.radicado(radicado) is None:
+            raise LookupError(f"El radicado {radicado} no está en vigilancia")
+        return await self.repo.actuaciones(radicado, max(1, min(limite, 100)))

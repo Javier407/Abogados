@@ -25,6 +25,8 @@ class Config:
     telegram_token: str = field(repr=False)   # secretos: nunca en logs ni repr
     procesos_url: str
     identidad_url: str = "http://localhost:8005"
+    # El bot también responde consultas de la firma (apagado por defecto: ver docs/15-bot-telegram.md).
+    telegram_consultas: bool = False
 
     @staticmethod
     def desde_entorno() -> "Config":
@@ -44,4 +46,5 @@ class Config:
             telegram_token=e("TELEGRAM_TOKEN", "").strip(),
             procesos_url=e("PROCESOS_URL", "http://localhost:8082"),
             identidad_url=e("IDENTIDAD_URL", "http://localhost:8005"),
+            telegram_consultas=_bool(e("TELEGRAM_CONSULTAS", "false")),
         )

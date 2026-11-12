@@ -1,9 +1,12 @@
 import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { mensajeDeError } from '../../core/api.service';
-import { AuthService, InicioMfa, Sesion, esSegundoPaso } from '../../core/auth.service';
+import {
+  AuthService, InicioMfa, MOTIVOS_EXTERNO, ProveedorExterno, Sesion, esSegundoPaso
+} from '../../core/auth.service';
+import { LogoProveedorComponent } from '../../ui/logo-proveedor.component';
 import { LogoComponent } from '../../core/logo.component';
 import { CodigosRecuperacionComponent, QrMfaComponent } from '../../core/mfa-ui';
 import { CodigoOtpComponent } from '../../ui/codigo-otp.component';
@@ -22,6 +25,8 @@ import { CodigoOtpComponent } from '../../ui/codigo-otp.component';
     QrMfaComponent,
     CodigosRecuperacionComponent,
     CodigoOtpComponent,
+    LogoProveedorComponent,
+    RouterLink,
   ],
   template: `
     <main class="login">
@@ -30,7 +35,7 @@ import { CodigoOtpComponent } from '../../ui/codigo-otp.component';
         <app-logo class="marca-logo" />
         <div class="marca-texto">
           <h2>Cada término, a tiempo.</h2>
-          <p>Procesos, plazos, audiencias y facturación de la firma en un solo lugar.</p>
+          <p>Procesos, plazos, audiencias y honorarios de la firma en un solo lugar.</p>
         </div>
         <ul class="marca-puntos">
           <li><span></span>Términos en días hábiles judiciales</li>
@@ -90,6 +95,19 @@ import { CodigoOtpComponent } from '../../ui/codigo-otp.component';
               <button class="btn btn-primary btn-grande" type="submit" [disabled]="enviando">
                 {{ enviando ? 'Entrando…' : 'Entrar' }}
               </button>
+              @if (proveedores.length) {
+                <div class="separador" role="presentation"><span>o continúe con</span></div>
+                <div class="proveedores">
+                  @for (p of proveedores; track p.codigo) {
+                    <button class="btn btn-secondary btn-proveedor" type="button" (click)="entrarCon(p)"
+                      [disabled]="!!yendoA" [attr.aria-label]="'Entrar con ' + p.nombre">
+                      <app-logo-proveedor [codigo]="p.codigo" />
+                      {{ yendoA === p.codigo ? 'Abriendo…' : p.nombre }}
+                    </button>
+                  }
+                </div>
+                <p class="nota-externo">Funciona si ya enlazó esa cuenta en «Mi cuenta». No se crean cuentas nuevas.</p>
+              }
             }
             @case ('codigo') {
               @if (usarRecuperacion) {
@@ -169,7 +187,9 @@ import { CodigoOtpComponent } from '../../ui/codigo-otp.component';
             }
           }
           <p class="pie">
-            Rodríguez &amp; Asociados · acceso solo para personal y clientes de la firma
+            Rodríguez &amp; Asociados · acceso solo para personal y clientes de la firma<br />
+            <a routerLink="/privacidad">Política de privacidad</a> ·
+            <a routerLink="/cookies">Cookies</a>
           </p>
         </form>
       </section>
@@ -357,7 +377,16 @@ import { CodigoOtpComponent } from '../../ui/codigo-otp.component';
         color: var(--muted);
         font-size: 12px;
         margin-top: 8px;
+        line-height: 1.7;
       }
+      .pie a { color: var(--muted); }
+      .pie a:hover { color: var(--accent-ink); }
+      /* Entrar con cuentas externas */
+      .separador { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 12.5px; margin: 4px 0; }
+      .separador::before, .separador::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+      .proveedores { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+      .btn-proveedor { min-height: 44px; font-weight: 600; }
+      .nota-externo { font-size: 12px; color: var(--muted); text-align: center; }
 
       @media (max-width: 900px) {
         .login {
@@ -419,9 +448,69 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    if (this.ruta.snapshot.queryParamMap.get('vencida'))
-      this.aviso = 'Su sesión terminó. Inicie sesión de nuevo.';
-    if (this.auth.token()) this.router.navigateByUrl(this.auth.inicio());
+    const q = this.ruta.snapshot.queryParamMap;
+    if (q.get('vencida')) this.aviso = 'Su sesión terminó. Inicie sesión de nuevo.';
+    if (this.vueltaDeProveedor()) return;
+    if (this.auth.token()) {
+      this.router.navigateByUrl(this.auth.inicio());
+      return;
+    }
+    this.auth.proveedoresExternos().subscribe(p => (this.proveedores = p));
+  }
+
+  /** Cuentas externas configuradas en el servidor (botones bajo el formulario). */
+  proveedores: ProveedorExterno[] = [];
+  yendoA: string | null = null;
+
+  entrarCon(p: ProveedorExterno): void {
+    this.error = this.aviso = '';
+    this.yendoA = p.codigo;
+    this.auth.irAProveedor(p.codigo).subscribe({
+      error: e => { this.yendoA = null; this.error = mensajeDeError(e, `No se pudo abrir ${p.nombre}.`); }
+    });
+  }
+
+  /**
+   * Vuelta de Google, Microsoft o GitHub (la redirección la arma identidad):
+   * - ?externo=ok: la sesión ya está en la cookie; se pide el token como al recargar la página.
+   * - #desafio=...&configurar=...: falta el segundo paso (va en el fragmento para que no llegue a ningún servidor).
+   * - ?externo=error&motivo=...: se explica qué pasó.
+   * Devuelve true si se encargó de la pantalla.
+   */
+  private vueltaDeProveedor(): boolean {
+    const q = this.ruta.snapshot.queryParamMap;
+    const fragmento = new URLSearchParams(this.ruta.snapshot.fragment ?? '');
+    const desafio = fragmento.get('desafio');
+    if (q.get('externo') || desafio) {
+      // La URL de la vuelta no debe quedar en el historial (ni el desafío en la barra de direcciones)
+      history.replaceState(null, '', '/login');
+    }
+    if (desafio) {
+      this.desafio = desafio;
+      this.codigo = '';
+      if (fragmento.get('configurar') === 'true') {
+        this.paso = 'configurar';
+        this.auth.iniciarMfaAlEntrar(desafio).subscribe({ next: i => (this.inicio = i), error: e => this.fallo(e) });
+      } else {
+        this.paso = 'codigo';
+      }
+      return true;
+    }
+    if (q.get('externo') === 'ok') {
+      this.enviando = true;
+      this.auth.renovar().subscribe(s => {
+        this.enviando = false;
+        if (s) this.continuar(s);
+        else this.error = 'No se pudo abrir la sesión. Vuelva a intentarlo.';
+      });
+      return true;
+    }
+    if (q.get('externo') === 'error') {
+      this.error = MOTIVOS_EXTERNO[q.get('motivo') ?? ''] ?? 'No se pudo entrar con esa cuenta.';
+      this.auth.proveedoresExternos().subscribe(p => (this.proveedores = p));
+      return true;
+    }
+    return false;
   }
 
   enviar(form: NgForm): void {

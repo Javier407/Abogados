@@ -1,15 +1,17 @@
 import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
+import { EsqueletoComponent } from '../../ui/esqueleto.component';
 import { Abogado, AreaPractica, Cargo, Sede } from '../../core/modelos';
 
 @Component({
   selector: 'app-abogados',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe],
+  imports: [FormsModule, CurrencyPipe, RouterLink, EsqueletoComponent],
   changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './abogados.component.html',
 })

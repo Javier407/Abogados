@@ -32,4 +32,7 @@ class TarifaEntidad {
 	LocalDate vigenteDesde;
 	@Column(name = "vigente_hasta")
 	LocalDate vigenteHasta;
+	/** false = tarifa de un servicio que la firma ya no ofrece: no sale en la lista de referencia. */
+	@Column(nullable = false, columnDefinition = "boolean default true")
+	boolean activa = true;
 }

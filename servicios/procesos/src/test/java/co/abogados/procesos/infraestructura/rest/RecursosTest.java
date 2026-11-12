@@ -245,6 +245,33 @@ class RecursosTest {
 	}
 
 	@Test
+	void losPlazosDelTipoDeProcesoSalenConSuNormaYSuMomento() throws Exception {
+		given(sugerencias.plazos(31)).willReturn(List.of(new co.abogados.procesos.dominio.modelo.PlazoProceso(
+				"Contestar la demanda", 20, "CGP art. 369", "Cuando le notifican el auto que admite la demanda", "AUTO",
+				false, true, false)));
+
+		mvc.perform(get("/procesos/31/plazos"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].descripcion").value("Contestar la demanda"))
+				.andExpect(jsonPath("$[0].diasHabiles").value(20))
+				.andExpect(jsonPath("$[0].norma").value("CGP art. 369"))
+				.andExpect(jsonPath("$[0].momento").value(containsString("admite la demanda")))
+				.andExpect(jsonPath("$[0].validada").value(true));
+	}
+
+	@Test
+	void elTerminoPuedeLlevarLaNormaQueLoFija() throws Exception {
+		given(terminos.crear(eq(31), any())).willReturn(termino(9, "PENDIENTE"));
+
+		mvc.perform(post("/procesos/31/terminos").contentType(MediaType.APPLICATION_JSON)
+				.content(json("{'descripcion':'Contestar demanda','fechaInicio':'2026-10-01','diasHabiles':20,"
+						+ "'norma':'CGP art. 369'}")))
+				.andExpect(status().isCreated());
+		verify(terminos).crear(31, new TerminoServicio.NuevoTermino("Contestar demanda", LocalDate.of(2026, 10, 1), 20,
+				null, null, "CGP art. 369"));
+	}
+
+	@Test
 	void crearUnTerminoDevuelve201YValidaLosDias() throws Exception {
 		given(terminos.crear(eq(31), any())).willReturn(termino(9, "PENDIENTE"));
 
@@ -485,6 +512,22 @@ class RecursosTest {
 	}
 
 	// ----------------------------------------------------------------- reportes
+
+	@Test
+	void losProcesosDeUnAbogadoSalenConSuRol() throws Exception {
+		given(reportes.procesosDe(52345678L)).willReturn(List.of(new Reportes.ProcesoDeAbogado(31,
+				"11001-31-03-032-2026-00501-00", "Incumplimiento de contrato", "CIVIL", "Civil y comercial", "Verbal",
+				"PRUEBAS", "ACTIVO", "RESPONSABLE", LocalDate.of(2026, 9, 1), 2, LocalDate.of(2026, 11, 20))));
+
+		mvc.perform(get("/procesos/de-abogado/52345678"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].idProceso").value(31))
+				.andExpect(jsonPath("$[0].rol").value("RESPONSABLE"))
+				.andExpect(jsonPath("$[0].tipoProceso").value("Verbal"))
+				.andExpect(jsonPath("$[0].terminosPendientes").value(2))
+				.andExpect(jsonPath("$[0].proximoVencimiento").value("2026-11-20"));
+		mvc.perform(get("/procesos/de-abogado/nadie")).andExpect(status().isBadRequest());
+	}
 
 	@Test
 	void sinFechasLosReportesCubrenElUltimoAnio() throws Exception {

@@ -18,7 +18,7 @@ spring:
         - id: gabinete
           uri: ${GABINETE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/clientes/**,/api/abogados/**,/api/gabinete/**,/api/peritos/**,/api/honorarios/**,/api/gastos/**,/api/portal/finanzas/**,/api/consultas/**,/api/facturas/**,/api/facturacion/**
+            - Path=/api/clientes/**,/api/abogados/**,/api/gabinete/**,/api/peritos/**,/api/honorarios/**,/api/gastos/**,/api/portal/finanzas/**,/api/consultas/**
           filters:
             - StripPrefix=1
         - id: procesos
@@ -61,6 +61,13 @@ server:
 jwt:
   jwks-uri: ${IDENTIDAD_URL:http://localhost:8005}/.well-known/jwks.json
   emisor: gestion-juridica
+
+# Bitácora de auditoría encadenada (docs/14-auditoria.md). Sin DB_URL queda en memoria (desarrollo y pruebas).
+auditoria:
+  bd:
+    url: ${DB_URL:}
+    usuario: ${DB_USER:svc_gateway}
+    clave: ${DB_PASSWORD:}
 
 # Solo health: el gateway está publicado y /actuator/gateway mostraría las rutas internas.
 management:

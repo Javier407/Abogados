@@ -11,8 +11,12 @@ import { AsistenteProcesoComponent } from './pages/procesos/asistente-proceso.co
 import { ProcesosComponent } from './pages/procesos/procesos.component';
 import { TerminosComponent } from './pages/terminos/terminos.component';
 import { ClientesComponent } from './pages/clientes/clientes.component';
-import { FacturacionComponent } from './pages/facturacion/facturacion.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
+import { PrivacidadComponent } from './legal/privacidad.component';
+import { CookiesComponent } from './legal/cookies.component';
+import { AvisoCookiesComponent } from './legal/aviso-cookies.component';
+import { CuentasEnlazadasComponent } from './pages/cuenta/cuentas-enlazadas.component';
+import { AuditoriaComponent } from './pages/auditoria/auditoria.component';
 
 // F17: datos de ejemplo para que las listas se revisen con filas (tablas, enlaces, insignias), no vacías.
 const PROCESO = {
@@ -33,13 +37,16 @@ const CLIENTE = {
   nombre: 'Constructora Altamira SAS', email: 'contacto@altamira.test', telefono: '6015550000', ciudad: 'Bogotá',
   idSede: 1, creado: '2025-01-15T10:00:00'
 };
-const FACTURA = {
-  idFactura: 1, prefijo: 'SETP', numero: 990000001, resolucion: '18760000001', ambiente: 'PRUEBAS', idCliente: 2,
-  emitida: '2026-10-30T09:00:00', vence: '2026-11-29', formaPago: 'CREDITO', estado: 'ACEPTADA', emitidaPor: 79123456,
-  totales: { subtotal: 1000000, iva: 190000, reembolsos: 0, total: 1190000, retencionPct: 11, retencion: 110000, neto: 1080000 },
-  adquirente: { nombre: CLIENTE.nombre, tipoDocumento: 'NIT', numeroDocumento: '900123456', direccion: 'Cra 7 # 1-1',
-                ciudad: 'Bogotá', email: CLIENTE.email },
-  lineas: []
+const AUDITORIA = {
+  registros: [
+    { id: 2, hashAnterior: 'a'.repeat(64), hash: 'b'.repeat(64),
+      acceso: { momento: '2026-11-08T15:04:06Z', usuario: '79123456', roles: 'ABOGADO', metodo: 'GET',
+                ruta: '/api/reportes/carga', estado: 403, duracionMs: 4, ip: '100.64.0.7' } },
+    { id: 1, hashAnterior: '0'.repeat(64), hash: 'a'.repeat(64),
+      acceso: { momento: '2026-11-08T15:04:05Z', usuario: 'anonimo', roles: '', metodo: 'POST',
+                ruta: '/api/auth/login', estado: 200, duracionMs: 90, ip: null } }
+  ],
+  siguiente: null
 };
 let filasRevisadas = 0;   // filas de tabla que tenía la última pantalla revisada
 
@@ -47,7 +54,11 @@ function datosDeEjemplo(url: string): object {
   if (url.endsWith('/api/procesos')) return [PROCESO];
   if (url.endsWith('/api/terminos')) return TERMINOS;
   if (url.endsWith('/api/clientes')) return [CLIENTE];
-  if (url.endsWith('/api/facturas')) return [FACTURA];
+  if (url.endsWith('/api/auth/externo/proveedores')) return [{ codigo: 'GOOGLE', nombre: 'Google' }, { codigo: 'GITHUB', nombre: 'GitHub' }];
+  if (url.endsWith('/api/auth/externo/enlaces')) return [{ proveedor: 'GOOGLE', correo: 'c@gmail.com', creado: '2026-11-01T10:00:00Z' }];
+  if (url.endsWith('/api/auditoria/registros')) return AUDITORIA;
+  if (url.endsWith('/api/usuarios')) return [{ idUsuario: 79123456, usuario: 'afrodriguez', nombre: 'Andrés Rodríguez',
+    email: 'a@firma.test', activo: true, roles: ['ABOGADO'], debeCambiarClave: false }];
   if (url.endsWith('/api/abogados')) return [{ idPersona: 79123456, nombres: 'Andrés Felipe', apellidos: 'Rodríguez Mejía' }];
   return [];
 }
@@ -112,6 +123,16 @@ describe('Accesibilidad (axe-core)', () => {
     expect(await violaciones(CalendarioComponent)).toEqual([]);
   });
 
+  it.each([
+    ['la política de privacidad', PrivacidadComponent],
+    ['la política de cookies', CookiesComponent],
+    ['el aviso de cookies', AvisoCookiesComponent],
+    ['el login con cuentas externas', LoginComponent],
+    ['las cuentas enlazadas', CuentasEnlazadasComponent]
+  ] as [string, Type<unknown>][])('%s no tiene violaciones graves', async (_n, componente) => {
+    expect(await violaciones(componente, {}, true)).toEqual([]);
+  });
+
   it('el inicio «Mi día» no tiene violaciones graves (diseño Lexora)', async () => {
     expect(await violaciones(DashboardComponent, {}, true)).toEqual([]);
   });
@@ -121,7 +142,7 @@ describe('Accesibilidad (axe-core)', () => {
     ['procesos', ProcesosComponent, 1],
     ['términos', TerminosComponent, 4],
     ['clientes', ClientesComponent, 1],
-    ['facturación', FacturacionComponent, 1]
+    ['auditoría', AuditoriaComponent, 2]
   ] as [string, Type<unknown>, number][])('la lista de %s no tiene violaciones graves', async (_n, componente, filas) => {
     expect(await violaciones(componente, {}, true)).toEqual([]);
     expect(filasRevisadas).toBeGreaterThanOrEqual(filas);   // se revisó la tabla con datos, no el estado vacío

@@ -9,6 +9,11 @@ const cliente = conRol('CLIENTE');
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent, title: 'Iniciar sesión' },
+  // Textos legales: públicos, sin sesión (se enlazan desde el login y el aviso de cookies)
+  { path: 'privacidad', loadComponent: () => import('./legal/privacidad.component').then(m => m.PrivacidadComponent),
+    title: 'Política de privacidad' },
+  { path: 'cookies', loadComponent: () => import('./legal/cookies.component').then(m => m.CookiesComponent),
+    title: 'Política de cookies' },
   {
     path: '',
     // El marco (menú, barra y sus componentes de spartan) se descarga aparte: el login carga más liviano.
@@ -26,6 +31,8 @@ export const routes: Routes = [
       { path: 'consultas', loadComponent: () => import('./pages/consultas/consultas.component').then(m => m.ConsultasComponent),
         title: 'Consultas iniciales', canActivate: [personal] },
       { path: 'abogados', loadComponent: () => import('./pages/abogados/abogados.component').then(m => m.AbogadosComponent), title: 'Abogados', canActivate: [personal] },
+      { path: 'abogados/:id', loadComponent: () => import('./pages/abogados/ficha-abogado.component').then(m => m.FichaAbogadoComponent),
+        title: 'Ficha del abogado', canActivate: [personal] },
       { path: 'terminos', loadComponent: () => import('./pages/terminos/terminos.component').then(m => m.TerminosComponent), title: 'Términos', canActivate: [personal] },
       { path: 'calendario', loadComponent: () => import('./pages/calendario/calendario.component').then(m => m.CalendarioComponent), title: 'Calendario judicial', canActivate: [personal] },
       { path: 'vigilancia', loadComponent: () => import('./pages/vigilancia/vigilancia.component').then(m => m.VigilanciaComponent), title: 'Vigilancia', canActivate: [conRol(...JURIDICO_Y_DEPENDIENTES)] },
@@ -36,18 +43,14 @@ export const routes: Routes = [
       { path: 'portal/pagos', loadComponent: () => import('./pages/portal/portal-pagos.component').then(m => m.PortalPagosComponent), title: 'Mis pagos', canActivate: [cliente] },
       { path: 'honorarios', loadComponent: () => import('./pages/honorarios/honorarios.component').then(m => m.HonorariosComponent), title: 'Honorarios y pagos', canActivate: [conRol(...VEN_HONORARIOS)] },
       { path: 'pagos', redirectTo: 'honorarios' },
-      { path: 'facturacion', loadComponent: () => import('./pages/facturacion/facturacion.component').then(m => m.FacturacionComponent),
-        title: 'Facturación', canActivate: [conRol(...VEN_HONORARIOS)] },
-      { path: 'facturas/:id', loadComponent: () => import('./pages/facturacion/factura.component').then(m => m.FacturaComponent),
-        title: 'Factura', canActivate: [conRol(...VEN_HONORARIOS)] },
       { path: 'usuarios', loadComponent: () => import('./pages/usuarios/usuarios.component').then(m => m.UsuariosComponent), title: 'Usuarios', canActivate: [conRol('ADMIN')] },
       { path: 'reportes', loadComponent: () => import('./pages/reportes/reportes.component').then(m => m.ReportesComponent), title: 'Reportes', canActivate: [conRol(...DIRECCION)] },
       { path: 'firma', loadComponent: () => import('./pages/firma/firma.component').then(m => m.FirmaComponent),
         title: 'La firma', canActivate: [conRol(...DIRECCION)] },
-      { path: 'reglas', loadComponent: () => import('./pages/reglas/reglas.component').then(m => m.ReglasComponent),
-        title: 'Reglas de términos', canActivate: [personal] },
       { path: 'servidor', loadComponent: () => import('./pages/servidor/servidor.component').then(m => m.ServidorComponent),
         title: 'Servidor', canActivate: [conRol('ADMIN')] },
+      { path: 'auditoria', loadComponent: () => import('./pages/auditoria/auditoria.component').then(m => m.AuditoriaComponent),
+        title: 'Auditoría', canActivate: [conRol('ADMIN')] },
       { path: 'peritos', loadComponent: () => import('./pages/peritos/peritos.component').then(m => m.PeritosComponent), title: 'Peritos', canActivate: [personal] },
       { path: '**', redirectTo: '' }
     ]

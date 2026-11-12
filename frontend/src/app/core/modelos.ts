@@ -36,6 +36,22 @@ export interface Abogado {
   activo?: boolean;
 }
 
+/** Un proceso en el que participa un abogado, con su papel y lo que tiene pendiente (ficha del abogado). */
+export interface ProcesoDeAbogado {
+  idProceso: number;
+  radicadoLegible: string;
+  asunto: string;
+  codigoRama: string;
+  rama: string;
+  tipoProceso: string;
+  etapa: string;
+  estado: string;
+  rol: 'RESPONSABLE' | 'APOYO' | 'DEPENDIENTE';
+  desde: string;
+  terminosPendientes: number;
+  proximoVencimiento?: string | null;
+}
+
 export interface Sede { idSede: number; nombre: string; ciudad: string; direccion?: string; telefono?: string | null; esPrincipal: boolean; }
 export interface Cargo { idCargo: number; codigo: string; nombre: string; esAbogado: boolean; }
 export interface AreaPractica { idArea: number; codigoRama: string; nombre: string; idDirector?: number; }
@@ -98,7 +114,62 @@ export interface Proceso {
   fechaRadicacion: string;
   vigilado: boolean;
   idResponsable?: number;
+  /** Solo en un proceso cerrado con «Cerrar proceso». */
+  fechaCierre?: string | null;
+  motivoCierre?: MotivoCierre | null;
+  notaCierre?: string | null;
+  /** La etapa que tenía al cerrarse (a la que vuelve si se reabre). */
+  etapaAntesCierre?: string | null;
 }
+
+// ---------- relevo del abogado a cargo y cierre del proceso ----------
+export type MotivoRelevo =
+  | 'RENUNCIA' | 'REVOCATORIA' | 'SUSTITUCION' | 'SUCESION' | 'RETIRO_DE_LA_FIRMA' | 'REORGANIZACION';
+
+export const MOTIVOS_RELEVO: { valor: MotivoRelevo; etiqueta: string; ayuda: string }[] = [
+  { valor: 'RENUNCIA', etiqueta: 'Renuncia al poder', ayuda: 'El abogado renuncia al poder (CGP art. 76).' },
+  { valor: 'REVOCATORIA', etiqueta: 'Revocatoria del poder', ayuda: 'El cliente le revoca el poder al abogado.' },
+  { valor: 'SUSTITUCION', etiqueta: 'Sustitución del poder', ayuda: 'El abogado sustituye el poder en otro (CGP art. 75).' },
+  { valor: 'SUCESION', etiqueta: 'Sucesión', ayuda: 'Otro abogado continúa porque el anterior no puede seguir (licencia, incapacidad, sanción).' },
+  { valor: 'RETIRO_DE_LA_FIRMA', etiqueta: 'Retiro de la firma', ayuda: 'El abogado deja de trabajar en la firma.' },
+  { valor: 'REORGANIZACION', etiqueta: 'Reorganización del trabajo', ayuda: 'La firma redistribuye la carga entre sus abogados.' },
+];
+
+export interface RelevoSolicitud {
+  idResponsable: number | null;
+  motivo: MotivoRelevo | null;
+  nota?: string;
+  anteriorQuedaDeApoyo: boolean;
+  trasladarPendientes: boolean;
+}
+export interface ResultadoRelevo { idAnterior?: number | null; idNuevo: number; terminosTrasladados: number; audienciasTrasladadas: number; }
+
+/** Un periodo de una persona en el equipo del proceso. hasta vacío = sigue. */
+export interface PeriodoEquipo {
+  idCambio: number; idPersona: number; rol: string; desde: string; hasta?: string | null; motivo?: string | null;
+  nota?: string | null; registradoPor?: number | null; cerradoPor?: number | null; nombre?: string | null;
+}
+
+export type MotivoCierre =
+  | 'SENTENCIA' | 'SENTENCIA_ANTICIPADA' | 'CONCILIACION' | 'TRANSACCION' | 'DESISTIMIENTO' | 'RETIRO_DE_LA_DEMANDA'
+  | 'PAGO' | 'LIQUIDACION' | 'RENUNCIA_AL_PODER' | 'ARCHIVO' | 'OTRO';
+
+export const MOTIVOS_CIERRE: { valor: MotivoCierre; etiqueta: string; ayuda: string }[] = [
+  { valor: 'SENTENCIA', etiqueta: 'Sentencia en firme', ayuda: 'El proceso terminó con sentencia ejecutoriada.' },
+  { valor: 'SENTENCIA_ANTICIPADA', etiqueta: 'Sentencia anticipada', ayuda: 'El juez falló sin agotar las etapas (CGP art. 278).' },
+  { valor: 'CONCILIACION', etiqueta: 'Conciliación', ayuda: 'Las partes conciliaron y el juez la aprobó.' },
+  { valor: 'TRANSACCION', etiqueta: 'Transacción', ayuda: 'Las partes transigieron el litigio (CGP art. 312).' },
+  { valor: 'DESISTIMIENTO', etiqueta: 'Desistimiento', ayuda: 'El demandante desistió de las pretensiones (CGP art. 314).' },
+  { valor: 'RETIRO_DE_LA_DEMANDA', etiqueta: 'Retiro de la demanda', ayuda: 'Se retiró la demanda antes de notificarla (CGP art. 92).' },
+  { valor: 'PAGO', etiqueta: 'Pago total', ayuda: 'Se pagó la obligación (procesos ejecutivos).' },
+  { valor: 'LIQUIDACION', etiqueta: 'Liquidación terminada', ayuda: 'Terminó la liquidación del crédito, de la sociedad o de la sucesión.' },
+  { valor: 'RENUNCIA_AL_PODER', etiqueta: 'La firma deja el caso', ayuda: 'La firma renunció al poder o el cliente cambió de abogado.' },
+  { valor: 'ARCHIVO', etiqueta: 'Archivo', ayuda: 'Se archivó sin decisión de fondo (por ejemplo, desistimiento tácito).' },
+  { valor: 'OTRO', etiqueta: 'Otro motivo', ayuda: 'Explíquelo en la nota.' },
+];
+
+export interface EfectosCierre { terminosPendientes: number; audienciasFuturas: number; seApagoLaVigilancia: boolean; }
+export interface ResultadoCierre { proceso: Proceso; efectos: EfectosCierre; }
 
 export interface DesgloseRadicado {
   radicado: string;
@@ -148,6 +219,12 @@ export interface Termino {
   idResponsable: number;
   diasHabilesRestantes: number;
   situacion: Situacion;
+  /** La norma que fija el plazo, si se indicó. */
+  norma?: string;
+  tipoProceso?: string;
+  etapa?: string;
+  /** La decisión del juez que abrió el término (su clase), si se creó desde una providencia. */
+  providencia?: string;
 }
 
 export interface TerminoSolicitud {
@@ -156,6 +233,23 @@ export interface TerminoSolicitud {
   diasHabiles: number | null;
   idProvidencia?: number | null;
   idResponsable?: number | null;
+  norma?: string | null;
+}
+
+/** Un plazo de referencia del tipo de proceso (GET /procesos/:id/plazos). */
+export interface PlazoProceso {
+  descripcion: string;
+  diasHabiles: number;
+  norma: string;
+  /** Cuándo empieza a correr, en palabras. */
+  momento?: string;
+  tipoProvidencia: 'AUTO' | 'SENTENCIA';
+  /** «Si procede»: recursos y similares. */
+  opcional: boolean;
+  /** Lo revisó un socio; si no, es de referencia. */
+  validada: boolean;
+  /** La regla es de este tipo de proceso, no heredada de la rama. */
+  propio: boolean;
 }
 
 export interface DiaInhabil { fecha: string; descripcion: string; tipo: 'FESTIVO' | 'VACANCIA' | 'SEMANA_SANTA'; }
@@ -171,6 +265,22 @@ export interface Aviso {
   referencia: { id_proceso?: number; id_termino?: number; portal?: boolean };
   leida: boolean;
   creada: string;
+}
+
+/**
+ * Días del calendario entre la notificación y el vencimiento que no contaron: fines de semana, festivos,
+ * Semana Santa y vacancia judicial.
+ */
+export function diasNoContados(t: { fechaInicio: string; fechaVencimiento: string; diasHabiles: number }): number {
+  const corridos = Math.round((Date.parse(t.fechaVencimiento) - Date.parse(t.fechaInicio)) / 86_400_000);
+  return Math.max(0, corridos - t.diasHabiles);
+}
+
+/** Parte del plazo ya consumida, de 0 a 100 (100 = vencido o cumplido). */
+export function avancePlazo(t: { estado: string; diasHabiles: number; diasHabilesRestantes: number }): number {
+  if (t.estado === 'CUMPLIDO' || t.diasHabiles <= 0) return 100;
+  const usados = t.diasHabiles - Math.max(0, t.diasHabilesRestantes);
+  return Math.min(100, Math.max(0, Math.round((usados / t.diasHabiles) * 100)));
 }
 
 /** Texto para los días hábiles que faltan: 'vence hoy', 'faltan 3 días', 'venció hace 2 días'. */
@@ -205,6 +315,9 @@ export interface RadicadoVigilado {
   lineaBaseHecha: boolean;
 }
 
+/** Lo que la vigilancia vio del proceso en la fuente. nueva = false: ya existía en la primera consulta. */
+export interface ActuacionVista { fecha: string; actuacion: string; anotacion?: string | null; nueva: boolean; vista: string; }
+
 export interface ResultadoConsulta { radicado: string; exitosa: boolean; actuaciones?: number; nuevas?: number; lineaBase?: boolean; error?: string; }
 export interface ConsultaVigilancia { fecha: string; exitosa: boolean; nuevas: number; detalle: Record<string, unknown>; }
 
@@ -218,6 +331,8 @@ export interface Providencia {
   decision?: string;
   sentido?: string;
   fuente: 'MANUAL' | 'VIGILANCIA';
+  /** Sentencia anticipada (CGP art. 278). */
+  anticipada?: boolean;
 }
 
 export interface EstadoTelegram { configurado: boolean; vinculado: boolean; bot: string | null; }
@@ -366,6 +481,7 @@ export interface ProvidenciaSolicitud {
   fechaEstado: string;
   decision?: string | null;
   sentido?: 'FAVORABLE' | 'DESFAVORABLE' | 'PARCIAL' | null;
+  anticipada?: boolean;
 }
 export interface EventoExpediente {
   fecha: string;
@@ -425,6 +541,8 @@ export interface SugerenciaTermino {
   origen: 'REGLA' | 'PROVIDENCIA';
   prioridad: number;
   validada: boolean;
+  /** Cuándo empieza a correr, en palabras (solo las que salen de una regla). */
+  momento?: string;
 }
 
 // ---------- administración, gastos y reportes (F8) ----------
@@ -608,28 +726,7 @@ export interface ResultadoRama {
   sinSentido: number;
 }
 
-// ------------------------------------------------------------------ F12: reglas de términos y estado del servidor
-
-export type TipoProvidencia = 'AUTO' | 'SENTENCIA';
-
-/** Lo que se escribe al crear o editar una regla. dias vacío = los días de contestación del tipo de proceso. */
-export interface ReglaSolicitud {
-  tipoProvidencia: TipoProvidencia; codigoRama?: string | null; idTipo?: number | null; patron: string;
-  lado?: 'DEMANDANTE' | 'DEMANDADO' | null; descripcion: string; dias?: number | null; norma: string;
-  prioridad: 1 | 2; activa: boolean;
-}
-
-export interface ReglaTermino extends ReglaSolicitud {
-  idRegla: number; validada: boolean; validadaPor?: number; nombreValidador?: string; validadaEn?: string;
-  modificadaPor?: number; modificadaEn?: string;
-}
-
-export interface CambioRegla {
-  momento: string; idUsuario: number; nombre?: string;
-  accion: 'CREADA' | 'EDITADA' | 'VALIDADA' | 'ACTIVADA' | 'DESACTIVADA'; detalle?: string;
-}
-
-export interface PruebaPatron { coincide: boolean; claseNormalizada: string; }
+// ------------------------------------------------------------------ F12: estado del servidor
 
 export interface PuntoServidor {
   momento: string; disco: number; memoriaMb: number; appOk: boolean; problemas: number; revisiones: number; sinApp: number;
@@ -650,61 +747,31 @@ export interface EstadoServidor {
               recientes: { momento: string; servicio: string; linea: string }[] };
 }
 
-// ------------------------------------------------------------------ F14: facturación electrónica
-
-export type TipoLineaFactura = 'SERVICIO' | 'REEMBOLSO';
-export type EstadoFactura = 'ACEPTADA' | 'RECHAZADA' | 'ANULADA';
-export type FormaPagoFactura = 'CONTADO' | 'CREDITO';
-
-export interface LineaFacturaSolicitud {
-  tipo: TipoLineaFactura; descripcion?: string; cantidad?: number; valorUnitario?: number;
-  idHonorario?: number | null; idGasto?: number | null;
+// ---------- bitácora de auditoría encadenada (solo ADMIN; docs/14-auditoria.md) ----------
+export interface AccesoAuditoria {
+  momento: string;
+  /** Documento de quien hizo la petición, o «anonimo» (sin sesión o con un token inválido). */
+  usuario: string;
+  roles: string;
+  metodo: string;
+  ruta: string;
+  /** Código HTTP; null si la petición se cortó antes de responder. */
+  estado: number | null;
+  duracionMs: number;
+  ip: string | null;
 }
-
-export interface FacturaSolicitud {
-  idCliente: number; idProceso?: number | null; formaPago: FormaPagoFactura; retencionPct?: number | null;
-  observaciones?: string; lineas: LineaFacturaSolicitud[];
+export interface RegistroAuditoria { id: number; acceso: AccesoAuditoria; hashAnterior: string; hash: string; }
+export interface PaginaAuditoria { registros: RegistroAuditoria[]; siguiente: number | null; }
+export interface FiltroAuditoria {
+  usuario?: string | null; metodo?: string | null; ruta?: string | null; fallos?: boolean;
+  desde?: string | null; hasta?: string | null; antesDe?: number | null; limite?: number;
 }
-
-export interface LineaFactura {
-  linea: number; tipo: TipoLineaFactura; descripcion: string; cantidad: number; valorUnitario: number;
-  ivaPct: number; valor: number; iva: number; idHonorario?: number; idGasto?: number;
+export interface RevisionAuditoria {
+  cadena: {
+    integra: boolean; revisados: number; ultimoId: number; ultimoHash: string;
+    roturaEn: number | null; motivo: string | null;
+  };
+  /** Cómo va la escritura en el gateway: accesos esperando a guardarse y perdidos (espera llena). */
+  escritura: { almacen: 'postgres' | 'memoria'; pendientes: number; perdidos: number };
+  momento: string;
 }
-
-export interface TotalesFactura {
-  subtotal: number; iva: number; reembolsos: number; total: number; retencionPct: number; retencion: number; neto: number;
-}
-
-export interface NotaCredito {
-  idNota: number; prefijo: string; numero: number; motivo: string; valor: number; emitida: string; cude?: string;
-}
-
-export interface Factura {
-  idFactura: number; prefijo: string; numero: number; resolucion: string; ambiente: 'PRUEBAS' | 'PRODUCCION';
-  idCliente: number; idProceso?: number; emitida: string; vence: string; formaPago: FormaPagoFactura;
-  totales: TotalesFactura; observaciones?: string; cufe?: string; estado: EstadoFactura; respuesta?: string;
-  emitidaPor: number;
-  adquirente: { nombre: string; tipoDocumento: string; numeroDocumento: string; direccion: string; ciudad: string; email: string };
-  lineas: LineaFactura[]; notaCredito?: NotaCredito;
-}
-
-export interface EmisorFactura { nit: string; razonSocial: string; direccion?: string; ciudad?: string; telefono?: string; email?: string; }
-
-export interface ConfigFacturacion {
-  responsableIva: boolean; tarifaIva: number; retencionJuridica: number; retencionNatural: number; diasCredito: number;
-  resolucion: string; prefijo: string; rangoDesde: number; rangoHasta: number; siguiente: number;
-  vigenteDesde: string; vigenteHasta: string; prefijoNota: string; siguienteNota: number;
-  ambiente: 'PRUEBAS' | 'PRODUCCION'; proveedor: string; validadaPor?: number; validadaEn?: string;
-}
-
-export interface DetalleFactura {
-  factura: Factura; emisor: EmisorFactura; config: ConfigFacturacion; textoQr: string; urlConsulta: string;
-}
-
-export interface EstadoConfigFacturacion { config: ConfigFacturacion; restantes: number; impedimento?: string; proveedor: string; }
-
-export interface PendienteFacturar {
-  tipo: TipoLineaFactura; descripcion: string; valor: number; idHonorario?: number; idGasto?: number; idProceso?: number;
-}
-
-export interface VistaPreviaFactura { lineas: LineaFactura[]; totales: TotalesFactura; retencionSugerida: number; }

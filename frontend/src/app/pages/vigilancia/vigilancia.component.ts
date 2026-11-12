@@ -3,9 +3,17 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { forkJoin } from 'rxjs';
+
 import { ApiService, mensajeDeError } from '../../core/api.service';
 import {
+  ActuacionVista,
   ConsultaVigilancia,
+  ETAPAS,
+  Proceso,
+  Termino,
+  etiqueta,
+  textoRestantes,
   FUENTES,
   FuenteVigilancia,
   Providencia,
@@ -13,10 +21,21 @@ import {
   SugerenciaTermino,
 } from '../../core/modelos';
 
+/** Cómo va un proceso, en una línea: su etapa, lo último que pasó y lo próximo que vence. */
+interface Avance {
+  asunto: string;
+  etapa: string;
+  estado: string;
+  /** Posición de la etapa (para la barrita de avance), de 0 a 1. */
+  progreso: number;
+  proximo: Termino | null;
+  pendientes: number;
+}
+
 /**
- * Radicados vigilados en la Rama Judicial: de dónde se consultan, cómo les fue y simulación para pruebas.
- * Encadenado: en el panel del radicado se ven sus providencias recientes (las detectadas por la vigilancia
- * primero) y se crea el término sugerido ahí mismo, sin ir al expediente.
+ * Vigilancia de la Rama Judicial: cómo va cada proceso vigilado (etapa, lo último que pasó en el juzgado y lo
+ * próximo que vence) y la salud de la consulta (fuente, última consulta, fallos). En el panel del radicado se ve
+ * todo lo que la vigilancia vio en la Rama Judicial, sus providencias y se crea el término sugerido ahí mismo.
  */
 @Component({
   selector: 'app-vigilancia',
@@ -29,6 +48,13 @@ import {
 export class VigilanciaComponent implements OnInit {
   private api = inject(ApiService);
   readonly fuentes = FUENTES;
+  readonly etiqueta = etiqueta;
+  readonly textoRestantes = textoRestantes;
+
+  /** Cómo va cada proceso, por id de proceso. */
+  avances = new Map<number, Avance>();
+  actuaciones: ActuacionVista[] = [];
+  cargandoActuaciones = false;
 
   radicados: RadicadoVigilado[] = [];
   disponibles: FuenteVigilancia[] = ['MANUAL'];
@@ -70,8 +96,51 @@ export class VigilanciaComponent implements OnInit {
     return this.fuentes.find((x) => x.valor === f)?.etiqueta ?? f;
   }
 
+  /** Los datos del proceso (etapa, asunto) y sus términos: viven en el servicio procesos. */
+  private cargarAvances(): void {
+    forkJoin({ procesos: this.api.procesos({}), terminos: this.api.terminos({}) }).subscribe({
+      next: ({ procesos, terminos }) => {
+        const pendientes = new Map<number, Termino[]>();
+        for (const t of terminos.filter((x) => x.estado === 'PENDIENTE')) {
+          pendientes.set(t.idProceso, [...(pendientes.get(t.idProceso) ?? []), t]);
+        }
+        this.avances = new Map(
+          procesos.map((p: Proceso) => {
+            const suyos = (pendientes.get(p.idProceso) ?? []).sort((a, b) =>
+              a.fechaVencimiento.localeCompare(b.fechaVencimiento),
+            );
+            const i = (ETAPAS as readonly string[]).indexOf(p.etapa);
+            return [
+              p.idProceso,
+              {
+                asunto: p.asunto,
+                etapa: p.etapa,
+                estado: p.estado,
+                progreso: i < 0 ? 0 : (i + 1) / ETAPAS.length,
+                proximo: suyos[0] ?? null,
+                pendientes: suyos.length,
+              },
+            ];
+          }),
+        );
+      },
+      error: () => (this.avances = new Map()),      // sin esto, la tabla sigue mostrando la vigilancia
+    });
+  }
+
+  avance(r: RadicadoVigilado): Avance | undefined {
+    return this.avances.get(r.idProceso);
+  }
+
+  /** Hubo movimiento en el juzgado en los últimos 7 días. */
+  novedad(r: RadicadoVigilado): boolean {
+    if (!r.ultimaActuacion) return false;
+    return Date.now() - Date.parse(r.ultimaActuacion) <= 7 * 86_400_000;
+  }
+
   cargar(): void {
     this.cargando = true;
+    this.cargarAvances();
     this.api.radicadosVigilados().subscribe({
       next: (r) => {
         this.radicados = r;
@@ -89,6 +158,20 @@ export class VigilanciaComponent implements OnInit {
   elegir(r: RadicadoVigilado): void {
     this.seleccionado = r;
     this.mensaje = this.error = '';
+    this.actuaciones = [];
+    if (r.fuente !== 'MANUAL') {
+      this.cargandoActuaciones = true;
+      this.api.actuacionesVigiladas(r.radicado).subscribe({
+        next: (a) => {
+          this.actuaciones = a;
+          this.cargandoActuaciones = false;
+        },
+        error: () => {
+          this.actuaciones = [];
+          this.cargandoActuaciones = false;
+        },
+      });
+    }
     this.api
       .historialVigilancia(r.radicado)
       .subscribe({ next: (h) => (this.historial = h), error: () => (this.historial = []) });
@@ -129,6 +212,7 @@ export class VigilanciaComponent implements OnInit {
         fechaInicio: s.fechaInicio,
         diasHabiles: s.diasHabiles,
         idProvidencia: p.idProvidencia,
+        norma: s.norma,
       })
       .subscribe({
         next: (t) => {

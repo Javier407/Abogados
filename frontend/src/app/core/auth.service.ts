@@ -31,6 +31,24 @@ export interface SegundoPaso {
 export interface InicioMfa { secreto: string; uri: string; }
 export interface EstadoMfa { activo: boolean; desde?: string; codigosRestantes: number; obligatorio: boolean; }
 
+/** Cuentas externas con que se puede entrar, una vez enlazadas desde «Mi cuenta». */
+export type CodigoProveedor = 'GOOGLE' | 'MICROSOFT' | 'GITHUB';
+export interface ProveedorExterno { codigo: CodigoProveedor; nombre: string; }
+export interface EnlaceExterno { proveedor: CodigoProveedor; correo?: string | null; creado: string; ultimoUso?: string | null; }
+
+/** Qué significa cada motivo con que vuelve un intento fallido (los códigos los define identidad). */
+export const MOTIVOS_EXTERNO: Record<string, string> = {
+  'sin-enlace': 'Esa cuenta no está enlazada a ningún usuario de la firma. Entre con su usuario y contraseña y enlácela en «Mi cuenta».',
+  'cancelado': 'Se canceló el inicio de sesión en el proveedor.',
+  'vencido': 'El intento venció o ya se usó. Vuelva a intentarlo.',
+  'otro-navegador': 'El intento se inició en otro navegador. Vuelva a intentarlo desde aquí.',
+  'proveedor': 'El proveedor no respondió como se esperaba. Vuelva a intentarlo en unos minutos.',
+  'bloqueada': 'La cuenta está bloqueada por intentos fallidos. Espere 15 minutos.',
+  'inactiva': 'La cuenta está desactivada; hable con el administrador.',
+  'de-otra-persona': 'Esa cuenta externa ya está enlazada a otro usuario de la firma.',
+  'ya-enlazada': 'Ya tiene una cuenta de ese proveedor enlazada; quítela primero.'
+};
+
 export function esSegundoPaso(r: Sesion | SegundoPaso): r is SegundoPaso {
   return (r as SegundoPaso).mfaRequerido === true;
 }
@@ -107,6 +125,31 @@ export class AuthService {
   }
   desactivarMfa(clave: string, codigo: string): Observable<unknown> {
     return this.http.post('/api/auth/mfa/desactivacion', { clave, codigo });
+  }
+
+  // ---------------------------------------------------------------- cuentas externas (Google, Microsoft, GitHub)
+
+  /** Proveedores configurados en el servidor (ninguno si no se han registrado las apps OAuth). */
+  proveedoresExternos(): Observable<ProveedorExterno[]> {
+    return this.http.get<ProveedorExterno[]>('/api/auth/externo/proveedores').pipe(catchError(() => of([])));
+  }
+
+  /**
+   * Va al proveedor para entrar (enlazar = false) o para enlazar la cuenta de quien ya está dentro. El servidor
+   * devuelve la URL y deja la cookie del flujo; el navegador sale de la app y vuelve por /api/auth/externo/.../vuelta.
+   */
+  irAProveedor(codigo: CodigoProveedor, enlazar = false): Observable<void> {
+    const ruta = `/api/auth/externo/${codigo.toLowerCase()}/${enlazar ? 'enlazar' : 'entrar'}`;
+    return this.http.post<{ url: string }>(ruta, null, { headers: AJAX })
+      .pipe(map(r => { window.location.assign(r.url); }));
+  }
+
+  enlacesExternos(): Observable<EnlaceExterno[]> {
+    return this.http.get<EnlaceExterno[]>('/api/auth/externo/enlaces');
+  }
+
+  quitarEnlace(codigo: CodigoProveedor): Observable<unknown> {
+    return this.http.delete(`/api/auth/externo/enlaces/${codigo.toLowerCase()}`);
   }
 
   /**

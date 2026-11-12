@@ -49,7 +49,7 @@ Este catálogo se carga en las tablas `procesos.ramas` y `procesos.tipos_proceso
 | Pensional (seguridad social) | CPTSS | Ordinario contra Colpensiones o AFP, reconocimiento de pensión, reliquidación de pensión |
 | Penal | Ley 906 de 2004 | Indagación, imputación y acusación, juicio oral, procedimiento abreviado, incidente de reparación integral |
 | Administrativo | Ley 1437 de 2011 (CPACA) | Nulidad y restablecimiento del derecho, reparación directa, controversias contractuales, nulidad simple |
-| Constitucional (transversal) | Decreto 2591 de 1991 y Ley 472 de 1998 | Tutela, acción popular, acción de grupo |
+| Constitucional (transversal). **Desactivada en nov. 2026:** la firma ya no la ofrece; los procesos existentes se conservan | Decreto 2591 de 1991 y Ley 472 de 1998 | Tutela, acción popular, acción de grupo |
 
 ## 1.5 El radicado
 
@@ -152,7 +152,7 @@ SMMLV 2026 usado por las fuentes: **$1.750.905** (verificar con el decreto ofici
 | Dependiente judicial | Revisa estados, radica memoriales y hace vueltas en los despachos. |
 | Paralegal | Organiza expedientes, pruebas y documentos. |
 | Secretaria | Agenda, atención a clientes, registro de consultas. |
-| Contador | Honorarios, facturación y pagos. |
+| Contador | Honorarios, pagos y gastos. |
 
 La firma tiene **sedes** y **áreas de práctica** (una por rama). Cada proceso tiene un **abogado responsable** y puede tener abogados de **apoyo**.
 

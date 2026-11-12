@@ -95,6 +95,8 @@ El proyecto evoluciona hacia un sistema de microservicios para firmas de abogado
 | [`docs/10-accesibilidad.md`](docs/10-accesibilidad.md) | Auditoría WCAG 2.1 AA con axe-core (Axe DevTools): hallazgos, correcciones y prueba en CI |
 | [`docs/11-pruebas-usuario.md`](docs/11-pruebas-usuario.md) | Protocolo de pruebas con usuarios: tareas, métricas y cuestionario SUS |
 | [`docs/12-diseno.md`](docs/12-diseno.md) | Diseño Lexora: marca, sistema visual 60-30-10, menú agrupado, flujos encadenados y verificación |
+| [`docs/13-privacidad-y-acceso-externo.md`](docs/13-privacidad-y-acceso-externo.md) | Política de privacidad y de cookies, y entrar con Google, Microsoft o GitHub (cómo activarlos) |
+| [`docs/14-auditoria.md`](docs/14-auditoria.md) | Bitácora de auditoría con hash encadenado: qué se anota, cómo se protege, sellos en el PC y cómo revisarla |
 | [`docs/adr/`](docs/adr/) | Decisiones de arquitectura (políglota, RabbitMQ, PostgreSQL por esquemas, JWT propio, fuente Rama Judicial) |
 
 ### Base de datos de pruebas (PostgreSQL 16)
@@ -179,11 +181,13 @@ done
 
 Desde ahí http://IP:8090 redirige a HTTPS, el navegador recibe HSTS y la cookie de la sesión solo viaja cifrada. Mientras no haya HTTPS, `COOKIE_SEGURA=false` (si no, el navegador no guarda la cookie y la sesión dura 15 minutos).
 
-**Facturación electrónica (F14).** Pantalla **Facturación**. Hoy con el proveedor **SIMULADO** y el rango del set de pruebas de la DIAN: el flujo es el real, pero nada se envía a la DIAN ni tiene validez fiscal. Para producción hay que contratar un proveedor tecnológico, escribir su adaptador de `ProveedorFacturacion` y cargar la resolución de numeración real en **Facturación → Configuración**.
+**Facturación electrónica: retirada (noviembre de 2026).** La firma decidió no facturar desde la app. Se quitaron la pantalla, el servicio y sus tablas (migración `016-quitar-facturacion.sql`, que se detiene si encuentra facturas guardadas). Siguen **honorarios, pagos, liquidación, gastos y cartera**.
+
+**Rama Constitucional: desactivada.** La firma ya no ofrece tutelas ni acciones populares o de grupo. La migración `017-desactivar-constitucional.sql` las marca como inactivas (`activa`/`activo = false`): dejan de salir en las listas para procesos, áreas y tarifas nuevas, pero los procesos que ya existen se conservan y se pueden seguir editando.
 
 **Verificación en dos pasos (F13).** Cada persona la activa en **Mi cuenta** con una app autenticadora. `MFA_OBLIGATORIO_ROLES` en `infra/.env` (p. ej. `ADMIN,SOCIO`) la exige a esos roles. Los secretos se cifran con `MFA_CLAVE_CIFRADO` (se genera una vez en el servidor, ver `.env.example`, y se respalda con las demás llaves). Quien pierda el teléfono y los códigos de recuperación pide al administrador que la reinicie en **Usuarios**.
 
-**Historial del servidor (F12).** El vigía guarda cada revisión (90 días) y cada incidente en el esquema `operacion`; el administrador los ve en la pantalla **Servidor**. **Reglas de términos (F12):** pantalla **Reglas**; solo un socio las cambia o valida.
+**Historial del servidor (F12).** El vigía guarda cada revisión (90 días) y cada incidente en el esquema `operacion`; el administrador los ve en la pantalla **Servidor**. **Reglas de términos:** las sugerencias de términos siguen saliendo de `procesos.reglas_termino`, pero la pantalla **Reglas** se retiró: las reglas se cargan y validan por migración o SQL. Cada tipo de proceso tiene sus plazos (migración `018`): la regla del tipo gana a la de la rama y esta a la general, y la pestaña **Términos** del expediente los muestra con su norma.
 
 **Vigía del servidor (F11).** `infra/monitoreo/vigia.sh` revisa cada 5 minutos contenedores, disco, memoria, respaldos, outbox, colas de RabbitMQ y HTTPS, y avisa por Telegram a los administradores que vincularon Telegram en la app (problema nuevo, resuelto y un resumen diario). Se instala como timer de systemd con `sh infra/monitoreo/instalar.sh` (`quitar` para desinstalarlo). Para revisar a mano: `sh infra/monitoreo/vigia.sh estado`.
 
@@ -219,7 +223,7 @@ Los avisos salen solos cada día hábil a las 7:00, o al pulsar **Enviar avisos 
 
 Los correos van a Mailpit y no salen a internet. Para enviarlos de verdad, definir `SMTP_*` en `infra/.env` (ver `.env.example`), nunca con la base de pruebas: sus correos son ficticios.
 
-**Telegram:** crear un bot en @BotFather y escribir `TELEGRAM_TOKEN=...` en `infra/.env` (nunca en git). Luego cada abogado lo vincula en **Avisos → Vincular Telegram**.
+**Telegram:** crear un bot en @BotFather y escribir `TELEGRAM_TOKEN=...` en `infra/.env` (nunca en git). Luego cada abogado lo vincula en **Avisos → Vincular Telegram**. Con `TELEGRAM_CONSULTAS=true` el bot también responde consultas del equipo sobre sus procesos (`docs/15-bot-telegram.md`).
 
 **Vigilancia:** todo proceso entra como `MANUAL`. En **Vigilancia** se elige la fuente por radicado. Usar `SIMULADA` para demostraciones; `Portal Rama Judicial` solo con radicados reales de la firma, porque los de la base de pruebas pueden coincidir con procesos reales de otras personas.
 
@@ -229,6 +233,8 @@ Los correos van a Mailpit y no salen a internet. Para enviarlos de verdad, defin
 docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/migraciones/001-f2-terminos-y-avisos.sql
 docker compose exec -T postgres psql -U gabinete_admin -d gabinete < ../db/migraciones/002-f3-vigilancia.sql
 ```
+
+Las que borran, desactivan o cambian el comportamiento (`016`, `017`, `019`) se aplican **después** de desplegar el código nuevo, con un respaldo reciente y con `-v ON_ERROR_STOP=1`; cada archivo trae su comando en el encabezado.
 
 **Desarrollo del frontend** con recarga en vivo, contra el gateway del servidor:
 

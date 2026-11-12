@@ -119,4 +119,24 @@ class PersistenciaJpaTest {
 		assertThat(catalogo.area((short) 1)).isEmpty();
 	}
 
+	@Test
+	void unAreaDesactivadaNoSaleEnLaListaPeroSePuedeConsultar() {
+		em.persist(area((short) 1, "CIVIL", "Civil y comercial", true));
+		em.persist(area((short) 7, "CONSTITUCIONAL", "Constitucional y acciones públicas", false));
+		em.flush();
+
+		assertThat(catalogo.areas()).extracting(a -> a.codigoRama()).containsExactly("CIVIL");
+		assertThat(catalogo.area((short) 7)).isPresent();    // quien ya pertenece a ella la sigue mostrando
+	}
+
+	static AreaEntidad area(short id, String rama, String nombre, boolean activa) {
+		AreaEntidad a = new AreaEntidad();
+		a.idArea = id;
+		a.codigoRama = rama;
+		a.nombre = nombre;
+		a.idDirector = 79123456L;
+		a.activa = activa;
+		return a;
+	}
+
 }

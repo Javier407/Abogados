@@ -9,6 +9,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -50,11 +51,18 @@ public class ConfiguracionSeguridad {
 				.httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
 				.formLogin(ServerHttpSecurity.FormLoginSpec::disable)
 				.logout(ServerHttpSecurity.LogoutSpec::disable)
+				// Bitácora de auditoría: anota quién es (token ya validado) antes de decidir el permiso, así también
+				// quedan a su nombre las peticiones que se le niegan (403).
+				.addFilterBefore(Auditoria.capturarIdentidad(), SecurityWebFiltersOrder.AUTHORIZATION)
 				.authorizeExchange(a -> a
 						.pathMatchers(HttpMethod.OPTIONS).permitAll()                 // preflight de CORS
 						.pathMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/renovar", "/api/auth/salir").permitAll()
 						// F13: segundo paso del login; aún no hay token, identidad valida el desafío firmado
 						.pathMatchers(HttpMethod.POST, "/api/auth/login/mfa", "/api/auth/login/mfa/**").permitAll()
+						// Entrar con Google, Microsoft o GitHub: aún no hay token. La ida exige X-Requested-With y la vuelta la
+						// valida identidad con el estado de un solo uso y la cookie del flujo.
+						.pathMatchers(HttpMethod.GET, "/api/auth/externo/proveedores", "/api/auth/externo/*/vuelta").permitAll()
+						.pathMatchers(HttpMethod.POST, "/api/auth/externo/*/entrar").permitAll()
 						.pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
 						.pathMatchers("/api/**").access(politica)
 						.anyExchange().denyAll())

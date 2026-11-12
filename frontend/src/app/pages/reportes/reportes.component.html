@@ -30,7 +30,7 @@
           <tbody>
             @for (c of carga; track c.idAbogado) {
               <tr>
-                <td><strong>{{ nombre(c.idAbogado) }}</strong></td>
+                <td><a [routerLink]="['/abogados', c.idAbogado]"><strong>{{ nombre(c.idAbogado) }}</strong></a></td>
                 <td>
                   <span class="barra-celda"><span class="barra" [style.width.%]="carga[0].procesosActivos ? c.procesosActivos * 100 / carga[0].procesosActivos : 0"></span></span>
                   {{ c.procesosActivos }}

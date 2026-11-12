@@ -1,13 +1,13 @@
 import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
-/** Agenda = Términos + Calendario: dos vistas del mismo trabajo (qué vence y cuándo), unidas por pestañas. */
+/** Términos y audiencias: dos vistas del mismo trabajo (qué vence y cuándo), unidas por pestañas. */
 @Component({
   selector: 'app-pestanas-agenda',
   standalone: true,
   imports: [RouterLink, RouterLinkActive],
   template: `
-    <nav class="pestanas" aria-label="Vistas de la agenda">
+    <nav class="pestanas" aria-label="Términos y audiencias">
       <a routerLink="/terminos" routerLinkActive="activa" ariaCurrentWhenActive="page">Términos</a>
       <a routerLink="/calendario" routerLinkActive="activa" ariaCurrentWhenActive="page"
         >Calendario y audiencias</a

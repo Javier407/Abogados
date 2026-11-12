@@ -134,6 +134,8 @@
   h3 { font-size: 15px; }
   h4 { font-size: 14px; }
   a { color: var(--accent-ink); text-underline-offset: 3px; }
+  /* Enlaces dentro de un texto: subrayados, no solo de otro color (WCAG 1.4.1) */
+  p a:not(.btn), td a:not(.btn), li > small a:not(.btn) { text-decoration: underline; }
   button, input, select, textarea { font: inherit; color: inherit; }
   button { cursor: pointer; }
   button:disabled { cursor: not-allowed; }
@@ -142,7 +144,10 @@
   ::selection { background: var(--accent-soft); }
   small { font-size: 12px; color: var(--muted); }
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    *, *::before, *::after {
+      animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important; scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -349,3 +354,49 @@
 
 /* Tabla ancha que se desplaza con el teclado (core/tablas-desplazables.ts): el foco se ve en el borde */
 .tabla-wrapper[data-desplazable]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Movimiento (todo se apaga con «reducir movimiento») ---------- */
+@layer components {
+  /* Entrada suave: el contenido aparece subiendo un poco, uno tras otro (--i = su posición). Se hace en CSS para
+     que no parpadee: el elemento nace invisible y la animación lo muestra. */
+  @media (prefers-reduced-motion: no-preference) {
+    .entra { animation: entrar .36s cubic-bezier(.22, 1, .36, 1) both; animation-delay: calc(var(--i, 0) * 50ms); }
+    .lista-dia > li, .lista-entra > li { animation: entrar .3s cubic-bezier(.22, 1, .36, 1) both; }
+    .lista-dia > li:nth-child(2), .lista-entra > li:nth-child(2) { animation-delay: 30ms; }
+    .lista-dia > li:nth-child(3), .lista-entra > li:nth-child(3) { animation-delay: 60ms; }
+    .lista-dia > li:nth-child(4), .lista-entra > li:nth-child(4) { animation-delay: 90ms; }
+    .lista-dia > li:nth-child(n + 5), .lista-entra > li:nth-child(n + 5) { animation-delay: 120ms; }
+    .modulo-container > .page-header { animation: entrar .3s cubic-bezier(.22, 1, .36, 1) both; }
+    .modulo-container > .tabla-wrapper, .modulo-container > .card { animation: aparecer .35s ease-out both; }
+
+    /* Las barras crecen desde cero la primera vez que se pintan. */
+    .rama-barra, .barra, .tramo, .barra-etapa > span, .avance > span { transition: width .6s cubic-bezier(.22, 1, .36, 1); }
+    @starting-style {
+      .rama-barra, .barra, .tramo, .barra-etapa > span, .avance > span { width: 0 !important; }
+    }
+
+    /* Al cambiar de pantalla, un fundido corto (View Transitions; el navegador que no las tenga, cambia sin más). */
+    ::view-transition-old(root) { animation: 120ms ease-out both desvanecer; }
+    ::view-transition-new(root) { animation: 180ms ease-out both aparecer; }
+
+    /* Micro-respuesta al pulsar. */
+    .btn:active:not(:disabled), .cifra:active { transform: scale(.98); }
+  }
+  @keyframes entrar { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes desvanecer { from { opacity: 1; } to { opacity: 0; } }
+
+  /* Esqueleto de carga: barras grises con un brillo que pasa (sin brillo si se reduce el movimiento). */
+  .skeleton {
+    display: block; height: 12px; border-radius: 6px;
+    background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3, var(--line)) 50%, var(--surface-2) 100%);
+    background-size: 200% 100%;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .skeleton { animation: brillo 1.3s ease-in-out infinite; }
+  }
+  @keyframes brillo { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+  /* Estado vacío con icono o ilustración arriba. */
+  .empty-state .vacio-icono { display: block; margin: 0 auto 10px; color: var(--muted); }
+}

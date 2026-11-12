@@ -24,7 +24,9 @@ import co.abogados.identidad.infraestructura.EmisorJwtRsa;
 public class ConfiguracionTokens {
 
 	static final List<String> PUBLICAS = List.of("/auth/login", "/auth/login/mfa", "/auth/login/mfa/**", "/auth/renovar", "/auth/salir", "/.well-known/jwks.json",
-			"/interno/token", "/interno/revocados", "/actuator/health", "/actuator/health/**");
+			"/interno/token", "/interno/revocados", "/actuator/health", "/actuator/health/**",
+			// Entrar con Google, Microsoft o GitHub (aún sin token): la ida y la vuelta se validan en AccesoExternoRecurso
+			"/auth/externo/proveedores", "/auth/externo/*/entrar", "/auth/externo/*/vuelta");
 
 	@Bean
 	FilterRegistrationBean<FiltroToken> filtroToken(EmisorJwtRsa emisor,

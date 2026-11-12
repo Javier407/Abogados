@@ -1,0 +1,105 @@
+<section class="card">
+  <div class="card-header">
+    <h2>Equipo ({{ equipo.length }})</h2>
+    @if (juridico && !cerrado() && !relevando) {
+      <button class="btn btn-secondary btn-sm" type="button" (click)="relevando = true">Cambiar abogado a cargo</button>
+    }
+  </div>
+  <div class="card-body">
+    @if (mensaje) { <div class="alerta alerta-exito" role="status">{{ mensaje }}</div> }
+    @if (error) { <div class="alerta alerta-error" role="alert">{{ error }}</div> }
+
+    @if (relevando) {
+      <form class="relevo" #form="ngForm" (ngSubmit)="relevar(form)" novalidate aria-labelledby="titulo-relevo">
+        <h3 id="titulo-relevo">Cambiar el abogado a cargo</h3>
+        <p class="form-ayuda">
+          @if (responsable; as r) { Hoy está a cargo <strong>{{ r.nombre || r.idPersona }}</strong>. }
+          Queda escrito el motivo y se avisa a los dos abogados.
+        </p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="nuevoResp">Quién recibe el proceso <span class="requerido">*</span></label>
+            <select id="nuevoResp" class="form-input" name="idResponsable" [(ngModel)]="relevo.idResponsable" required>
+              <option [ngValue]="null" disabled>Elija un abogado</option>
+              @for (a of candidatos(); track a.idPersona) {
+                <option [ngValue]="a.idPersona">{{ a.nombres }} {{ a.apellidos }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="motivoRelevo">Por qué <span class="requerido">*</span></label>
+            <select id="motivoRelevo" class="form-input" name="motivo" [(ngModel)]="relevo.motivo" required
+                    aria-describedby="ayudaMotivo">
+              <option [ngValue]="null" disabled>Elija el motivo</option>
+              @for (m of motivos; track m.valor) { <option [ngValue]="m.valor">{{ m.etiqueta }}</option> }
+            </select>
+            @if (relevo.motivo) {
+              <span id="ayudaMotivo" class="form-ayuda">{{ ayudaMotivo(relevo.motivo) }}</span>
+            }
+          </div>
+          <div class="form-group form-group-full">
+            <label class="form-label" for="notaRelevo">Nota</label>
+            <input id="notaRelevo" class="form-input" name="nota" [(ngModel)]="relevo.nota" maxlength="300"
+                   placeholder="Ej.: memorial de renuncia radicado el 10/11" />
+          </div>
+          <div class="form-group form-group-full casillas">
+            <label class="resumen-chip">
+              <input type="checkbox" name="trasladar" [(ngModel)]="relevo.trasladarPendientes" />
+              Pasarle los términos pendientes y las audiencias que vienen
+            </label>
+            <label class="resumen-chip">
+              <input type="checkbox" name="apoyo" [(ngModel)]="relevo.anteriorQuedaDeApoyo" />
+              El abogado anterior sigue en el equipo como apoyo
+            </label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit" [disabled]="guardando">{{ guardando ? 'Guardando…' : 'Cambiar abogado' }}</button>
+          <button class="btn btn-secondary" type="button" (click)="relevando = false">Cancelar</button>
+        </div>
+      </form>
+    }
+
+    <ul class="lista-pagos">
+      @for (i of equipo; track i.idPersona) {
+        <li>
+          <span><strong>{{ i.nombre || i.idPersona }}</strong> · {{ i.rol === 'RESPONSABLE' ? 'A cargo' : etiqueta(i.rol) }}
+            · desde {{ i.desde | date: 'dd/MM/yyyy' }}</span>
+          @if (juridico && i.rol !== 'RESPONSABLE') {
+            <button class="btn-quitar" type="button" (click)="quitar(i)" [attr.aria-label]="'Quitar a ' + (i.nombre || i.idPersona)">×</button>
+          }
+        </li>
+      }
+    </ul>
+
+    @if (juridico && !cerrado()) {
+      <div class="filtros mt-3">
+        <select class="form-input" [(ngModel)]="idPersona" aria-label="Persona que se agrega">
+          <option [ngValue]="null">Agregar a…</option>
+          @for (a of disponibles(); track a.idPersona) {
+            <option [ngValue]="a.idPersona">{{ a.nombres }} {{ a.apellidos }}</option>
+          }
+        </select>
+        <select class="form-input" [(ngModel)]="rol" aria-label="Rol en el proceso">
+          <option value="APOYO">Abogado de apoyo</option>
+          <option value="DEPENDIENTE">Dependiente judicial</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" type="button" (click)="agregar()" [disabled]="!idPersona">Agregar</button>
+      </div>
+    }
+
+    @if (anteriores.length) {
+      <h3 class="subtitulo-detalle">Quién estuvo antes</h3>
+      <ol class="historial">
+        @for (p of anteriores; track p.idCambio) {
+          <li>
+            <strong>{{ p.nombre || p.idPersona }}</strong>
+            <span>{{ p.rol === 'RESPONSABLE' ? 'A cargo' : etiqueta(p.rol) }} del {{ p.desde | date: 'dd/MM/yyyy' }}
+              al {{ p.hasta | date: 'dd/MM/yyyy' }}</span>
+            <small>Salió por {{ nombreMotivo(p.motivo).toLowerCase() }}@if (p.nota) { · {{ p.nota }} }</small>
+          </li>
+        }
+      </ol>
+    }
+  </div>
+</section>

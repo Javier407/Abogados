@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import co.abogados.procesos.dominio.modelo.Reportes.CargaAbogado;
 import co.abogados.procesos.dominio.modelo.Reportes.CumplimientoTerminos;
+import co.abogados.procesos.dominio.modelo.Reportes.ProcesoDeAbogado;
 import co.abogados.procesos.dominio.modelo.Reportes.ResultadoRama;
 import co.abogados.procesos.dominio.puertos.ReporteRepositorio;
 
@@ -21,11 +22,37 @@ public class ReporteRepositorioJdbc implements ReporteRepositorio {
 	}
 
 	@Override
+	public List<ProcesoDeAbogado> procesosDe(long idPersona) {
+		return jdbc.sql("""
+				SELECT v.id_proceso, v.radicado_legible, v.asunto, v.codigo_rama, v.rama, v.tipo_proceso, v.etapa,
+				       v.estado, a.rol, a.desde, coalesce(t.pendientes, 0) AS pendientes, t.proximo
+				FROM procesos.asignaciones a
+				JOIN procesos.v_procesos v ON v.id_proceso = a.id_proceso
+				LEFT JOIN (
+				    SELECT id_proceso, count(*) AS pendientes, min(fecha_vencimiento) AS proximo
+				    FROM procesos.terminos WHERE estado = 'PENDIENTE' GROUP BY id_proceso
+				) t ON t.id_proceso = a.id_proceso AND v.estado NOT IN ('TERMINADO', 'ARCHIVADO')
+				WHERE a.id_persona = :persona
+				ORDER BY v.estado IN ('TERMINADO', 'ARCHIVADO'), a.rol <> 'RESPONSABLE', t.proximo NULLS LAST,
+				         v.fecha_radicacion DESC, v.id_proceso DESC
+				""")
+				.param("persona", idPersona)
+				.query((rs, i) -> new ProcesoDeAbogado(rs.getInt("id_proceso"), rs.getString("radicado_legible"),
+						rs.getString("asunto"), rs.getString("codigo_rama"), rs.getString("rama"),
+						rs.getString("tipo_proceso"), rs.getString("etapa"), rs.getString("estado"), rs.getString("rol"),
+						rs.getObject("desde", LocalDate.class), rs.getInt("pendientes"),
+						rs.getObject("proximo", LocalDate.class)))
+				.list();
+	}
+
+	@Override
 	public List<CargaAbogado> carga(LocalDate hoy) {
 		return jdbc.sql("""
 				WITH personas AS (
 				    SELECT id_persona FROM procesos.asignaciones WHERE rol = 'RESPONSABLE'
 				    UNION SELECT id_responsable FROM procesos.terminos WHERE estado = 'PENDIENTE'
+				), abiertos AS (
+				    SELECT id_proceso FROM procesos.procesos WHERE estado NOT IN ('TERMINADO', 'ARCHIVADO')
 				), carga_procesos AS (
 				    SELECT a.id_persona,
 				           count(*) FILTER (WHERE p.estado = 'ACTIVO') AS activos,
@@ -35,12 +62,15 @@ public class ReporteRepositorioJdbc implements ReporteRepositorio {
 				), terminos AS (
 				    SELECT id_responsable AS id_persona, count(*) AS pendientes,
 				           count(*) FILTER (WHERE fecha_vencimiento < :hoy) AS vencidos
-				    FROM procesos.terminos WHERE estado = 'PENDIENTE' GROUP BY id_responsable
+				    FROM procesos.terminos
+				    WHERE estado = 'PENDIENTE' AND id_proceso IN (SELECT id_proceso FROM abiertos)
+				    GROUP BY id_responsable
 				), audiencias AS (
 				    SELECT coalesce(ac.id_persona, r.id_persona) AS id_persona, count(*) AS proximas
 				    FROM procesos.actuaciones ac
 				    LEFT JOIN procesos.asignaciones r ON r.id_proceso = ac.id_proceso AND r.rol = 'RESPONSABLE'
 				    WHERE ac.tipo = 'AUDIENCIA' AND ac.fecha BETWEEN :hoy AND :hoy + 30
+				      AND ac.id_proceso IN (SELECT id_proceso FROM abiertos)
 				    GROUP BY 1
 				)
 				SELECT pe.id_persona, coalesce(p.activos, 0) AS activos, coalesce(p.suspendidos, 0) AS suspendidos,

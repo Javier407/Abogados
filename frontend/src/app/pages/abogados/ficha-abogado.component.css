@@ -1,0 +1,78 @@
+/* Ficha del abogado: cabecera, cifras de carga, rango de respuesta, tipos de proceso y lista de procesos. */
+.volver {
+  display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px;
+  font-size: 13px; font-weight: 600; text-decoration: none; color: var(--muted);
+}
+.volver:hover { color: var(--ink); }
+
+.cabecera {
+  display: flex; align-items: flex-start; gap: 18px; padding: 20px; margin-bottom: 16px;
+  border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+}
+.avatar {
+  display: grid; place-items: center; flex: none; width: 64px; height: 64px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; font-size: 22px;
+}
+.quien { flex: 1; min-width: 0; }
+.quien h1 { font-size: 22px; }
+.quien p { color: var(--muted); font-size: 14px; margin-top: 2px; }
+.contacto { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; padding: 0; font-size: 13px; }
+.contacto li { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); word-break: break-word; }
+.contacto ng-icon { color: var(--muted); flex: none; }
+
+.cifras { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.cifra {
+  display: grid; gap: 2px; padding: 18px 20px; border-radius: var(--radius-lg);
+  background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+}
+.cifra-icono {
+  width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; margin-bottom: 10px;
+  background: var(--accent-soft); color: var(--accent-ink);
+}
+.cifra-valor { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+.cifra-nombre { color: var(--muted); font-size: 13px; font-weight: 500; }
+.cifra.peligro .cifra-icono { background: var(--danger-soft); color: var(--danger); }
+.cifra.peligro .cifra-valor { color: var(--danger); }
+
+.rejilla { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; align-items: start; margin-bottom: 16px; }
+.card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ver-todo { font-size: 13px; font-weight: 600; }
+.vacio { color: var(--muted); font-size: 14px; padding: 8px 0; }
+
+.rangos, .tipos { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 12px; }
+.rangos li, .tipos li { display: grid; grid-template-columns: minmax(0, 190px) minmax(40px, 1fr) 28px; gap: 12px; align-items: center; }
+.rango-nombre, .tipo-nombre { font-size: 13.5px; font-weight: 600; }
+.rango-nombre small, .tipo-nombre small { display: block; font-weight: 400; color: var(--muted); }
+.rangos strong, .tipos strong { text-align: right; font-size: 15px; }
+.barra-rango { display: block; height: 10px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.tramo { display: block; height: 100%; border-radius: 99px; min-width: 0; transition: width .5s ease; }
+.tramo.vencido { background: var(--danger); }
+.tramo.por-vencer { background: var(--warn); }
+.tramo.al-dia { background: var(--ok); }
+.tramo.acento { background: var(--accent); }
+
+.lista-terminos { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.lista-terminos li { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.lista-terminos li:first-child { border-top: 0; }
+.lista-terminos .fecha { font-weight: 700; font-size: 13px; text-transform: capitalize; }
+.lista-terminos .fecha.vencido { color: var(--danger); }
+.lista-terminos .que a { font-weight: 600; }
+.lista-terminos small { display: block; color: var(--muted); }
+
+.chip-filtro { cursor: pointer; font: inherit; }
+.chip-filtro[aria-pressed='true'] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.tabla-ficha td small { display: block; color: var(--muted); }
+.tabla-ficha .sin { color: var(--muted); }
+
+@media (max-width: 1100px) {
+  .cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rejilla { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .cabecera { flex-wrap: wrap; }
+  .rangos li, .tipos li { grid-template-columns: minmax(0, 1fr) 28px; }
+  .barra-rango { grid-column: 1 / -1; order: 3; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tramo { transition: none; }
+}

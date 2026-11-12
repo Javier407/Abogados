@@ -119,6 +119,16 @@ services:
       # F13: verificación en dos pasos. Llave AES de los secretos (32 bytes en Base64) y roles que deben usarla.
       MFA_CLAVE_CIFRADO: ${MFA_CLAVE_CIFRADO:-}
       MFA_OBLIGATORIO_ROLES: ${MFA_OBLIGATORIO_ROLES:-}
+      # Entrar con Google, Microsoft o GitHub (docs/13): solo cuentas ya existentes. Cada proveedor se activa al
+      # escribir su identificador y secreto en infra/.env; la vuelta registrada es {URL_PUBLICA}/api/auth/externo/<proveedor>/vuelta
+      URL_PUBLICA: ${URL_PUBLICA:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      MICROSOFT_TENANT: ${MICROSOFT_TENANT:-common}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
       # F15: avisos de seguridad de la cuenta (evento cuenta.seguridad). Sin RabbitMQ identidad funciona igual.
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: ${RABBITMQ_USER}
@@ -208,6 +218,8 @@ services:
       PROCESOS_URL: http://procesos:8080
       # Bot de Telegram (lo crea Javier en @BotFather y lo escribe en .env). Vacío = canal apagado.
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN:-}
+      # El bot también responde consultas del equipo (docs/15-bot-telegram.md). false = solo avisos.
+      TELEGRAM_CONSULTAS: ${TELEGRAM_CONSULTAS:-false}
     depends_on:
       postgres:
         condition: service_healthy
@@ -219,7 +231,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
-    mem_limit: 192m
+    mem_limit: 256m
     logging: *logs
 
   vigilancia:
@@ -327,6 +339,10 @@ services:
       ASISTENTE_URL: http://asistente-ia:8000
       IDENTIDAD_URL: http://identidad:8080
       CORS_ORIGINS: http://localhost:4200${URL_PUBLICA:+,}${URL_PUBLICA:-}
+      # Bitácora de auditoría encadenada: svc_gateway solo puede agregar y leer (migración 015).
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USER: svc_gateway
+      DB_PASSWORD: ${SVC_PASSWORD}
     # F9: solo desde la propia VM (diagnóstico); desde la VPN se entra por el frontend (y por HTTPS).
     ports:
       - "127.0.0.1:8091:8080"
@@ -337,6 +353,7 @@ services:
       - vigilancia
       - asistente-ia
       - identidad
+      - postgres
     healthcheck: *java-salud
     mem_limit: 384m
     logging: *logs

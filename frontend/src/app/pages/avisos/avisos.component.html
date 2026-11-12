@@ -44,7 +44,7 @@
     </div>
 
     @if (cargando && avisos.length === 0) {
-      <div class="empty-state">Cargando avisos...</div>
+      <app-esqueleto texto="Cargando avisos…" [cantidadColumnas]="2" />
     } @else if (avisos.length === 0) {
       <div class="empty-state">No hay avisos para {{ sesion.persona()?.nombres }}.</div>
     } @else {

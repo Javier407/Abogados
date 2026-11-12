@@ -11,22 +11,25 @@ import {
   lucideHandCoins,
   lucideListChecks,
   lucidePencil,
-  lucideReceipt,
   lucideSparkles,
   lucideUsers,
   lucideWallet,
   lucideCalendarClock,
   lucideGavel,
+  lucideArchive,
+  lucideArchiveRestore,
 } from '@ng-icons/lucide';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
 import {
   AuthService,
+  DIRECCION,
   JURIDICO,
   JURIDICO_Y_DEPENDIENTES,
-  MANEJAN_FINANZAS,
 } from '../../core/auth.service';
 import {
+  MOTIVOS_CIERRE,
+  MotivoCierre,
   ActuacionSolicitud,
   ConflictoInteres,
   ESTADOS_PRUEBA,
@@ -66,7 +69,7 @@ interface OpcionPestana {
 
 /**
  * Expediente de un proceso, de punta a punta: cabecera con la etapa y las acciones encadenadas (providencia →
- * término sugerido → borrador → gasto → factura) y pestañas enlazables por URL (?pestana=asistente).
+ * término sugerido → borrador → gasto) y pestañas enlazables por URL (?pestana=asistente).
  */
 @Component({
   selector: 'app-expediente',
@@ -90,12 +93,13 @@ interface OpcionPestana {
       lucideHandCoins,
       lucideListChecks,
       lucidePencil,
-      lucideReceipt,
       lucideSparkles,
       lucideUsers,
       lucideWallet,
       lucideCalendarClock,
       lucideGavel,
+      lucideArchive,
+      lucideArchiveRestore,
     }),
   ],
   templateUrl: './expediente.component.html',
@@ -114,9 +118,12 @@ export class ExpedienteComponent implements OnInit {
   readonly estadosPrueba = ESTADOS_PRUEBA;
   readonly etiqueta = etiqueta;
   readonly juridico = this.auth.tiene(...JURIDICO);
+  readonly direccion = this.auth.tiene(...DIRECCION);
+  readonly motivosCierre = MOTIVOS_CIERRE;
+  cerrando = false;
+  cierre: { motivo: MotivoCierre | null; fecha: string; nota: string } = { motivo: null, fecha: '', nota: '' };
   readonly registraActuaciones = this.auth.tiene(...JURIDICO_Y_DEPENDIENTES);
   readonly veFinanzas = this.auth.tiene('ADMIN', 'SOCIO', 'ABOGADO', 'ADMINISTRATIVO');
-  readonly puedeFacturar = this.auth.tiene(...MANEJAN_FINANZAS);
   readonly etapas = ETAPAS;
 
   pestana: Pestana = 'resumen';
@@ -221,10 +228,65 @@ export class ExpedienteComponent implements OnInit {
     this.irA('asistente');
   }
 
-  /** Encadenado: facturar a este cliente lo pendiente de este proceso. */
-  facturar(p: Proceso): void {
-    this.router.navigate(['/facturacion'], {
-      queryParams: { nueva: 1, idCliente: p.idCliente, idProceso: p.idProceso },
+  get estaCerrado(): boolean {
+    return this.proceso?.estado === 'TERMINADO' || this.proceso?.estado === 'ARCHIVADO';
+  }
+
+  nombreMotivoCierre(m?: string | null): string {
+    return this.motivosCierre.find((x) => x.valor === m)?.etiqueta ?? (m ? etiqueta(m) : '');
+  }
+
+  ayudaMotivoCierre(m: MotivoCierre | null): string {
+    return this.motivosCierre.find((x) => x.valor === m)?.ayuda ?? '';
+  }
+
+  abrirCierre(): void {
+    this.cierre = { motivo: null, fecha: this.hoy, nota: '' };
+    this.cerrando = true;
+    this.error = this.mensaje = '';
+  }
+
+  cerrarProceso(form: NgForm): void {
+    if (form.invalid || !this.cierre.motivo) {
+      form.control.markAllAsTouched();
+      return;
+    }
+    this.guardando = true;
+    this.errorFormulario = '';
+    this.api
+      .cerrarProceso(this.idProceso, { motivo: this.cierre.motivo, fecha: this.cierre.fecha || null, nota: this.cierre.nota || null })
+      .subscribe({
+        next: (r) => {
+          const e = r.efectos;
+          const sinEfecto = [
+            e.terminosPendientes ? `${e.terminosPendientes} término(s) pendiente(s)` : '',
+            e.audienciasFuturas ? `${e.audienciasFuturas} audiencia(s)` : '',
+          ].filter(Boolean);
+          this.mensaje =
+            `Proceso cerrado: ${this.nombreMotivoCierre(r.proceso.motivoCierre).toLowerCase()}.` +
+            (sinEfecto.length ? ` Dejan de avisar ${sinEfecto.join(' y ')}.` : '') +
+            (e.seApagoLaVigilancia ? ' Se dejó de vigilar en la Rama Judicial.' : '') +
+            ' Si hay honorarios por liquidar, hágalo en Honorarios.';
+          this.guardando = false;
+          this.cerrando = false;
+          this.cargar();
+        },
+        error: (e) => {
+          this.errorFormulario = mensajeDeError(e);
+          this.guardando = false;
+        },
+      });
+  }
+
+  reabrirProceso(): void {
+    if (!confirm('¿Reabrir el proceso? Vuelve a la etapa que tenía y sus términos pendientes vuelven a la agenda.')) return;
+    this.error = this.mensaje = '';
+    this.api.reabrirProceso(this.idProceso).subscribe({
+      next: () => {
+        this.mensaje = 'Proceso reabierto. Si debe vigilarse otra vez, actívelo en Vigilancia.';
+        this.cargar();
+      },
+      error: (e) => (this.error = mensajeDeError(e)),
     });
   }
 
@@ -320,10 +382,13 @@ export class ExpedienteComponent implements OnInit {
       return;
     }
     const p = this.limpiar(this.providencia);
-    if (p.tipo === 'AUTO') p.sentido = null;
+    if (p.tipo === 'AUTO') {
+      p.sentido = null;
+      p.anticipada = false;
+    }
     this.enviar(this.api.registrarProvidencia(this.idProceso, p), (creada) => {
       this.mensaje =
-        (p.tipo === 'SENTENCIA' ? 'Sentencia registrada' : 'Auto registrado') +
+        (p.tipo !== 'SENTENCIA' ? 'Auto registrado' : p.anticipada ? 'Sentencia anticipada registrada' : 'Sentencia registrada') +
         '. Revise los términos sugeridos.';
       this.providencia = this.providenciaVacia();
       this.verSugerencias(creada.idProvidencia, true);
@@ -394,6 +459,7 @@ export class ExpedienteComponent implements OnInit {
         fechaInicio: s.fechaInicio,
         diasHabiles: s.diasHabiles,
         idProvidencia,
+        norma: s.norma,
       })
       .subscribe({
         next: (t) => {

@@ -6,12 +6,13 @@ import { Router } from '@angular/router';
 import { mensajeDeError } from '../../core/api.service';
 import { AuthService, EstadoMfa, InicioMfa } from '../../core/auth.service';
 import { CodigosRecuperacionComponent, QrMfaComponent } from '../../core/mfa-ui';
+import { CuentasEnlazadasComponent } from './cuentas-enlazadas.component';
 
 /** Datos de la cuenta, cambio de contraseña y verificación en dos pasos (F13). */
 @Component({
   selector: 'app-cuenta',
   standalone: true,
-  imports: [FormsModule, DatePipe, QrMfaComponent, CodigosRecuperacionComponent],
+  imports: [FormsModule, DatePipe, QrMfaComponent, CodigosRecuperacionComponent, CuentasEnlazadasComponent],
   changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <div class="modulo-container">
@@ -205,6 +206,10 @@ import { CodigosRecuperacionComponent, QrMfaComponent } from '../../core/mfa-ui'
             }
           </div>
         </div>
+      }
+
+      @if (!auth.sesion()?.debeCambiarClave) {
+        <app-cuentas-enlazadas />
       }
     </div>
   `,

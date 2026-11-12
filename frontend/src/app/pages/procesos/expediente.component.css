@@ -8,6 +8,14 @@
 .insignias { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .insignias a { text-decoration: none; }
 .cabecera-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.cierre-dato {
+  margin-top: 12px; padding: 8px 12px; border-radius: 10px; font-size: 13px;
+  background: var(--surface-2); color: var(--ink-2);
+}
+.form-cierre {
+  margin-top: 14px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2);
+}
+.form-cierre h2 { font-size: 15px; margin-bottom: 4px; }
 
 /* Barra de etapas: puntos unidos por una línea; la actual con su nombre */
 .etapas { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; }

@@ -23,7 +23,8 @@ public class ProvidenciaRepositorioJdbc implements ProvidenciaRepositorio {
 	@Override
 	public List<ProvidenciaVista> deProceso(int idProceso) {
 		return jdbc.sql("""
-				SELECT id_providencia, id_proceso, tipo, clase, fecha_providencia, fecha_estado, decision, sentido, fuente
+				SELECT id_providencia, id_proceso, tipo, clase, fecha_providencia, fecha_estado, decision, sentido, fuente,
+				       anticipada
 				FROM procesos.providencias WHERE id_proceso = :id
 				ORDER BY fecha_estado DESC, id_providencia DESC
 				""")
@@ -31,7 +32,7 @@ public class ProvidenciaRepositorioJdbc implements ProvidenciaRepositorio {
 				.query((rs, i) -> new ProvidenciaVista(rs.getInt("id_providencia"), rs.getInt("id_proceso"),
 						rs.getString("tipo"), rs.getString("clase"), rs.getObject("fecha_providencia", LocalDate.class),
 						rs.getObject("fecha_estado", LocalDate.class), rs.getString("decision"), rs.getString("sentido"),
-						rs.getString("fuente")))
+						rs.getString("fuente"), rs.getBoolean("anticipada")))
 				.list();
 	}
 
@@ -67,8 +68,8 @@ public class ProvidenciaRepositorioJdbc implements ProvidenciaRepositorio {
 	public int registrarManual(int idProceso, NuevaProvidencia p, Long registradoPor) {
 		return jdbc.sql("""
 				INSERT INTO procesos.providencias (id_proceso, tipo, clase, fecha_providencia, fecha_estado, decision,
-				       sentido, fuente, registrado_por)
-				VALUES (:proceso, :tipo, :clase, :fecha, :estado, :decision, :sentido, 'MANUAL', :quien)
+				       sentido, fuente, registrado_por, anticipada)
+				VALUES (:proceso, :tipo, :clase, :fecha, :estado, :decision, :sentido, 'MANUAL', :quien, :anticipada)
 				RETURNING id_providencia
 				""")
 				.param("proceso", idProceso)
@@ -79,6 +80,7 @@ public class ProvidenciaRepositorioJdbc implements ProvidenciaRepositorio {
 				.param("decision", p.decision())
 				.param("sentido", p.sentido())
 				.param("quien", registradoPor)
+				.param("anticipada", p.anticipada())
 				.query(Integer.class)
 				.single();
 	}

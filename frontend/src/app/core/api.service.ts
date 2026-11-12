@@ -3,18 +3,18 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Observable } from 'rxjs';
 
 import {
+  ActuacionVista,
   Abogado, AreaPractica, Aviso, Cargo, Cliente, ConsultaVigilancia, EstadoAsistente, Honorario, HonorarioSolicitud,
   Pago, Perito, Tarifa, DesgloseRadicado, Despacho, DiaInhabil, EstadoTelegram,
   FuenteVigilancia, Proceso, ProcesoSolicitud, Providencia, RadicadoVigilado, Rama, ResultadoConsulta, Revision, Sede,
   Termino, TerminoSolicitud, TipoProceso, Vencimiento, VinculoTelegram,
   Actuacion, ActuacionSolicitud, Expediente, Parte, ParteRegistrada, ParteSolicitud, ProvidenciaSolicitud,
-  Audiencia, Prueba, PruebaSolicitud, SugerenciaTermino,
+  Audiencia, MotivoCierre, PeriodoEquipo, PlazoProceso, ProcesoDeAbogado, Prueba, PruebaSolicitud, RelevoSolicitud,
+  ResultadoCierre, ResultadoRelevo, SugerenciaTermino,
   CambioCuenta, CargaAbogado, CarteraCliente, Cuenta, CuentaSolicitud, CumplimientoTerminos, Gasto, GastoSolicitud,
   ResultadoRama, ProcesoPortal, DetallePortal, FinanzasPortal, ResumenPublicado,
   CategoriaDocumento, Consulta, ConsultaConAvisos, Documento, EstadoConsulta, Integrante, RolEquipo,
-  CambioRegla, EstadoServidor, PruebaPatron, ReglaSolicitud, ReglaTermino,
-  ConfigFacturacion, DetalleFactura, EstadoConfigFacturacion, EstadoFactura, Factura, FacturaSolicitud, PendienteFacturar,
-  VistaPreviaFactura
+  EstadoServidor, FiltroAuditoria, PaginaAuditoria, RevisionAuditoria
 } from './modelos';
 
 /**
@@ -91,56 +91,20 @@ export class ApiService {
     return this.http.get<DesgloseRadicado>(`${API}/procesos/radicado/${encodeURIComponent(numero)}`);
   }
 
-  // ---------------------------------------------------------------- reglas de términos (F12)
-
-  reglas(): Observable<ReglaTermino[]> { return this.http.get<ReglaTermino[]>(`${API}/reglas-termino`); }
-  historialRegla(id: number): Observable<CambioRegla[]> {
-    return this.http.get<CambioRegla[]>(`${API}/reglas-termino/${id}/historial`);
-  }
-  probarPatron(patron: string, clase: string): Observable<PruebaPatron> {
-    return this.http.get<PruebaPatron>(`${API}/reglas-termino/prueba`, { params: filtros({ patron, clase }) });
-  }
-  guardarRegla(id: number | null, r: ReglaSolicitud): Observable<ReglaTermino> {
-    return id == null ? this.http.post<ReglaTermino>(`${API}/reglas-termino`, r)
-      : this.http.put<ReglaTermino>(`${API}/reglas-termino/${id}`, r);
-  }
-  validarRegla(id: number): Observable<ReglaTermino> {
-    return this.http.post<ReglaTermino>(`${API}/reglas-termino/${id}/validacion`, {});
-  }
-  cambiarContestacion(idTipo: number, dias: number | null): Observable<{ reglasSinValidar: number }> {
-    return this.http.put<{ reglasSinValidar: number }>(`${API}/catalogos/tipos/${idTipo}/contestacion`, { dias });
-  }
-
-  // ---------------------------------------------------------------- facturación electrónica (F14)
-
-  facturas(idCliente?: number | null, estado?: EstadoFactura | ''): Observable<Factura[]> {
-    return this.http.get<Factura[]>(`${API}/facturas`, { params: filtros({ idCliente, estado }) });
-  }
-  factura(id: number): Observable<DetalleFactura> { return this.http.get<DetalleFactura>(`${API}/facturas/${id}`); }
-  pendientesFacturar(idCliente: number): Observable<PendienteFacturar[]> {
-    return this.http.get<PendienteFacturar[]>(`${API}/facturas/pendientes`, { params: filtros({ idCliente }) });
-  }
-  vistaPreviaFactura(s: FacturaSolicitud): Observable<VistaPreviaFactura> {
-    return this.http.post<VistaPreviaFactura>(`${API}/facturas/vista-previa`, s);
-  }
-  emitirFactura(s: FacturaSolicitud): Observable<DetalleFactura> { return this.http.post<DetalleFactura>(`${API}/facturas`, s); }
-  anularFactura(id: number, motivo: string): Observable<DetalleFactura> {
-    return this.http.post<DetalleFactura>(`${API}/facturas/${id}/anulacion`, { motivo });
-  }
-  configFacturacion(): Observable<EstadoConfigFacturacion> {
-    return this.http.get<EstadoConfigFacturacion>(`${API}/facturacion/config`);
-  }
-  guardarConfigFacturacion(c: ConfigFacturacion): Observable<EstadoConfigFacturacion> {
-    return this.http.put<EstadoConfigFacturacion>(`${API}/facturacion/config`, c);
-  }
-  validarConfigFacturacion(): Observable<EstadoConfigFacturacion> {
-    return this.http.post<EstadoConfigFacturacion>(`${API}/facturacion/config/validacion`, {});
-  }
-
   /** Cuentas con la verificación en dos pasos activa (F13, solo ADMIN). */
   cuentasConMfa(): Observable<number[]> { return this.http.get<number[]>(`${API}/usuarios/mfa`); }
   reiniciarMfa(idUsuario: number): Observable<void> {
     return this.http.post<void>(`${API}/usuarios/${idUsuario}/mfa/reinicio`, {});
+  }
+
+  /** Bitácora de auditoría encadenada (solo ADMIN): los más recientes primero. */
+  auditoria(f: FiltroAuditoria): Observable<PaginaAuditoria> {
+    return this.http.get<PaginaAuditoria>(`${API}/auditoria/registros`, { params: filtros({ ...f }) });
+  }
+  /** Revisa la cadena completa o, con un sello guardado (número y hash), desde ese registro. */
+  revisarAuditoria(sello?: { id: number; hash: string }): Observable<RevisionAuditoria> {
+    return this.http.get<RevisionAuditoria>(`${API}/auditoria/verificacion`,
+      { params: filtros({ desde: sello?.id, hash: sello?.hash }) });
   }
 
   /** Estado del servidor según el vigía (F12, solo ADMIN). */
@@ -231,6 +195,14 @@ export class ApiService {
     return this.http.delete<void>(`${API}/procesos/${idProceso}/actuaciones/${idActuacion}`);
   }
 
+  /** Los procesos en los que está un abogado, con su papel en cada uno. */
+  procesosDeAbogado(idPersona: number): Observable<ProcesoDeAbogado[]> {
+    return this.http.get<ProcesoDeAbogado[]>(`${API}/procesos/de-abogado/${idPersona}`);
+  }
+  /** Los plazos de referencia del tipo de proceso: qué hay que hacer, en cuántos días y según qué norma. */
+  plazosProceso(idProceso: number): Observable<PlazoProceso[]> {
+    return this.http.get<PlazoProceso[]>(`${API}/procesos/${idProceso}/plazos`);
+  }
   sugerencias(idProceso: number, idProvidencia: number): Observable<SugerenciaTermino[]> {
     return this.http.get<SugerenciaTermino[]>(`${API}/procesos/${idProceso}/providencias/${idProvidencia}/sugerencias`);
   }
@@ -277,6 +249,21 @@ export class ApiService {
   }
   agregarIntegrante(idProceso: number, idPersona: number, rol: RolEquipo): Observable<Integrante> {
     return this.http.post<Integrante>(`${API}/procesos/${idProceso}/asignaciones`, { idPersona, rol });
+  }
+  /** Quién estuvo en el equipo y por qué salió. */
+  historialEquipo(idProceso: number): Observable<PeriodoEquipo[]> {
+    return this.http.get<PeriodoEquipo[]>(`${API}/procesos/${idProceso}/asignaciones/historial`);
+  }
+  /** Otro abogado queda a cargo, con el motivo. */
+  relevarResponsable(idProceso: number, s: RelevoSolicitud): Observable<ResultadoRelevo> {
+    return this.http.post<ResultadoRelevo>(`${API}/procesos/${idProceso}/relevo`, s);
+  }
+  cerrarProceso(idProceso: number, s: { motivo: MotivoCierre; fecha?: string | null; nota?: string | null }): Observable<ResultadoCierre> {
+    return this.http.post<ResultadoCierre>(`${API}/procesos/${idProceso}/cierre`, s);
+  }
+  /** Solo la dirección. Sin etapa, vuelve a la que tenía al cerrarse. */
+  reabrirProceso(idProceso: number, etapa?: string | null): Observable<Proceso> {
+    return this.http.post<Proceso>(`${API}/procesos/${idProceso}/reapertura`, etapa ? { etapa } : {});
   }
   quitarIntegrante(idProceso: number, idPersona: number): Observable<void> {
     return this.http.delete<void>(`${API}/procesos/${idProceso}/asignaciones/${idPersona}`);
@@ -380,6 +367,10 @@ export class ApiService {
   }
   consultarRadicado(radicado: string): Observable<ResultadoConsulta> {
     return this.http.post<ResultadoConsulta>(`${API}/vigilancia/radicados/${radicado}/consultar`, {});
+  }
+  /** Lo que se ha visto del proceso en la Rama Judicial, también lo que ya existía en la primera consulta. */
+  actuacionesVigiladas(radicado: string, limite = 15): Observable<ActuacionVista[]> {
+    return this.http.get<ActuacionVista[]>(`${API}/vigilancia/radicados/${radicado}/actuaciones`, { params: filtros({ limite }) });
   }
   historialVigilancia(radicado: string): Observable<ConsultaVigilancia[]> {
     return this.http.get<ConsultaVigilancia[]>(`${API}/vigilancia/radicados/${radicado}/consultas`);

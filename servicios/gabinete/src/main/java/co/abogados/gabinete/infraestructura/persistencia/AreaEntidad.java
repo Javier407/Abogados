@@ -16,4 +16,7 @@ class AreaEntidad {
 	String nombre;
 	@Column(name = "id_director")
 	Long idDirector;
+	/** false = la firma dejó de ofrecer esa área: no sale en las listas, pero quien la tiene la conserva. */
+	@Column(nullable = false, columnDefinition = "boolean default true")
+	boolean activa = true;
 }

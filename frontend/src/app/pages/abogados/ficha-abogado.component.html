@@ -1,0 +1,155 @@
+<div class="modulo-container">
+  <a class="volver" routerLink="/abogados"><ng-icon name="lucideArrowLeft" size="14" /> Abogados</a>
+
+  @if (error()) { <div class="alerta alerta-error" role="alert">{{ error() }}</div> }
+
+  @if (cargando()) {
+    <div class="empty-state" role="status">Cargando la ficha…</div>
+  } @else if (abogado(); as a) {
+    <header class="cabecera">
+      <span class="avatar" aria-hidden="true">{{ iniciales(a) }}</span>
+      <div class="quien">
+        <h1>{{ a.nombres }} {{ a.apellidos }}</h1>
+        <p>{{ a.cargo }}@if (a.area) { · {{ a.area }} } · Sede {{ a.sede }}</p>
+        <ul class="contacto">
+          <li><span class="mono">T.P. {{ a.tarjetaProfesional }}</span></li>
+          <li><ng-icon name="lucideMail" size="14" /><a [href]="'mailto:' + a.email">{{ a.email }}</a></li>
+          @if (a.telefono) { <li><ng-icon name="lucidePhone" size="14" />{{ a.telefono }}</li> }
+        </ul>
+      </div>
+      <span class="badge" [class.badge-success]="a.activo" [class.badge-muted]="!a.activo">{{ a.activo ? 'Activo' : 'Inactivo' }}</span>
+    </header>
+
+    @if (!a.activo && aCargo().length > 0) {
+      <div class="alerta alerta-error" role="alert">
+        Está inactivo y sigue a cargo de {{ aCargo().length }} proceso(s) abierto(s). Asigne otro responsable a cada uno.
+      </div>
+    }
+
+    <section class="cifras" aria-label="Carga de trabajo">
+      <div class="cifra">
+        <span class="cifra-icono"><ng-icon name="lucideBriefcase" size="18" /></span>
+        <span class="cifra-valor">{{ aCargo().length }}</span>
+        <span class="cifra-nombre">Procesos a su cargo</span>
+      </div>
+      <div class="cifra">
+        <span class="cifra-icono"><ng-icon name="lucideUsers" size="18" /></span>
+        <span class="cifra-valor">{{ enApoyo().length }}</span>
+        <span class="cifra-nombre">Procesos en los que apoya</span>
+      </div>
+      <div class="cifra" [class.peligro]="rangos()[0].total > 0">
+        <span class="cifra-icono"><ng-icon name="lucideCalendarClock" size="18" /></span>
+        <span class="cifra-valor">{{ pendientes().length }}</span>
+        <span class="cifra-nombre">Términos que corren a su nombre</span>
+      </div>
+      <div class="cifra">
+        <span class="cifra-icono"><ng-icon name="lucideGavel" size="18" /></span>
+        <span class="cifra-valor">{{ audiencias().length }}</span>
+        <span class="cifra-nombre">Audiencias en los próximos 30 días</span>
+      </div>
+    </section>
+
+    <div class="rejilla">
+      <section class="card" aria-labelledby="titulo-rango">
+        <div class="card-header">
+          <h2 id="titulo-rango">Rango de respuesta</h2>
+          <a class="ver-todo" routerLink="/terminos" [queryParams]="{ abogado: a.idPersona }">Ver sus términos</a>
+        </div>
+        <div class="card-body">
+          <p class="form-ayuda">Cuánto tiempo le queda para responder cada término que corre a su nombre.</p>
+          @if (pendientes().length === 0) {
+            <p class="vacio">No tiene términos pendientes.</p>
+          } @else {
+            <ul class="rangos">
+              @for (r of rangos(); track r.id) {
+                <li>
+                  <span class="rango-nombre"><span class="punto" [class]="'punto punto-' + r.clase"></span> {{ r.nombre }}
+                    <small>{{ r.ayuda }}</small></span>
+                  <span class="barra-rango" aria-hidden="true"><span [class]="'tramo ' + r.clase" [style.width.%]="r.total * 100 / mayorRango()"></span></span>
+                  <strong>{{ r.total }}</strong>
+                </li>
+              }
+            </ul>
+            <h3 class="subtitulo-detalle">Lo más próximo</h3>
+            <ul class="lista-terminos">
+              @for (t of pendientes().slice(0, 5); track t.idTermino) {
+                <li>
+                  <span class="fecha" [class.vencido]="t.diasHabilesRestantes < 0">{{ t.fechaVencimiento | date:'EEE dd/MM' }}</span>
+                  <span class="que">
+                    <a [routerLink]="['/procesos', t.idProceso]" [queryParams]="{ pestana: 'terminos' }">{{ t.descripcion }}</a>
+                    <small><span class="mono">{{ t.radicadoLegible }}</span> · {{ textoRestantes(t.diasHabilesRestantes) }}</small>
+                  </span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="titulo-tipos">
+        <div class="card-header"><h2 id="titulo-tipos">Sus procesos por tipo</h2></div>
+        <div class="card-body">
+          @if (porTipo().length === 0) {
+            <p class="vacio">No tiene procesos abiertos.</p>
+          } @else {
+            <ul class="tipos">
+              @for (g of porTipo(); track g.tipo) {
+                <li>
+                  <span class="tipo-nombre">{{ g.tipo }}<small>{{ g.rama }}</small></span>
+                  <span class="barra-rango" aria-hidden="true"><span class="tramo acento" [style.width.%]="g.total * 100 / mayorTipo()"></span></span>
+                  <strong>{{ g.total }}</strong>
+                </li>
+              }
+            </ul>
+            <p class="form-ayuda">Cada tipo de proceso tiene sus propios plazos; están en la pestaña «Términos» de cada expediente.</p>
+          }
+        </div>
+      </section>
+    </div>
+
+    <section class="card" aria-labelledby="titulo-procesos">
+      <div class="card-header"><h2 id="titulo-procesos">Sus procesos</h2></div>
+      <div class="card-body">
+        <div class="resumen-bar" role="group" aria-label="Qué procesos ver">
+          <button class="resumen-chip chip-filtro" type="button" [attr.aria-pressed]="filtro() === 'abiertos'" (click)="filtro.set('abiertos')">Abiertos: <strong>{{ abiertos().length }}</strong></button>
+          <button class="resumen-chip chip-filtro" type="button" [attr.aria-pressed]="filtro() === 'cargo'" (click)="filtro.set('cargo')">A su cargo: <strong>{{ aCargo().length }}</strong></button>
+          <button class="resumen-chip chip-filtro" type="button" [attr.aria-pressed]="filtro() === 'apoyo'" (click)="filtro.set('apoyo')">En apoyo: <strong>{{ enApoyo().length }}</strong></button>
+          <button class="resumen-chip chip-filtro" type="button" [attr.aria-pressed]="filtro() === 'cerrados'" (click)="filtro.set('cerrados')">Cerrados: <strong>{{ cerrados().length }}</strong></button>
+        </div>
+
+        @if (visibles().length === 0) {
+          <div class="empty-state">No hay procesos en este grupo.</div>
+        } @else {
+          <div class="tabla-wrapper">
+            <table class="tabla tabla-ficha">
+              <thead>
+                <tr><th>Proceso</th><th>Tipo y etapa</th><th>Su papel</th><th>Términos que corren</th></tr>
+              </thead>
+              <tbody>
+                @for (p of visibles(); track p.idProceso) {
+                  <tr>
+                    <td>
+                      <a class="mono" [routerLink]="['/procesos', p.idProceso]">{{ p.radicadoLegible }}</a>
+                      <small>{{ p.asunto }}</small>
+                    </td>
+                    <td>{{ p.tipoProceso }}<small>{{ p.rama }} · etapa {{ etiqueta(p.etapa).toLowerCase() }}@if (p.estado !== 'ACTIVO') { · {{ etiqueta(p.estado).toLowerCase() }} }</small></td>
+                    <td>
+                      <span class="badge" [class.badge-primary]="p.rol === 'RESPONSABLE'" [class.badge-muted]="p.rol !== 'RESPONSABLE'">{{ papel(p.rol) }}</span>
+                      <small>desde {{ p.desde | date:'dd/MM/yyyy' }}</small>
+                    </td>
+                    <td>
+                      @if (p.terminosPendientes > 0) {
+                        <strong>{{ p.terminosPendientes }}</strong>
+                        <small>el próximo vence {{ p.proximoVencimiento | date:'EEE dd/MM/yyyy' }}</small>
+                      } @else { <span class="sin">Ninguno</span> }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </section>
+  }
+</div>

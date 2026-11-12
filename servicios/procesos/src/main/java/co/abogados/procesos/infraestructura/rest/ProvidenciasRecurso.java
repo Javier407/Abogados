@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import co.abogados.procesos.aplicacion.ProvidenciaServicio;
 import co.abogados.procesos.aplicacion.SugerenciaServicio;
 import co.abogados.procesos.dominio.modelo.NuevaProvidencia;
+import co.abogados.procesos.dominio.modelo.PlazoProceso;
 import co.abogados.procesos.dominio.modelo.ProvidenciaVista;
 import co.abogados.procesos.dominio.modelo.SugerenciaTermino;
 import jakarta.validation.Valid;
@@ -32,7 +33,8 @@ public class ProvidenciasRecurso {
 			@NotNull(message = "La fecha de la providencia es obligatoria") LocalDate fechaProvidencia,
 			@NotNull(message = "La fecha del estado es obligatoria") LocalDate fechaEstado,
 			@Size(max = 300) String decision,
-			String sentido) {
+			String sentido,
+			Boolean anticipada) {
 	}
 
 	private final ProvidenciaServicio servicio;
@@ -54,12 +56,19 @@ public class ProvidenciasRecurso {
 		return sugerencias.sugerencias(idProceso, idProvidencia);
 	}
 
+	/** Los plazos de referencia del tipo de proceso: qué hay que hacer, en cuántos días y según qué norma. */
+	@GetMapping("/procesos/{idProceso}/plazos")
+	public List<PlazoProceso> plazos(@PathVariable int idProceso) {
+		return sugerencias.plazos(idProceso);
+	}
+
 	@PostMapping("/procesos/{idProceso}/providencias")
 	public ResponseEntity<ProvidenciaVista> registrar(@PathVariable int idProceso,
 			@Valid @RequestBody ProvidenciaSolicitud s,
 			@RequestHeader(value = "X-Usuario-Id", required = false) Long usuario) {
 		ProvidenciaVista creada = servicio.registrarManual(idProceso, new NuevaProvidencia(s.tipo(), s.clase(),
-				s.fechaProvidencia(), s.fechaEstado(), s.decision(), s.sentido()), usuario);
+				s.fechaProvidencia(), s.fechaEstado(), s.decision(), s.sentido(), Boolean.TRUE.equals(s.anticipada())),
+				usuario);
 		return ResponseEntity.created(URI.create("/procesos/" + idProceso + "/providencias/" + creada.idProvidencia()))
 				.body(creada);
 	}

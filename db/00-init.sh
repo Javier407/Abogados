@@ -11,7 +11,7 @@ psql_run() {
 }
 
 echo ">> Usuarios de base de datos por servicio"
-for svc in identidad gabinete procesos vigilancia notificaciones; do
+for svc in identidad gabinete procesos vigilancia notificaciones gateway; do
   psql_run -v svc="svc_$svc" -v pass="$SVC_PASSWORD" <<'SQL'
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'svc', :'pass')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'svc') \gexec
@@ -32,6 +32,14 @@ done
 
 echo ">> Migraciones"
 for f in "$DIR"/migraciones/*.sql; do
+  echo "   $f"
+  psql_run -f "$f"
+done
+
+# Datos de ejemplo que necesitan lo que agregan las migraciones (solo en una base nueva).
+echo ">> Datos de ejemplo después de las migraciones"
+for f in "$DIR"/demo/*.sql; do
+  [ -e "$f" ] || continue
   echo "   $f"
   psql_run -f "$f"
 done

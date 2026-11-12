@@ -59,8 +59,8 @@ El rediseño sigue los criterios que pidió Javier:
 |---|---|
 | Diario | Inicio · Agenda (términos y calendario en pestañas) · Procesos · Vigilancia |
 | Clientes | Clientes · Consultas |
-| Finanzas | Honorarios · Facturación |
-| La firma (plegable) | Abogados · Peritos · Reglas de términos · Reportes · Datos de la firma |
+| Honorarios | Honorarios y pagos (la facturación se retiró en nov. 2026) |
+| La firma (plegable) | Abogados (con ficha: sus procesos y su rango de respuesta) · Peritos · Reportes · Datos de la firma |
 | Administración (plegable) | Usuarios · Servidor |
 
 - **Escritorio:** el menú se contrae a iconos y lo recuerda.
@@ -84,9 +84,9 @@ El rediseño sigue los criterios que pidió Javier:
 |---|---|
 | **Inicio "Mi día"** | Saludo y lo urgente de quien entra: sus términos (los vencidos primero), sus audiencias de los próximos 14 días (o las de la firma), los avisos sin leer y los radicados vigilados con fallas. Cada tarjeta lleva al detalle. Socios y administradores ven además "La firma" |
 | **Búsqueda Ctrl+K** | Busca procesos por radicado o asunto, clientes por nombre o documento, y ofrece atajos según el rol. Con Enter se abre lo elegido |
-| **Proceso de punta a punta** | La cabecera muestra la etapa como barra de pasos y las acciones: registrar gasto, facturar y redactar con IA. En cada providencia: términos sugeridos → borrador del recurso. Facturar abre la factura ya llena con el cliente y lo pendiente del proceso |
+| **Proceso de punta a punta** | La cabecera muestra la etapa como barra de pasos y las acciones: registrar gasto y redactar con IA. En cada providencia: términos sugeridos → borrador del recurso |
 | **Vigilancia → término** | El panel del radicado muestra sus providencias recientes, con las detectadas marcadas, y crea el término sugerido ahí mismo |
-| **Cliente → proceso → factura** | Ficha lateral con el contacto, los procesos y el total pendiente por facturar. Desde ahí: "Nuevo proceso", con el cliente ya puesto, o "Facturar" |
+| **Cliente → proceso** | Ficha lateral con el contacto y los procesos. Desde ahí: "Nuevo proceso", con el cliente ya puesto |
 
 **Enlaces profundos:**
 
@@ -96,7 +96,6 @@ El rediseño sigue los criterios que pidió Javier:
 | `/clientes?id=N` | La ficha del cliente |
 | `/clientes?nuevo=1` | El formulario de cliente nuevo |
 | `/procesos/nuevo?idCliente=N` | El proceso nuevo con ese cliente |
-| `/facturacion?nueva=1&idCliente=N&idProceso=M` | La factura nueva ya llena |
 
 ## Verificación (2026-11-06)
 
@@ -169,3 +168,14 @@ El rediseño sigue los criterios que pidió Javier:
 - Imagen Docker construida en la VM.
 - Recorrido en el navegador con Angular 22.2.5: login, menús, Ctrl+K, expediente y pestañas.
 - axe sin violaciones graves en 15 pantallas a 1366 px y en 11 a 375 px.
+
+## Toga y el movimiento (noviembre de 2026)
+
+| Pieza | Regla |
+|---|---|
+| Toga (`ui/mascota.component.ts`) | Decorativa por defecto (`aria-hidden`); si se le da `etiqueta`, es `role="img"`. Ánimos: neutro, pensando (cargando), contento (nada urgente). El texto que la acompaña dice lo importante |
+| Entradas | Clase `.entra` con `--i` para el orden; `.lista-dia` y `.lista-entra` escalonan sus `li`. Solo opacidad y un desplazamiento de 8 px |
+| Barras | Crecen desde cero con `@starting-style`; la anchura final es el dato |
+| Cambio de pantalla | `withViewTransitions`: fundido de 120 a 180 ms |
+| Carga | `<app-esqueleto>` con el texto que anuncia el lector de pantalla |
+| Reducir movimiento | Todo lo anterior se apaga; el contenido aparece directamente |

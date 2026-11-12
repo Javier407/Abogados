@@ -36,19 +36,19 @@ public final class SugeridorTerminos {
 			List<ReglaTermino> reglas, Integer diasContestacion, List<String> terminosCreados,
 			IntFunction<LocalDate> vencimiento) {
 		String clase = Texto.normalizar(providencia.clase());
-		String lado = LADO_DEMANDANTE.contains(proceso.rolCliente()) ? "DEMANDANTE" : "DEMANDADO";
+		String lado = lado(proceso);
 		boolean favorable = "FAVORABLE".equals(providencia.sentido());
 
 		Set<String> vistas = new HashSet<>();
 		terminosCreados.forEach(d -> vistas.add(Texto.normalizar(d)));
 		List<SugerenciaTermino> sugerencias = new ArrayList<>();
 
-		reglas.stream().sorted(Comparator.comparingInt(ReglaTermino::prioridad).thenComparingInt(ReglaTermino::idRegla))
+		List<ReglaTermino> coinciden = reglas.stream()
 				.filter(r -> r.tipoProvidencia().equals(providencia.tipo()))
-				.filter(r -> r.codigoRama() == null || r.codigoRama().equals(proceso.codigoRama()))
-				.filter(r -> r.idTipo() == null || r.idTipo() == proceso.idTipo())
-				.filter(r -> r.lado() == null || r.lado().equals(lado))
+				.filter(r -> aplicaAlProceso(r, proceso, lado))
 				.filter(r -> Pattern.compile(r.patron()).matcher(clase).find())
+				.toList();
+		masEspecificas(coinciden)
 				.forEach(r -> {
 					Integer dias = r.dias() != null ? r.dias() : diasContestacion;
 					if (dias == null || !vistas.add(Texto.normalizar(r.descripcion()))) {
@@ -57,7 +57,7 @@ public final class SugeridorTerminos {
 					// Una sentencia favorable rara vez se apela: la sugerencia baja a opcional.
 					int prioridad = favorable && "SENTENCIA".equals(r.tipoProvidencia()) ? 2 : r.prioridad();
 					sugerencias.add(new SugerenciaTermino(r.descripcion(), dias, providencia.fechaEstado(),
-							vencimiento.apply(dias), r.norma(), "REGLA", prioridad, r.validada()));
+							vencimiento.apply(dias), r.norma(), "REGLA", prioridad, r.validada(), r.momento()));
 				});
 
 		Matcher plazo = PLAZO_ESCRITO.matcher(Texto.normalizar(providencia.decision()) + " " + clase);
@@ -71,6 +71,54 @@ public final class SugeridorTerminos {
 		}
 		sugerencias.sort(Comparator.comparingInt(SugerenciaTermino::prioridad));
 		return sugerencias;
+	}
+
+	/**
+	 * Los plazos de referencia de un proceso según su rama, su tipo y el lado del cliente, sin mirar ninguna
+	 * providencia: es la «tabla de plazos» de ese tipo de proceso. Sin días propios ni de contestación, no sale.
+	 */
+	public static List<PlazoProceso> plazos(ProcesoVista proceso, List<ReglaTermino> reglas, Integer diasContestacion) {
+		String lado = lado(proceso);
+		List<ReglaTermino> delProceso = reglas.stream().filter(r -> aplicaAlProceso(r, proceso, lado)).toList();
+		List<PlazoProceso> plazos = new ArrayList<>();
+		Set<String> vistos = new HashSet<>();
+		// En el orden del proceso: primero lo que abren los autos y después lo que abre la sentencia.
+		List<ReglaTermino> enOrden = masEspecificas(delProceso).stream()
+				.sorted(Comparator.comparing((ReglaTermino r) -> "SENTENCIA".equals(r.tipoProvidencia()))).toList();
+		for (ReglaTermino r : enOrden) {
+			Integer dias = r.dias() != null ? r.dias() : diasContestacion;
+			if (dias == null || !vistos.add(r.tipoProvidencia() + "|" + Texto.normalizar(r.descripcion()))) {
+				continue;
+			}
+			plazos.add(new PlazoProceso(r.descripcion(), dias, r.norma(), r.momento(), r.tipoProvidencia(),
+					r.prioridad() > 1, r.validada(), r.especificidad() == 2));
+		}
+		return plazos;
+	}
+
+	static String lado(ProcesoVista proceso) {
+		return LADO_DEMANDANTE.contains(proceso.rolCliente()) ? "DEMANDANTE" : "DEMANDADO";
+	}
+
+	private static boolean aplicaAlProceso(ReglaTermino r, ProcesoVista proceso, String lado) {
+		return (r.codigoRama() == null || r.codigoRama().equals(proceso.codigoRama()))
+				&& (r.idTipo() == null || r.idTipo() == proceso.idTipo())
+				&& (r.lado() == null || r.lado().equals(lado));
+	}
+
+	/**
+	 * Entre las reglas del mismo acto procesal y la misma clase de providencia deja la más específica (tipo de
+	 * proceso > rama > general). Las reglas sin acto se conservan todas. Orden: prioridad y luego número de regla.
+	 */
+	static List<ReglaTermino> masEspecificas(List<ReglaTermino> reglas) {
+		Comparator<ReglaTermino> orden = Comparator.comparingInt(ReglaTermino::prioridad)
+				.thenComparingInt(ReglaTermino::idRegla);
+		return reglas.stream()
+				.filter(r -> r.acto() == null || reglas.stream().noneMatch(otra -> otra != r
+						&& r.acto().equals(otra.acto()) && otra.tipoProvidencia().equals(r.tipoProvidencia())
+						&& otra.especificidad() > r.especificidad()))
+				.sorted(orden)
+				.toList();
 	}
 
 	private static String recortar(String texto, int maximo) {

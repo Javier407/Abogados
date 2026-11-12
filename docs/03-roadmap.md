@@ -417,3 +417,70 @@ Pendiente o decidido para después:
 - **Copiar `D:\respaldos\abogados\llave\privada.pem` fuera del PC** (USB guardada aparte o gestor de contraseñas). Es lo único que no se puede regenerar si se pierden el PC y la VM a la vez.
 - Ensayar una vez la recuperación completa en una VM de prueba.
 - No hay logs centralizados con búsqueda (tipo Loki): se descartaron por la RAM. Lo que importa (errores) ya llega a la pantalla Servidor.
+
+## Ajustes de noviembre de 2026 (decisiones de la firma)
+
+Tres recortes pedidos por la firma después de F17. Ninguno borra historia de procesos.
+
+1. **Se retira la facturación electrónica (F14).** Fuera la pantalla, `FacturacionServicio`, el proveedor simulado, sus rutas del gateway y sus tablas (migración `016`, que se niega a borrar si hay facturas guardadas). Quedan honorarios, pagos, liquidación, gastos y cartera. La sección «F14» de arriba queda como registro de lo que se hizo; el código está en el historial de git.
+2. **Se retira la pantalla «Reglas de términos» (F12).** Las reglas, su historial y las sugerencias del expediente siguen funcionando; solo se quitó la pantalla. Desde ahora las reglas se cargan y validan por migración o SQL, y lo mismo los días de contestación de cada tipo de proceso.
+3. **Se desactiva la rama Constitucional.** `procesos.ramas.activa`, `procesos.tipos_proceso.activo`, `gabinete.areas_practica.activa` y `gabinete.tarifas.activa` (migración `017`). Lo desactivado no sale en las listas ni admite procesos nuevos; los procesos, términos, reglas y honorarios que ya lo usan se conservan y se pueden editar.
+
+## Términos que se entienden (noviembre de 2026)
+
+La pantalla de términos no se entendía: no decía qué había que hacer, de dónde salía el plazo ni cómo se había contado.
+
+1. **Un solo nombre.** El menú decía «Agenda» y la página «Términos»; ahora el menú es «Términos y audiencias».
+2. **Cada fila se explica sola.** Qué hay que hacer (con la norma y la providencia que abrió el plazo), en qué proceso (tipo y etapa), cuándo vence, cuánto del plazo se ha consumido y cómo se contó: notificación + días hábiles, y cuántos días no contaron. Una ayuda plegable explica el conteo.
+3. **Filtro por abogado** («De toda la firma», «Solo los míos» o un abogado) y contadores que filtran.
+4. **Plazos distintos por tipo de proceso.** Las reglas llevan `acto` (contestar, subsanar, reposición…) y `momento` (cuándo corre, en palabras). Entre reglas del mismo acto gana la más específica: tipo de proceso > rama > general. La migración `018` carga 18 reglas de referencia para laboral, pensional, penal, contencioso administrativo, ejecutivo y monitorio. **Todas quedan sin validar** hasta que un socio las revise.
+5. **Los plazos del tipo de proceso están en el expediente** (pestaña Términos): `GET /procesos/{id}/plazos`. «Usar» llena el formulario del término, que ahora guarda la **norma**.
+6. **Sentencia anticipada (CGP art. 278).** Una casilla al registrar la sentencia; queda marcada en la línea de tiempo.
+
+Pendiente: que un abogado valide los días y las normas de las reglas nuevas; el umbral de «por vencer» sigue fijo en 5 días hábiles (ahora se ve además el porcentaje del plazo consumido).
+
+## Ficha del abogado (noviembre de 2026)
+
+La lista de abogados era un directorio: no decía qué casos lleva cada uno.
+
+1. **Ficha** en `/abogados/:id` (desde la lista, desde «Carga por abogado» en Reportes y desde la búsqueda Ctrl+K): procesos a su cargo y en apoyo, términos que corren a su nombre y audiencias de los próximos 30 días.
+2. **Rango de respuesta:** sus términos pendientes repartidos en vencidos, de hoy a 5 días hábiles, de 6 a 15 y más de 15, con lo más próximo.
+3. **Sus procesos por tipo** y la lista de procesos con su papel en cada uno (a cargo, apoyo o dependiente), filtrable. `GET /procesos/de-abogado/{idPersona}`.
+4. **Filtro por abogado** en Procesos y en Términos (`/terminos?abogado=documento`).
+5. Aviso cuando un abogado inactivo sigue a cargo de procesos abiertos.
+
+Pendiente: reasignar o suceder a un abogado con historial y motivo, y cerrar un proceso con su motivo (siguiente entrega).
+
+## Relevo del abogado y cierre del proceso (noviembre de 2026)
+
+1. **Cambiar el abogado a cargo** desde la pestaña Equipo, con motivo (renuncia, revocatoria, sustitución o sucesión del poder, retiro de la firma, reorganización) y nota. Por defecto el anterior sale del equipo y sus términos pendientes y audiencias pasan al nuevo. Se avisa a los dos (evento `proceso.reasignado`).
+2. **Historial del equipo** (`procesos.asignaciones_historial`, migración `019`): cada periodo de cada persona, con desde, hasta y por qué salió. Lo escribe un disparador, así que también queda lo que se cambia al editar el proceso o el equipo.
+3. **Cerrar el proceso** con motivo (sentencia, sentencia anticipada, conciliación, transacción, desistimiento, retiro de la demanda, pago, liquidación, la firma deja el caso, archivo u otro), fecha y nota. Sus términos y audiencias dejan de avisar y de salir en la agenda (no se borran) y deja de vigilarse. Los honorarios no se tocan.
+4. **Reabrir** un proceso cerrado, solo la dirección: vuelve a la etapa que tenía.
+
+Pendiente: reasignar en bloque todos los procesos de un abogado que se va; proponer la liquidación de honorarios al cerrar con sentencia favorable.
+
+## Vigilancia que dice cómo va el proceso (noviembre de 2026)
+
+La pantalla mostraba la salud de la consulta (fuente, fallos), no el proceso.
+
+1. **Cada fila dice cómo va el proceso:** asunto, etapa con una barrita de avance, lo último que pasó en el juzgado (con «Novedad» si fue en los últimos 7 días) y lo próximo que vence. La vigilancia (fuente, última consulta, fallos) queda en su columna.
+2. **El panel cuenta lo que pasó en el juzgado:** `GET /vigilancia/radicados/{r}/actuaciones` devuelve todo lo visto en la fuente, también lo que ya existía en la primera consulta (antes no se veía en ninguna parte).
+3. **Una sentencia detectada mueve la etapa** a Sentencia, igual que una registrada a mano.
+4. **Datos de ejemplo coherentes:** los radicados con historial están en fuente simulada con su línea base y sus actuaciones; los demás, en Manual y sin consultar. Van en `db/demo/`, que `00-init.sh` corre después de las migraciones (solo en una base nueva).
+
+## Portal más moderno y Toga, la asistente (noviembre de 2026)
+
+1. **Toga:** la gata abogada del portal (dibujo propio en SVG: gatita negra, ojos grandes, cuello blanco y corbata a rayas). Saluda en el inicio con un resumen del día en una frase («Hoy tiene 1 término vencido y 2 por vencer…»), firma el asistente de redacción del expediente y parpadea de vez en cuando. Piensa mientras algo carga y se alegra si no hay nada urgente. El nombre está en una sola constante (`NOMBRE_ASISTENTE`). Su imagen para el bot de Telegram: `docs/marca/toga-512.png` (la sube quien administra el bot en BotFather).
+2. **Anillo de términos** en el inicio: vencidos, por vencer y con tiempo, con su texto equivalente para lectores de pantalla.
+3. **Movimiento en CSS** en lugar de JavaScript: la entrada escalonada del inicio ya no parpadea; las listas y tarjetas aparecen con un fundido corto; las barras crecen desde cero (`@starting-style`); al cambiar de pantalla, un fundido (View Transitions).
+4. **Esqueletos de carga** en Procesos, Términos, Clientes, Abogados y Avisos, en lugar de «Cargando…» (con `role="status"` y `aria-busy`).
+5. **«Reducir movimiento» se respeta del todo:** sin animaciones, sin parpadeo, sin brillo del esqueleto y sin desplazamiento suave.
+
+Pendiente: reemplazar los `confirm()` del navegador por un diálogo propio, tarjetas en el celular para las tablas largas y revisar el contraste del inicio en modo oscuro en el navegador.
+
+## El bot de Telegram responde consultas (noviembre de 2026)
+
+El mismo bot de los avisos, ahora como **Toga**, contesta en chat privado `/mis_procesos`, `/terminos`, `/audiencias` y `/proceso <radicado>`, y frases simples. Solo al equipo de la firma activo, solo lo suyo, solo lectura, con límite por minuto y registro de cada consulta (migración `020`) sin guardar el texto. Viene apagado: `TELEGRAM_CONSULTAS=true`. Detalle en `docs/15-bot-telegram.md`.
+
+Pendiente: que la firma revise el envío de datos por Telegram (Ley 1581) antes de encenderlo; decidir si el registro del bot se encadena y sella como la bitácora principal.

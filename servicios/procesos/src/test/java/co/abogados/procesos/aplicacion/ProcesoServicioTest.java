@@ -68,6 +68,14 @@ class ProcesoServicioTest {
 		servicio = new ProcesoServicio(procesos, new CatalogoFijo(), gabinete, publicador, reloj);
 	}
 
+	static final short TUTELA = 32;
+
+	static Proceso conTipo(Proceso p, short idTipo) {
+		return new Proceso(p.idProceso(), p.radicado(), idTipo, p.idDespachoActual(), p.idCliente(), p.rolCliente(),
+				p.asunto(), p.cuantia(), p.claseCuantia(), p.tipoServicio(), p.estado(), p.etapa(), p.fechaRadicacion(),
+				p.vigilado(), p.idResponsable());
+	}
+
 	static Proceso nuevo(String radicado) {
 		return new Proceso(null, Radicado.de(radicado), (short) 1, null, 7, RolCliente.DEMANDANTE,
 				"Incumplimiento de contrato de obra", new BigDecimal("320000000"), ClaseCuantia.MAYOR,
@@ -86,6 +94,29 @@ class ProcesoServicioTest {
 			assertThat(e.radicado()).isEqualTo("11001310303220260050100");
 			assertThat(e.idAbogadoResponsable()).isEqualTo(ABOGADA);
 		});
+	}
+
+	@Test
+	void noAbreProcesosDeUnTipoQueLaFirmaYaNoOfrece() {
+		assertThatThrownBy(() -> servicio.crear(conTipo(nuevo("11001310303220260050100"), TUTELA)))
+				.isInstanceOf(ReglaNegocioException.class)
+				.hasMessageContaining("ya no ofrece");
+		assertThat(eventos).isEmpty();
+	}
+
+	@Test
+	void unProcesoConservaSuTipoAunqueSeDesactivePeroNoPuedeCambiarAUnoDesactivado() {
+		int id = servicio.crear(nuevo("11001310303220260050100")).idProceso();
+
+		// pasar a un tipo desactivado: no
+		assertThatThrownBy(() -> servicio.actualizar(id, conTipo(nuevo("11001310303220260050100"), TUTELA)))
+				.isInstanceOf(ReglaNegocioException.class)
+				.hasMessageContaining("ya no ofrece");
+
+		// un proceso que ya era tutela se puede seguir editando
+		int tutela = procesos.crear(conTipo(nuevo("11001310303220260050200"), TUTELA), "Constructora Altamira SAS");
+		ProcesoVista editada = servicio.actualizar(tutela, conTipo(nuevo("11001310303220260050200"), TUTELA));
+		assertThat(editada.idTipo()).isEqualTo(TUTELA);
 	}
 
 	@Test
@@ -226,7 +257,12 @@ class ProcesoServicioTest {
 		public List<Rama> ramas() { return List.of(new Rama("CIVIL", "Civil y comercial", "CGP")); }
 		public List<TipoProceso> tipos(String rama) { return List.of(tipo()); }
 		public List<Despacho> despachos(String rama) { return despachos; }
-		public Optional<TipoProceso> tipo(short id) { return id == 1 ? Optional.of(tipo()) : Optional.empty(); }
+		public Optional<TipoProceso> tipo(short id) {
+			if (id == TUTELA) return Optional.of(new TipoProceso(TUTELA, "CONSTITUCIONAL", "Tutela", null));
+			return id == 1 ? Optional.of(tipo()) : Optional.empty();
+		}
+		/** La tutela existe en el catálogo, pero la firma dejó de ofrecerla. */
+		public boolean tipoDisponible(short id) { return id == 1; }
 		public Optional<Despacho> despacho(short id) {
 			return despachos.stream().filter(d -> d.idDespacho() == id).findFirst();
 		}
