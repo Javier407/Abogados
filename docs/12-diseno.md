@@ -168,3 +168,14 @@ El rediseño sigue los criterios que pidió Javier:
 - Imagen Docker construida en la VM.
 - Recorrido en el navegador con Angular 22.2.5: login, menús, Ctrl+K, expediente y pestañas.
 - axe sin violaciones graves en 15 pantallas a 1366 px y en 11 a 375 px.
+
+## Toga y el movimiento (noviembre de 2026)
+
+| Pieza | Regla |
+|---|---|
+| Toga (`ui/mascota.component.ts`) | Decorativa por defecto (`aria-hidden`); si se le da `etiqueta`, es `role="img"`. Ánimos: neutro, pensando (cargando), contento (nada urgente). El texto que la acompaña dice lo importante |
+| Entradas | Clase `.entra` con `--i` para el orden; `.lista-dia` y `.lista-entra` escalonan sus `li`. Solo opacidad y un desplazamiento de 8 px |
+| Barras | Crecen desde cero con `@starting-style`; la anchura final es el dato |
+| Cambio de pantalla | `withViewTransitions`: fundido de 120 a 180 ms |
+| Carga | `<app-esqueleto>` con el texto que anuncia el lector de pantalla |
+| Reducir movimiento | Todo lo anterior se apaga; el contenido aparece directamente |
