@@ -514,6 +514,22 @@ class RecursosTest {
 	// ----------------------------------------------------------------- reportes
 
 	@Test
+	void losProcesosDeUnAbogadoSalenConSuRol() throws Exception {
+		given(reportes.procesosDe(52345678L)).willReturn(List.of(new Reportes.ProcesoDeAbogado(31,
+				"11001-31-03-032-2026-00501-00", "Incumplimiento de contrato", "CIVIL", "Civil y comercial", "Verbal",
+				"PRUEBAS", "ACTIVO", "RESPONSABLE", LocalDate.of(2026, 9, 1), 2, LocalDate.of(2026, 11, 20))));
+
+		mvc.perform(get("/procesos/de-abogado/52345678"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].idProceso").value(31))
+				.andExpect(jsonPath("$[0].rol").value("RESPONSABLE"))
+				.andExpect(jsonPath("$[0].tipoProceso").value("Verbal"))
+				.andExpect(jsonPath("$[0].terminosPendientes").value(2))
+				.andExpect(jsonPath("$[0].proximoVencimiento").value("2026-11-20"));
+		mvc.perform(get("/procesos/de-abogado/nadie")).andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void sinFechasLosReportesCubrenElUltimoAnio() throws Exception {
 		given(reportes.carga(HOY)).willReturn(List.of(new Reportes.CargaAbogado(52345678L, 4, 1, 6, 2, 3)));
 		given(reportes.cumplimiento(HOY.minusYears(1), HOY, HOY)).willReturn(List.of(

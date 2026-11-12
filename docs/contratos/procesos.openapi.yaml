@@ -355,6 +355,36 @@ paths:
         '422': { $ref: '#/components/responses/Error' }
 
   # ---------------------------------------------------------------- agenda, pruebas y términos sugeridos (F7)
+  /procesos/de-abogado/{idPersona}:
+    get:
+      summary: Los procesos en los que está un abogado, con su papel en cada uno (ficha del abogado)
+      description: |
+        Primero los abiertos y, entre ellos, los que tiene a cargo; los cerrados al final. Lo consulta todo el
+        personal, igual que la lista de procesos.
+      parameters:
+        - { name: idPersona, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '200':
+          description: Procesos del abogado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    idProceso: { type: integer }
+                    radicadoLegible: { type: string }
+                    asunto: { type: string }
+                    codigoRama: { type: string }
+                    rama: { type: string }
+                    tipoProceso: { type: string }
+                    etapa: { type: string }
+                    estado: { type: string }
+                    rol: { type: string, enum: [RESPONSABLE, APOYO, DEPENDIENTE] }
+                    desde: { type: string, format: date }
+                    terminosPendientes: { type: integer }
+                    proximoVencimiento: { type: string, format: date, nullable: true }
   /procesos/{idProceso}/plazos:
     get:
       summary: Los plazos de referencia del tipo de proceso (rama, tipo y lado del cliente); no crea nada
