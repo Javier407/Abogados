@@ -272,7 +272,13 @@ class DatosBotHttp:
 
     async def persona(self, id_persona: int) -> dict | None:
         p = await self._get(f"{self.gabinete}/abogados/{id_persona}")
-        return {"nombres": p.get("nombres") or "", "activo": bool(p.get("activo"))} if p else None
+        return {"nombres": p.get("nombres") or "", "activo": bool(p.get("activo")), "cargo": p.get("cargo")} \
+            if p else None
+
+    async def abogados(self) -> list[dict]:
+        """El equipo activo, solo con lo que muestra Toga (sin correos, teléfonos ni tarifas)."""
+        return [{k: a.get(k) for k in ("idPersona", "nombres", "apellidos", "cargo", "area")}
+                for a in await self._get(f"{self.gabinete}/abogados", {"soloActivos": "true"}) or []]
 
     async def procesos_de(self, id_persona: int) -> list[dict]:
         return await self._get(f"{self.procesos}/procesos/de-abogado/{id_persona}") or []

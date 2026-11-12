@@ -279,7 +279,11 @@ async def test_los_datos_se_piden_a_cada_servicio_con_el_token_de_servicio():
         if req.url.path == "/abogados/1":
             return httpx.Response(404)
         if req.url.path.startswith("/abogados/"):
-            return httpx.Response(200, json={"nombres": "Catalina", "activo": True, "email": "c@f.test"})
+            return httpx.Response(200, json={"nombres": "Catalina", "activo": True, "email": "c@f.test",
+                                             "cargo": "Socio"})
+        if req.url.path == "/abogados":
+            return httpx.Response(200, json=[{"idPersona": 5, "nombres": "Ana", "apellidos": "Ruiz", "cargo": "Socio",
+                                              "area": "Laboral", "email": "a@f.test", "tarifaHora": 1}])
         return httpx.Response(200, json=[{"x": 1}])
 
     class Token:
@@ -296,7 +300,9 @@ async def test_los_datos_se_piden_a_cada_servicio_con_el_token_de_servicio():
     httpx.AsyncClient.__init__ = con_transporte
     try:
         d = DatosBotHttp("http://gabinete:8080/", "http://procesos:8080", Token())
-        assert await d.persona(CATALINA) == {"nombres": "Catalina", "activo": True}   # sin el correo
+        assert await d.persona(CATALINA) == {"nombres": "Catalina", "activo": True, "cargo": "Socio"}   # sin el correo
+        assert await d.abogados() == [{"idPersona": 5, "nombres": "Ana", "apellidos": "Ruiz", "cargo": "Socio",
+                                       "area": "Laboral"}]                         # sin correo ni tarifa
         assert await d.persona(1) is None
         assert await d.procesos_de(CATALINA) == [{"x": 1}]
         await d.terminos_de(CATALINA)
@@ -308,6 +314,7 @@ async def test_los_datos_se_piden_a_cada_servicio_con_el_token_de_servicio():
     assert all(p[3] == "Bearer servicio" for p in pedidos)
     assert ("procesos", "/procesos/de-abogado/52345678", {}, "Bearer servicio") in pedidos
     assert ("procesos", "/terminos", {"idResponsable": "52345678"}, "Bearer servicio") in pedidos
+    assert ("gabinete", "/abogados", {"soloActivos": "true"}, "Bearer servicio") in pedidos
     assert ("procesos", "/terminos", {"idProceso": "34"}, "Bearer servicio") in pedidos
     assert ("procesos", "/audiencias", {"desde": "2026-11-12", "hasta": "2026-11-26", "idAsistente": "52345678"},
             "Bearer servicio") in pedidos
