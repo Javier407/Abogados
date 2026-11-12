@@ -88,6 +88,10 @@ class RepoMemoria:
     async def consultas(self, radicado, limite):
         return [c for c in self.consultas_hechas if c[0] == radicado][:limite]
 
+    async def actuaciones(self, radicado, limite):
+        return [{"fecha": "2026-10-15", "actuacion": r, "anotacion": None, "nueva": True, "vista": "2026-10-15T15:00:00+00:00"}
+                for r in sorted(self.conocidas.get(radicado, set()))][:limite]
+
     async def agregar_simulada(self, radicado, fecha, actuacion, anotacion):
         self.simuladas.append((radicado, fecha, actuacion))
         return len(self.simuladas)

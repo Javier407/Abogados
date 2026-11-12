@@ -105,6 +105,15 @@ class RepositorioPostgres:
             return [{"fecha": f.isoformat(), "exitosa": e, "nuevas": n, "detalle": d or {}}
                     for f, e, n, d in await cur.fetchall()]
 
+    async def actuaciones(self, radicado: str, limite: int) -> list[dict]:
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                """SELECT fecha, actuacion, anotacion, avisada, vista FROM vigilancia.actuaciones_conocidas
+                   WHERE radicado = %s ORDER BY fecha DESC, vista DESC, referencia DESC LIMIT %s""", (radicado, limite))
+            return [{"fecha": f.isoformat(), "actuacion": a, "anotacion": n or None, "nueva": av,
+                     "vista": v.isoformat()}
+                    for f, a, n, av, v in await cur.fetchall()]
+
     async def agregar_simulada(self, radicado: str, fecha, actuacion: str, anotacion: str) -> int:
         async with self.pool.connection() as con:
             cur = await con.execute(

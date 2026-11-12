@@ -71,6 +71,31 @@ paths:
       parameters: [ { $ref: '#/components/parameters/Radicado' } ]
       responses:
         '200': { description: Historial }
+  /vigilancia/radicados/{radicado}/actuaciones:
+    get:
+      summary: Lo que la vigilancia vio del proceso en la fuente, de lo más reciente a lo más antiguo
+      description: |
+        Incluye la línea base (lo que ya existía en la primera consulta, que no se avisa): nueva = false.
+        limite entre 1 y 100 (30 por defecto). 404 si el radicado no está en vigilancia.
+      parameters:
+        - { name: radicado, in: path, required: true, schema: { type: string, pattern: '^[0-9]{23}$' } }
+        - { name: limite, in: query, required: false, schema: { type: integer, default: 30 } }
+      responses:
+        '200':
+          description: Actuaciones vistas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    fecha: { type: string, format: date }
+                    actuacion: { type: string }
+                    anotacion: { type: string, nullable: true }
+                    nueva: { type: boolean, description: 'false = ya existía al empezar a vigilar' }
+                    vista: { type: string, format: date-time }
+        '404': { description: El radicado no está en vigilancia }
   /vigilancia/radicados/{radicado}/simuladas:
     post:
       summary: Agrega una actuación a la fuente simulada (solo radicados con fuente SIMULADA)

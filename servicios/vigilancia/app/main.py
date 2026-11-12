@@ -150,6 +150,11 @@ def crear_app(servicio: ServicioVigilancia | None = None, verificador: Verificad
     async def historial(request: Request, radicado: str):
         return await srv(request).historial(radicado_valido(radicado))
 
+    @app.get("/vigilancia/radicados/{radicado}/actuaciones")
+    async def actuaciones(request: Request, radicado: str, limite: int = 30):
+        """Lo que se ha visto del proceso en la fuente; nueva = false si ya existía en la primera consulta."""
+        return await srv(request).actuaciones(radicado_valido(radicado), limite)
+
     @app.post("/vigilancia/radicados/{radicado}/simuladas", status_code=201)
     async def simulada(request: Request, radicado: str, a: ActuacionSimulada):
         id_ = await srv(request).agregar_simulada(radicado_valido(radicado), a.fecha, a.actuacion, a.anotacion)

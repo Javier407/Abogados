@@ -36,4 +36,12 @@ for f in "$DIR"/migraciones/*.sql; do
   psql_run -f "$f"
 done
 
+# Datos de ejemplo que necesitan lo que agregan las migraciones (solo en una base nueva).
+echo ">> Datos de ejemplo después de las migraciones"
+for f in "$DIR"/demo/*.sql; do
+  [ -e "$f" ] || continue
+  echo "   $f"
+  psql_run -f "$f"
+done
+
 echo ">> Base de datos de pruebas lista"

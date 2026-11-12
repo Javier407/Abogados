@@ -315,6 +315,9 @@ export interface RadicadoVigilado {
   lineaBaseHecha: boolean;
 }
 
+/** Lo que la vigilancia vio del proceso en la fuente. nueva = false: ya existía en la primera consulta. */
+export interface ActuacionVista { fecha: string; actuacion: string; anotacion?: string | null; nueva: boolean; vista: string; }
+
 export interface ResultadoConsulta { radicado: string; exitosa: boolean; actuaciones?: number; nuevas?: number; lineaBase?: boolean; error?: string; }
 export interface ConsultaVigilancia { fecha: string; exitosa: boolean; nuevas: number; detalle: Record<string, unknown>; }
 

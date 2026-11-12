@@ -459,3 +459,12 @@ Pendiente: reasignar o suceder a un abogado con historial y motivo, y cerrar un 
 4. **Reabrir** un proceso cerrado, solo la dirección: vuelve a la etapa que tenía.
 
 Pendiente: reasignar en bloque todos los procesos de un abogado que se va; proponer la liquidación de honorarios al cerrar con sentencia favorable.
+
+## Vigilancia que dice cómo va el proceso (noviembre de 2026)
+
+La pantalla mostraba la salud de la consulta (fuente, fallos), no el proceso.
+
+1. **Cada fila dice cómo va el proceso:** asunto, etapa con una barrita de avance, lo último que pasó en el juzgado (con «Novedad» si fue en los últimos 7 días) y lo próximo que vence. La vigilancia (fuente, última consulta, fallos) queda en su columna.
+2. **El panel cuenta lo que pasó en el juzgado:** `GET /vigilancia/radicados/{r}/actuaciones` devuelve todo lo visto en la fuente, también lo que ya existía en la primera consulta (antes no se veía en ninguna parte).
+3. **Una sentencia detectada mueve la etapa** a Sentencia, igual que una registrada a mano.
+4. **Datos de ejemplo coherentes:** los radicados con historial están en fuente simulada con su línea base y sus actuaciones; los demás, en Manual y sin consultar. Van en `db/demo/`, que `00-init.sh` corre después de las migraciones (solo en una base nueva).

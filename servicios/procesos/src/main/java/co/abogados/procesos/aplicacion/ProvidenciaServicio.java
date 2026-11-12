@@ -86,6 +86,12 @@ public class ProvidenciaServicio {
 			return Optional.empty();
 		}
 		int id = providencias.registrarDetectada(a.idProceso(), a);
+		// Una sentencia detectada en la Rama Judicial mueve la etapa igual que una registrada a mano.
+		ProcesoVista p = proceso.get();
+		if ("SENTENCIA".equals(a.tipo())
+				&& EtapaProceso.valueOf(p.etapa()).avanzaA(EtapaProceso.SENTENCIA, p.estado())) {
+			expediente.avanzarEtapa(a.idProceso(), EtapaProceso.SENTENCIA);
+		}
 		log.info("Actuación {} registrada como providencia {} del proceso {}", a.referencia(), id, a.idProceso());
 		return Optional.of(id);
 	}

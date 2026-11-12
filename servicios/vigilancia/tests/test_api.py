@@ -33,6 +33,18 @@ def test_configurar_y_simular_una_actuacion():
         assert r.status_code == 201
 
 
+def test_las_actuaciones_vistas_salen_con_el_limite_acotado():
+    repo = RepoMemoria(RadicadoVigilado(RAD, 1, Fuente.SIMULADA))
+    repo.conocidas[RAD] = {f"SIM:{i}" for i in range(5)}
+    with cliente(repo) as c:
+        r = c.get(f"/vigilancia/radicados/{RAD}/actuaciones", params={"limite": 2})
+        assert r.status_code == 200 and len(r.json()) == 2
+        assert r.json()[0]["actuacion"] == "SIM:0"
+        assert len(c.get(f"/vigilancia/radicados/{RAD}/actuaciones", params={"limite": 0}).json()) == 1   # mínimo 1
+        assert c.get("/vigilancia/radicados/11001310303220269999900/actuaciones").status_code == 404
+        assert c.get("/vigilancia/radicados/123/actuaciones").status_code == 422
+
+
 def test_errores_con_el_formato_comun():
     with cliente() as c:
         r = c.post("/vigilancia/radicados/123/consultar")
