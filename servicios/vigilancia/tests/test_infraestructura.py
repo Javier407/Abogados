@@ -159,6 +159,19 @@ async def test_consultas_devuelve_el_historial():
     assert con.sql[0][1] == (RAD, 5)
 
 
+async def test_actuaciones_vistas_con_la_linea_base_marcada():
+    vista = datetime(2026, 10, 15, 15, 0, tzinfo=timezone.utc)
+    r, con = repo([(date(2026, 10, 14), "Auto admite demanda", "", False, vista),
+                   (date(2026, 10, 20), "Auto fija fecha", "Audiencia el 3/11", True, vista)])
+    a = await r.actuaciones(RAD, 10)
+    assert a == [{"fecha": "2026-10-14", "actuacion": "Auto admite demanda", "anotacion": None, "nueva": False,
+                  "vista": vista.isoformat()},
+                 {"fecha": "2026-10-20", "actuacion": "Auto fija fecha", "anotacion": "Audiencia el 3/11", "nueva": True,
+                  "vista": vista.isoformat()}]
+    assert con.sql[0][1] == (RAD, 10)
+    assert "ORDER BY fecha DESC" in con.sql[0][0]
+
+
 async def test_simuladas_se_agregan_y_se_leen_como_actuaciones():
     r, con = repo([(7,)], [(7, date(2026, 10, 15), "Auto admite demanda", "")])
     assert await r.agregar_simulada(RAD, date(2026, 10, 15), "Auto admite demanda", "") == 7
