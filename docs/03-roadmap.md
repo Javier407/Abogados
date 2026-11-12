@@ -450,3 +450,12 @@ La lista de abogados era un directorio: no decía qué casos lleva cada uno.
 5. Aviso cuando un abogado inactivo sigue a cargo de procesos abiertos.
 
 Pendiente: reasignar o suceder a un abogado con historial y motivo, y cerrar un proceso con su motivo (siguiente entrega).
+
+## Relevo del abogado y cierre del proceso (noviembre de 2026)
+
+1. **Cambiar el abogado a cargo** desde la pestaña Equipo, con motivo (renuncia, revocatoria, sustitución o sucesión del poder, retiro de la firma, reorganización) y nota. Por defecto el anterior sale del equipo y sus términos pendientes y audiencias pasan al nuevo. Se avisa a los dos (evento `proceso.reasignado`).
+2. **Historial del equipo** (`procesos.asignaciones_historial`, migración `019`): cada periodo de cada persona, con desde, hasta y por qué salió. Lo escribe un disparador, así que también queda lo que se cambia al editar el proceso o el equipo.
+3. **Cerrar el proceso** con motivo (sentencia, sentencia anticipada, conciliación, transacción, desistimiento, retiro de la demanda, pago, liquidación, la firma deja el caso, archivo u otro), fecha y nota. Sus términos y audiencias dejan de avisar y de salir en la agenda (no se borran) y deja de vigilarse. Los honorarios no se tocan.
+4. **Reabrir** un proceso cerrado, solo la dirección: vuelve a la etapa que tenía.
+
+Pendiente: reasignar en bloque todos los procesos de un abogado que se va; proponer la liquidación de honorarios al cerrar con sentencia favorable.
