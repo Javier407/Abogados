@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
+import { EsqueletoComponent } from '../../ui/esqueleto.component';
 import { Aviso, EstadoTelegram, VinculoTelegram } from '../../core/modelos';
 import { SesionService } from '../../core/sesion.service';
 import { AuthService } from '../../core/auth.service';
@@ -11,7 +12,7 @@ import { AuthService } from '../../core/auth.service';
 @Component({
   selector: 'app-avisos',
   standalone: true,
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, EsqueletoComponent],
   changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './avisos.component.html',
 })

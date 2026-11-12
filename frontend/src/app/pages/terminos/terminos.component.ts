@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
+import { EsqueletoComponent } from '../../ui/esqueleto.component';
 import {
   SITUACIONES,
   Situacion,
@@ -23,7 +24,7 @@ import { PestanasAgendaComponent } from '../../ui/pestanas-agenda.component';
 @Component({
   selector: 'app-terminos',
   standalone: true,
-  imports: [FormsModule, RouterLink, DatePipe, PestanasAgendaComponent],
+  imports: [FormsModule, RouterLink, DatePipe, PestanasAgendaComponent, EsqueletoComponent],
   changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './terminos.component.html',
   styleUrl: './terminos.component.css',

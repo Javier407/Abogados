@@ -15,6 +15,7 @@ import {
 } from '@ng-icons/lucide';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
+import { EsqueletoComponent } from '../../ui/esqueleto.component';
 import {
   AuthService,
   EDITAN_CLIENTES,
@@ -30,7 +31,7 @@ import { Cliente, Proceso, Sede, etiqueta } from '../../core/modelos';
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [FormsModule, DatePipe, RouterLink, NgIcon],
+  imports: [FormsModule, DatePipe, RouterLink, NgIcon, EsqueletoComponent],
   providers: [
     provideIcons({
       lucideFolderPlus,

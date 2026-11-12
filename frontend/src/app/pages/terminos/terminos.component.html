@@ -52,7 +52,7 @@
   </div>
 
   @if (cargando) {
-    <div class="empty-state" role="status">Cargando términos…</div>
+    <app-esqueleto texto="Cargando términos…" [cantidadColumnas]="5" />
   } @else if (terminos.length === 0) {
     <div class="empty-state">No hay términos con esos filtros.</div>
   } @else {

@@ -5,12 +5,13 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
+import { EsqueletoComponent } from '../../ui/esqueleto.component';
 import { Abogado, AreaPractica, Cargo, Sede } from '../../core/modelos';
 
 @Component({
   selector: 'app-abogados',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, RouterLink],
+  imports: [FormsModule, CurrencyPipe, RouterLink, EsqueletoComponent],
   changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './abogados.component.html',
 })

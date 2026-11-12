@@ -5,13 +5,14 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
+import { EsqueletoComponent } from '../../ui/esqueleto.component';
 import { AuthService, JURIDICO } from '../../core/auth.service';
 import { ESTADOS, Proceso, Rama, etiqueta } from '../../core/modelos';
 
 @Component({
   selector: 'app-procesos',
   standalone: true,
-  imports: [FormsModule, RouterLink, DatePipe],
+  imports: [FormsModule, RouterLink, DatePipe, EsqueletoComponent],
   changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './procesos.component.html',
 })

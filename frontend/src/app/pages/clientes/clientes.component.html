@@ -114,7 +114,7 @@
 
   <div class="honorarios-grid" [class.con-detalle]="elegido">
     @if (cargando) {
-      <div class="empty-state">Cargando clientes...</div>
+      <app-esqueleto texto="Cargando clientes…" />
     } @else if (clientes.length === 0) {
       <div class="empty-state">No hay clientes que coincidan.</div>
     } @else {
