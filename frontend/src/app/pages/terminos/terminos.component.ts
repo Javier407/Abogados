@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
 import {
@@ -30,6 +30,7 @@ import { PestanasAgendaComponent } from '../../ui/pestanas-agenda.component';
 })
 export class TerminosComponent implements OnInit {
   private api = inject(ApiService);
+  private ruta = inject(ActivatedRoute);
   readonly sesion = inject(SesionService);
   readonly situaciones = SITUACIONES;
   readonly etiqueta = etiqueta;
@@ -48,7 +49,10 @@ export class TerminosComponent implements OnInit {
   error = '';
 
   ngOnInit(): void {
-    this.quien = this.sesion.idPersona() ? 'mios' : 'todos';
+    // Desde la ficha de un abogado se llega con ?abogado=documento.
+    const abogado = Number(this.ruta.snapshot.queryParamMap.get('abogado'));
+    if (abogado > 0) this.quien = abogado === this.sesion.idPersona() ? 'mios' : String(abogado);
+    else this.quien = this.sesion.idPersona() ? 'mios' : 'todos';
     this.cargar();
   }
 

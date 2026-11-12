@@ -36,6 +36,22 @@ export interface Abogado {
   activo?: boolean;
 }
 
+/** Un proceso en el que participa un abogado, con su papel y lo que tiene pendiente (ficha del abogado). */
+export interface ProcesoDeAbogado {
+  idProceso: number;
+  radicadoLegible: string;
+  asunto: string;
+  codigoRama: string;
+  rama: string;
+  tipoProceso: string;
+  etapa: string;
+  estado: string;
+  rol: 'RESPONSABLE' | 'APOYO' | 'DEPENDIENTE';
+  desde: string;
+  terminosPendientes: number;
+  proximoVencimiento?: string | null;
+}
+
 export interface Sede { idSede: number; nombre: string; ciudad: string; direccion?: string; telefono?: string | null; esPrincipal: boolean; }
 export interface Cargo { idCargo: number; codigo: string; nombre: string; esAbogado: boolean; }
 export interface AreaPractica { idArea: number; codigoRama: string; nombre: string; idDirector?: number; }

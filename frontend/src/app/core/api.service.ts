@@ -8,7 +8,7 @@ import {
   FuenteVigilancia, Proceso, ProcesoSolicitud, Providencia, RadicadoVigilado, Rama, ResultadoConsulta, Revision, Sede,
   Termino, TerminoSolicitud, TipoProceso, Vencimiento, VinculoTelegram,
   Actuacion, ActuacionSolicitud, Expediente, Parte, ParteRegistrada, ParteSolicitud, ProvidenciaSolicitud,
-  Audiencia, PlazoProceso, Prueba, PruebaSolicitud, SugerenciaTermino,
+  Audiencia, PlazoProceso, ProcesoDeAbogado, Prueba, PruebaSolicitud, SugerenciaTermino,
   CambioCuenta, CargaAbogado, CarteraCliente, Cuenta, CuentaSolicitud, CumplimientoTerminos, Gasto, GastoSolicitud,
   ResultadoRama, ProcesoPortal, DetallePortal, FinanzasPortal, ResumenPublicado,
   CategoriaDocumento, Consulta, ConsultaConAvisos, Documento, EstadoConsulta, Integrante, RolEquipo,
@@ -193,6 +193,10 @@ export class ApiService {
     return this.http.delete<void>(`${API}/procesos/${idProceso}/actuaciones/${idActuacion}`);
   }
 
+  /** Los procesos en los que está un abogado, con su papel en cada uno. */
+  procesosDeAbogado(idPersona: number): Observable<ProcesoDeAbogado[]> {
+    return this.http.get<ProcesoDeAbogado[]>(`${API}/procesos/de-abogado/${idPersona}`);
+  }
   /** Los plazos de referencia del tipo de proceso: qué hay que hacer, en cuántos días y según qué norma. */
   plazosProceso(idProceso: number): Observable<PlazoProceso[]> {
     return this.http.get<PlazoProceso[]>(`${API}/procesos/${idProceso}/plazos`);
