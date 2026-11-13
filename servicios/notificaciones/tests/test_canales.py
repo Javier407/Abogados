@@ -105,7 +105,7 @@ async def test_la_ayuda_no_muestra_comandos_de_telegram():
     v = await canales.generar_vinculo(CATALINA, "WHATSAPP")
     await canales.vincular("WHATSAPP", WA, v["codigo"])
     ayuda = (await canales.preguntar("WHATSAPP", WA, "hola"))["respuesta"]
-    assert ayuda.startswith("Hola, Catalina. Soy Toga") and "/mis_procesos" not in ayuda
+    assert ayuda.startswith("Hola, Catalina. Soy Lawy") and "/mis_procesos" not in ayuda
 
 
 async def test_volver_a_vincular_mueve_el_chat_y_desvincular_lo_quita():

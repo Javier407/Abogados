@@ -187,7 +187,7 @@ async def test_en_el_portal_la_persona_viene_de_la_sesion_y_la_ayuda_no_habla_de
     b = bot(repo, datos)
 
     ayuda = await b.responder_portal(CATALINA, "hola")
-    assert ayuda.startswith("Hola, Catalina. Soy Toga") and "/mis_procesos" not in ayuda
+    assert ayuda.startswith("Hola, Catalina. Soy Lawy") and "/mis_procesos" not in ayuda
     assert "Tiene 2 procesos abiertos" in await b.responder_portal(CATALINA, "mis procesos")
     assert "etapa pruebas" in await b.responder_portal(CATALINA, "mis procesos")
     assert "solo para el equipo" in await b.responder_portal(CLIENTE, "mis procesos")   # un cliente, no
@@ -220,7 +220,7 @@ def test_preguntar_a_toga_desde_el_portal_con_la_sesion():
 
 async def test_la_ayuda_saluda_y_explica_los_comandos():
     r = await bot().responder(CHAT, "hola")
-    assert r.startswith("Hola, Catalina. Soy Toga")
+    assert r.startswith("Hola, Catalina. Soy Lawy")
     assert "/mis_procesos" in r and "/proceso" in r and "Solo consulto" in r
 
 
@@ -434,7 +434,7 @@ async def test_respuestas_cortas_a_registrar_y_quien_es_toga():
     registrar = await bot().responder(CHAT, "¿Puedo registrar un término?")
     assert registrar.startswith("No: solo consulto.") and "/mis_procesos" not in registrar
     quien = await bot().responder(CHAT, "¿Eres un bot?")
-    assert quien.startswith("Soy Toga") and "No soy una persona" in quien and "/mis_procesos" not in quien
+    assert quien.startswith("Soy Lawy") and "No soy una persona" in quien and "/mis_procesos" not in quien
     portal = await bot().responder_portal(CATALINA, "quiero borrar un proceso")
     assert portal.startswith("No: solo consulto.") and "/ayuda" not in portal
     assert "/ayuda" not in await bot().responder_portal(CATALINA, "eres humano?")

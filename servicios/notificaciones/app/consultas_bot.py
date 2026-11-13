@@ -27,7 +27,7 @@ from .dominio import radicado_legible
 
 log = logging.getLogger(__name__)
 
-NOMBRE = "Toga"
+NOMBRE = "Lawy"
 LIMITE_POR_MINUTO = 10
 MAXIMO_LISTA = 8
 CERRADOS = ("TERMINADO", "ARCHIVADO")
@@ -200,7 +200,7 @@ class ConsultasBot:
                     "No: solo consulto. Para registrar, cambiar o borrar algo, use el portal. Puedo decirle sus "
                     "procesos, términos y audiencias."), "RESPONDIDA"
         if comando == "quien":
-            return (f"Soy {NOMBRE}, la asistente de la firma: consulto en Lexora sus procesos, términos y audiencias. "
+            return (f"Soy {NOMBRE}, el asistente de la firma: consulto en Lexora sus procesos, términos y audiencias. "
                     "No soy una persona y no doy asesoría jurídica."
                     + (" Escriba /ayuda para ver qué puedo responder." if canal == "telegram" else "")), "RESPONDIDA"
         ayuda = self._ayuda(persona.get("nombres") or "", canal, await self._radicado_de_ejemplo(id_persona))
@@ -225,15 +225,15 @@ class ConsultasBot:
     def _ayuda(self, nombre: str, canal: str = "telegram", ejemplo: str | None = None) -> str:
         saludo = f"Hola, {nombre.split()[0]}. " if nombre else "Hola. "
         if canal == "portal":
-            return (f"{saludo}Soy {NOMBRE}, la asistente de la firma. Pregúnteme por sus procesos abiertos, los "
+            return (f"{saludo}Soy {NOMBRE}, el asistente de la firma. Pregúnteme por sus procesos abiertos, los "
                     "términos que le vencen o sus audiencias de las próximas dos semanas, o escríbame el radicado de "
                     "un proceso suyo para decirle cómo va. Solo consulto: para registrar o cambiar algo, use las "
                     "pantallas del portal.")
         if canal == "externo":
-            return (f"{saludo}Soy {NOMBRE}, la asistente de la firma. Escríbame «mis procesos», «términos», "
+            return (f"{saludo}Soy {NOMBRE}, el asistente de la firma. Escríbame «mis procesos», «términos», "
                     "«audiencias» o el radicado de 23 dígitos de un proceso suyo. Solo consulto: para registrar o "
                     "cambiar algo, use el portal.")
-        return (f"{saludo}Soy {NOMBRE}, la asistente de la firma. Le respondo sobre sus procesos:\n\n"
+        return (f"{saludo}Soy {NOMBRE}, el asistente de la firma. Le respondo sobre sus procesos:\n\n"
                 "/mis_procesos — sus procesos abiertos y lo próximo que vence\n"
                 "/terminos — sus términos pendientes, del más urgente al más lejano\n"
                 "/audiencias — sus audiencias de las próximas dos semanas\n"

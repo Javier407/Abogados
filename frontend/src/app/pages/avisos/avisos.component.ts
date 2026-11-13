@@ -105,7 +105,7 @@ export class AvisosComponent {
   }
 
   desvincularCanal(c: CanalExterno): void {
-    if (!confirm(`¿Dejar de consultar a Toga por ${c.nombre}?`)) return;
+    if (!confirm(`¿Dejar de consultar a Lawy por ${c.nombre}?`)) return;
     this.api.desvincularCanal(this.sesion.idPersona()!, c.canal).subscribe({
       next: () => this.cargarCanales(this.sesion.idPersona()),
       error: (e) => (this.error = mensajeDeError(e)),

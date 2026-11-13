@@ -234,7 +234,7 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
         """Pregunta a Toga desde el portal. Mismas reglas que el bot: solo la firma, solo lo suyo, solo lectura."""
         toga = getattr(request.app.state, "toga", None)
         if toga is None:
-            raise HTTPException(503, detail="Toga no está disponible en este momento")
+            raise HTTPException(503, detail="Lawy no está disponible en este momento")
         return {"respuesta": await toga.responder_portal(idPersona, texto)}
 
     # ---------------------------------------------------------- WhatsApp, Instagram… (vía Talki)

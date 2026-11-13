@@ -91,7 +91,7 @@ import { PaginaLegalComponent } from './pagina-legal.component';
           a las consultas que haga al bot sobre sus propios procesos, se envían por Telegram y quedan en sus servidores,
           regidos por su propia política. Puede desvincularlo cuando quiera desde «Avisos».</li>
         <li><strong>WhatsApp e Instagram (Meta):</strong> solo para el equipo de la firma y solo si vincula su chat desde
-          «Avisos». Sus preguntas a Toga y las respuestas sobre sus propios procesos (radicado, asunto, etapa, términos y
+          «Avisos». Sus preguntas a Lawy y las respuestas sobre sus propios procesos (radicado, asunto, etapa, términos y
           audiencias) pasan por los servidores de Meta, regidos por su propia política, y por el asistente de mensajes de la
           firma (Talki), que funciona en el mismo servidor propio y no guarda el texto de esas respuestas. Puede desvincularlo
           cuando quiera desde «Avisos».</li>

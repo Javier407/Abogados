@@ -18,8 +18,8 @@ const CANALES = {
   ],
 };
 
-/** Avisos → Toga por WhatsApp e Instagram: genera el código para escribir en el chat y desvincula. */
-describe('Toga por WhatsApp e Instagram en Avisos', () => {
+/** Avisos → Lawy por WhatsApp e Instagram: genera el código para escribir en el chat y desvincula. */
+describe('Lawy por WhatsApp e Instagram en Avisos', () => {
   let http: HttpTestingController;
 
   function montar(esCliente = false) {
@@ -45,7 +45,7 @@ describe('Toga por WhatsApp e Instagram en Avisos', () => {
     http.expectOne(r => r.url === '/api/notificaciones/canales' && r.params.get('idPersona') === String(YO)).flush(CANALES);
     f.detectChanges();
     const el = f.nativeElement as HTMLElement;
-    expect(el.textContent).toContain('Toga por WhatsApp e Instagram');
+    expect(el.textContent).toContain('Lawy por WhatsApp e Instagram');
     const filas = Array.from(el.querySelectorAll('.lista-canales li')).map(li =>
       [li.querySelector('span')?.textContent?.trim(), li.querySelector('button')?.textContent?.trim()]);
     expect(filas).toEqual([['WhatsApp: sin vincular', 'Vincular WhatsApp'], ['Instagram: vinculado', 'Desvincular']]);
@@ -74,7 +74,7 @@ describe('Toga por WhatsApp e Instagram en Avisos', () => {
     const f = montar();
     http.expectOne(r => r.url === '/api/notificaciones/canales').flush({ ...CANALES, configurado: false });
     f.detectChanges();
-    expect((f.nativeElement as HTMLElement).textContent).not.toContain('Toga por WhatsApp');
+    expect((f.nativeElement as HTMLElement).textContent).not.toContain('Lawy por WhatsApp');
   });
 
   it('a un cliente no le ofrece los canales (Toga no le responde datos)', () => {
