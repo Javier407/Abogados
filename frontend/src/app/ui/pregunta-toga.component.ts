@@ -94,7 +94,7 @@ interface Mensaje {
                               @for (f of b.filas; track $index) {
                                 <tr [class]="'u-' + f.urgencia">
                                   @for (celda of f.celdas; track $index) {
-                                    <td><ng-container *ngTemplateOutlet="segmentos; context: { $implicit: celda }" /></td>
+                                    <td [attr.data-columna]="b.columnas[$index]"><ng-container *ngTemplateOutlet="segmentos; context: { $implicit: celda }" /></td>
                                   }
                                 </tr>
                               }
@@ -155,7 +155,7 @@ interface Mensaje {
       }
       .lanzador:hover { box-shadow: var(--shadow-lg), 0 0 0 4px var(--accent); }
       .panel {
-        width: clamp(380px, 36vw, 560px); height: min(680px, calc(100vh - 116px)); display: flex;
+        width: clamp(380px, 40vw, 600px); height: min(700px, calc(100vh - 116px)); display: flex;
         flex-direction: column; border-radius: 18px; background: var(--surface); border: 1px solid var(--line);
         box-shadow: var(--shadow-lg); overflow: hidden; transition: width .2s ease, height .2s ease;
       }
@@ -165,6 +165,11 @@ interface Mensaje {
         :host { right: 12px; bottom: 12px; }
         .panel, .panel.grande { position: fixed; inset: 8px 8px 88px 8px; width: auto; height: auto; }
         .agrandar { display: none; }
+      }
+      @media (max-width: 420px) {
+        .titulos p, .bienvenida app-mascota { display: none; }
+        .cara { width: 46px; height: 46px; }
+        header { padding: 10px 12px; }
       }
       @media (prefers-reduced-motion: no-preference) {
         .panel { animation: subir .22s cubic-bezier(.22, 1, .36, 1) both; }
@@ -204,7 +209,7 @@ interface Mensaje {
         background: var(--accent); color: var(--on-accent, #fff); border-bottom-right-radius: 4px;
       }
       .respuesta {
-        min-width: 0; flex: 1; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line);
+        min-width: 0; flex: 1; padding: 12px 14px; background: var(--surface); container-type: inline-size; border: 1px solid var(--line);
         border-top-left-radius: 4px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 8px;
       }
       .respuesta p { margin: 0; }
@@ -221,6 +226,27 @@ interface Mensaje {
       td { padding: 9px 10px; border-top: 1px solid var(--line); vertical-align: top; min-width: 90px; }
       td:first-child { min-width: 0; white-space: nowrap; }
       tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+
+      /* Sin espacio para la tabla: cada fila es una tarjeta con el nombre de cada dato. */
+      @container (max-width: 540px) {
+        .tabla-envoltura { border: 0; border-radius: 0; overflow: visible; }
+        table, tbody, tr, td { display: block; width: 100%; }
+        thead { display: none; }
+        tr { border: 1px solid var(--line); border-left-width: 4px; border-radius: 10px; overflow: hidden;
+             background: var(--surface); }
+        tr + tr { margin-top: 8px; }
+        tr.u-alta { border-left-color: var(--color-danger); }
+        tr.u-media { border-left-color: var(--color-warn); }
+        td, td:first-child, tbody tr:nth-child(even) td {
+          display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; align-items: baseline;
+          padding: 7px 10px; min-width: 0; white-space: normal; box-shadow: none; background: transparent;
+        }
+        td + td { border-top: 1px solid var(--line); }
+        tr td:first-child { border-top: 0; }
+        tr.u-alta td { background: color-mix(in srgb, var(--color-danger) 6%, transparent); }
+        td::before { content: attr(data-columna); font-size: 11px; font-weight: 700; text-transform: uppercase;
+                     letter-spacing: .04em; color: var(--muted); }
+      }
       tr td:first-child { box-shadow: inset 3px 0 0 transparent; }
       tr.u-alta td { background: color-mix(in srgb, var(--color-danger) 7%, transparent); }
       tr.u-alta td:first-child { box-shadow: inset 3px 0 0 var(--color-danger); }
@@ -249,7 +275,9 @@ interface Mensaje {
       .seg-ok { background: var(--color-ok-soft); color: var(--ink); font-size: 11.5px; padding: 1px 7px; border-radius: 99px; }
       .seg-comando { font-family: var(--mono, monospace); color: var(--accent-ink); }
 
-      .sugerencias { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px 4px; background: var(--surface); }
+      .sugerencias { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px 4px; background: var(--surface);
+                     scrollbar-width: thin; }
+      .sugerencias button { flex: none; white-space: nowrap; }
       .sugerencias button {
         font: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 99px;
         border: 1px solid var(--accent-soft); background: var(--accent-soft); color: var(--accent-ink);
