@@ -1,0 +1,1130 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lexora · Cómo está construido</title>
+<style>
+  @font-face { font-family: "Jakarta"; src: url("jakarta.woff2") format("woff2"); font-weight: 200 800; }
+  :root {
+    --suelo: #f5f6fa; --tarjeta: #ffffff; --tinta: #0f1e45; --tinta2: #2b3a63; --gris: #5a6478; --linea: #e4e7ef;
+    --acento: #4338ff; --acento-suave: #ecebff;
+    --java: #e8710a; --java-s: #fff1e5; --python: #0e9f6e; --python-s: #e3f6ee; --web: #d6336c; --web-s: #fdecf2;
+    --datos: #2f6fae; --datos-s: #e6f0fa; --mq: #7c3aed; --mq-s: #f1ebff; --seg: #4338ff; --seg-s: #ecebff;
+    --ia: #0891b2; --ia-s: #e0f4f8; --ext: #5a6478; --ext-s: #eef0f5; --infra: #b45309; --infra-s: #fdf3dc;
+    --mal: #b42318; --mal-s: #fdecea; --ok: #1f7a4d; --ok-s: #e4f4eb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #dfe3ee; font-family: "Jakarta", "Segoe UI", sans-serif; color: var(--tinta); overflow: hidden; }
+  #escenario { position: absolute; left: 50%; top: 50%; width: 1600px; height: 900px; transform-origin: 0 0; }
+  .diapo { position: absolute; inset: 0; background: var(--suelo); border-radius: 18px; overflow: hidden; display: none; padding: 50px 80px 64px; }
+  .diapo.activa { display: block; animation: entrar .35s ease-out; }
+  @keyframes entrar { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .seccion { font-size: 15px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--acento); margin-bottom: 6px; }
+  .seccion b { display: inline-block; background: var(--acento); color: #fff; border-radius: 6px; padding: 1px 7px; margin-right: 8px; letter-spacing: .04em; }
+  h1 { font-size: 64px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+  h2 { font-size: 42px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 6px; }
+  h2 em, h1 em { font-style: normal; color: var(--acento); }
+  h3 { font-size: 22px; font-weight: 800; }
+  .bajada { font-size: 21px; font-weight: 500; color: var(--gris); margin-bottom: 18px; max-width: 1360px; line-height: 1.4; }
+  .pie { position: absolute; left: 80px; right: 80px; bottom: 22px; display: flex; justify-content: space-between; font-size: 14px; color: var(--gris); font-weight: 600; }
+  .tarjeta { background: var(--tarjeta); border-radius: 18px; box-shadow: 0 1px 2px rgba(15,30,69,.05), 0 14px 32px -18px rgba(15,30,69,.28); padding: 20px 24px; }
+  .rejilla { display: grid; gap: 18px; }
+  .txt { font-size: 18px; line-height: 1.55; color: var(--tinta2); }
+  .txt b { color: var(--tinta); }
+  [data-paso] { transition: opacity .45s ease, transform .45s ease; }
+  [data-paso].oculto { opacity: 0; transform: translateY(8px); pointer-events: none; }
+  svg [data-paso].oculto { transform: none; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 10px; font-size: 15px; font-weight: 700; white-space: nowrap; }
+  .k-java { color: var(--java); background: var(--java-s); } .k-python { color: var(--python); background: var(--python-s); }
+  .k-web { color: var(--web); background: var(--web-s); } .k-datos { color: var(--datos); background: var(--datos-s); }
+  .k-mq { color: var(--mq); background: var(--mq-s); } .k-seg { color: var(--seg); background: var(--seg-s); }
+  .k-ia { color: var(--ia); background: var(--ia-s); } .k-ext { color: var(--ext); background: var(--ext-s); }
+  .k-infra { color: var(--infra); background: var(--infra-s); } .k-mal { color: var(--mal); background: var(--mal-s); }
+  .k-ok { color: var(--ok); background: var(--ok-s); }
+  .leyenda { display: flex; flex-wrap: wrap; gap: 8px; }
+  .leyenda .chip { font-size: 14px; padding: 3px 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 17px; }
+  th { text-align: left; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--gris); padding: 7px 10px; border-bottom: 2px solid var(--linea); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--linea); vertical-align: top; line-height: 1.35; }
+  tr:last-child td { border-bottom: 0; }
+  td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .si { color: var(--ok); font-weight: 700; } .no { color: #9aa1b2; } .medio { color: #8a5a00; font-weight: 700; }
+  code { font-family: Consolas, monospace; font-size: .88em; background: var(--ext-s); padding: 1px 6px; border-radius: 6px; color: var(--tinta2); }
+  svg text { font-family: "Jakarta", sans-serif; }
+  /* animación de lo que aparece en el paso actual */
+  .anima .trazo, .anima.trazo { stroke-dasharray: 1; stroke-dashoffset: 1; animation: trazar .7s ease-out forwards; }
+  @keyframes trazar { to { stroke-dashoffset: 0; } }
+  .anima.nodo, .anima .nodo { animation: brotar .45s cubic-bezier(.2,.9,.3,1.3); transform-box: fill-box; transform-origin: center; }
+  @keyframes brotar { from { transform: scale(.85); } to { transform: scale(1); } }
+  .relleno { transition: width 1s cubic-bezier(.2,.8,.2,1); }
+  .oculto .relleno { width: 0 !important; }
+  .crece { transform-box: fill-box; transform-origin: bottom; transition: transform .9s cubic-bezier(.2,.8,.2,1); }
+  .oculto .crece { transform: scaleY(0); }
+  /* barra de avance, índice y ayuda */
+  #barra { position: fixed; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(15,30,69,.08); }
+  #avance { height: 100%; width: 0; background: var(--acento); transition: width .3s; }
+  #botonIndice { position: fixed; left: 14px; top: 12px; font: inherit; font-size: 14px; font-weight: 700; color: var(--tinta2); background: rgba(255,255,255,.85);
+    border: 0; border-radius: 10px; padding: 7px 12px; cursor: pointer; z-index: 5; }
+  #ayuda { position: fixed; right: 14px; top: 12px; font-size: 13px; color: var(--gris); font-weight: 600; background: rgba(255,255,255,.85); padding: 7px 12px; border-radius: 10px; transition: opacity 1s; pointer-events: none; }
+  #indice { position: fixed; inset: 0; background: rgba(15,30,69,.55); display: none; z-index: 10; padding: 50px; }
+  #indice.abierto { display: flex; align-items: center; justify-content: center; }
+  #indice .panel { background: #fff; border-radius: 20px; padding: 28px 32px; max-width: 1200px; width: 100%; max-height: 100%; overflow: auto; }
+  #indice h3 { margin-bottom: 14px; }
+  #indice .cols { columns: 3 300px; column-gap: 28px; }
+  #indice .grupo { break-inside: avoid; margin-bottom: 14px; }
+  #indice .grupo b { display: block; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--acento); margin-bottom: 4px; }
+  #indice a { display: block; color: var(--tinta); text-decoration: none; font-size: 15px; padding: 3px 8px; border-radius: 8px; }
+  #indice a:hover, #indice a:focus-visible { background: var(--acento-suave); outline: none; }
+  #indice a span { color: var(--gris); font-variant-numeric: tabular-nums; margin-right: 8px; }
+  /* diagramas de secuencia */
+  .secuencia { display: grid; grid-template-columns: 1fr 360px; gap: 20px; height: 640px; }
+  .secuencia .lienzo { background: var(--tarjeta); border-radius: 18px; box-shadow: 0 14px 32px -18px rgba(15,30,69,.28); padding: 8px 10px; }
+  .nota { display: flex; flex-direction: column; gap: 12px; }
+  .nota .paso-n { font-size: 14px; font-weight: 800; color: var(--acento); text-transform: uppercase; letter-spacing: .06em; }
+  .nota .paso-t { font-size: 25px; font-weight: 800; line-height: 1.2; }
+  .nota .paso-d { font-size: 19px; line-height: 1.45; color: var(--tinta2); }
+  .nota .botones { margin-top: auto; display: flex; gap: 8px; }
+  .nota button { font: inherit; font-size: 15px; font-weight: 700; padding: 9px 14px; border-radius: 12px; border: 0; cursor: pointer; background: var(--acento-suave); color: var(--acento); }
+  .nota button.lleno { background: var(--acento); color: #fff; }
+  /* patrones */
+  .patrones { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .patron { display: grid; grid-template-columns: 410px 1fr; gap: 14px; align-items: center; padding: 14px 18px; height: 300px; }
+  .patron h3 { font-size: 21px; margin: 8px 0 6px; }
+  .patron p { font-size: 15.5px; line-height: 1.45; color: var(--tinta2); }
+  /* barras de cobertura */
+  .fila-barra { display: grid; grid-template-columns: 170px 1fr 150px; gap: 14px; align-items: center; font-size: 17px; font-weight: 700; }
+  .pista { position: relative; height: 26px; background: var(--ext-s); border-radius: 8px; }
+  .relleno { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 8px; }
+  .minimo { position: absolute; top: -5px; bottom: -5px; width: 3px; background: var(--tinta); border-radius: 2px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="marcadores"></defs></svg>
+<div id="escenario"></div>
+<button id="botonIndice" type="button">☰ Índice</button>
+<div id="ayuda">← → avanzar · I índice · F pantalla completa · A animación automática</div>
+<div id="indice" role="dialog" aria-label="Índice de la presentación"><div class="panel"><h3>Índice</h3><div class="cols"></div></div></div>
+<div id="barra"><div id="avance"></div></div>
+
+<script>
+/* =====================================================================
+   Colores: uno por familia de tecnología
+   ===================================================================== */
+const K = { java: "#e8710a", python: "#0e9f6e", web: "#d6336c", datos: "#2f6fae", mq: "#7c3aed", seg: "#4338ff", ia: "#0891b2", ext: "#5a6478", infra: "#b45309", mal: "#b42318", ok: "#1f7a4d", gris: "#8a93a8", tinta: "#2b3a63" };
+const KS = { java: "#fff1e5", python: "#e3f6ee", web: "#fdecf2", datos: "#e6f0fa", mq: "#f1ebff", seg: "#ecebff", ia: "#e0f4f8", ext: "#eef0f5", infra: "#fdf3dc", mal: "#fdecea", ok: "#e4f4eb", gris: "#f2f4f8", tinta: "#eef0f5" };
+const LEYENDA = `<div class="leyenda">
+  <span class="chip k-java">Java · Spring</span><span class="chip k-python">Python · FastAPI</span>
+  <span class="chip k-web">Web · Angular</span><span class="chip k-datos">Datos · PostgreSQL</span>
+  <span class="chip k-mq">Mensajería · RabbitMQ</span><span class="chip k-seg">Seguridad · Gateway</span>
+  <span class="chip k-ia">IA local · Ollama</span><span class="chip k-infra">Infraestructura</span><span class="chip k-ext">Externo</span></div>`;
+
+/* marcadores de flecha (uno por color) y de UML: definidos una sola vez, fuera de las diapositivas ocultas */
+document.getElementById("marcadores").innerHTML = Object.entries(K).map(([k, c]) =>
+  `<marker id="pt-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="${c}"/></marker>`).join("") + `
+  <marker id="uml-tri" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="13" markerHeight="13" orient="auto"><path d="M1 1 L11 6 L1 11 z" fill="#fff" stroke="#2b3a63" stroke-width="1.4"/></marker>
+  <marker id="uml-abierta" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="10" markerHeight="10" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="#2b3a63" stroke-width="1.6"/></marker>
+  <marker id="uml-rombo" viewBox="0 0 16 10" refX="1" refY="5" markerWidth="15" markerHeight="10" orient="auto"><path d="M1 5 L8 1 L15 5 L8 9 z" fill="#2b3a63"/></marker>
+  <marker id="uml-rombo-h" viewBox="0 0 16 10" refX="1" refY="5" markerWidth="15" markerHeight="10" orient="auto"><path d="M1 5 L8 1 L15 5 L8 9 z" fill="#fff" stroke="#2b3a63" stroke-width="1.3"/></marker>`;
+
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const pa = (p) => (p != null ? ` data-paso="${p}"` : "");
+
+/* ---------- cajas y flechas ---------- */
+function caja(n, paso) {
+  const w = n.w || 220, h = n.h || 92, c = K[n.k], s = KS[n.k];
+  const lineas = [n.t, ...(n.s ? [].concat(n.s) : [])];
+  const tam = n.tam || 19;
+  const txt = lineas.map((l, i) => `<text x="${n.x + w / 2 + 3}" y="${n.y + h / 2 + (i - (lineas.length - 1) / 2) * (tam + 3) + 6}" text-anchor="middle"
+     font-size="${i ? tam - 4 : tam}" font-weight="${i ? 600 : 800}" fill="${i ? "#2b3a63" : "#0f1e45"}">${esc(l)}</text>`).join("");
+  return `<g class="nodo"${pa(paso)}>
+    <rect x="${n.x}" y="${n.y}" width="${w}" height="${h}" rx="14" fill="${s}" stroke="${c}" stroke-width="2.5"/>
+    <rect x="${n.x}" y="${n.y + 6}" width="7" height="${h - 12}" rx="3.5" fill="${c}"/>${txt}</g>`;
+}
+function centro(n) { return [n.x + (n.w || 220) / 2, n.y + (n.h || 92) / 2]; }
+function borde(n, hacia) {
+  const [cx, cy] = centro(n), w = (n.w || 220) / 2, h = (n.h || 92) / 2, dx = hacia[0] - cx, dy = hacia[1] - cy;
+  const t = Math.min(w / Math.abs(dx || 1e-6), h / Math.abs(dy || 1e-6));
+  return [cx + dx * t, cy + dy * t];
+}
+function rotulo(x, y, texto, tam = 14, color = "#2b3a63") {
+  if (!texto) return "";
+  const w = texto.length * tam * 0.56 + 14;
+  return `<rect x="${x - w / 2}" y="${y - tam + 1}" width="${w}" height="${tam + 9}" rx="7" fill="#fff" stroke="#e4e7ef"/>
+    <text x="${x}" y="${y + 4}" text-anchor="middle" font-size="${tam}" font-weight="700" fill="${color}">${esc(texto)}</text>`;
+}
+/* flecha recta de borde a borde. o: { k: color, guion, en: posición del rótulo 0..1, doble } */
+function flecha(a, b, texto, paso, o = {}) {
+  const k = o.k || "gris", c = K[k];
+  const [x1, y1] = borde(a, centro(b)), [x2, y2] = borde(b, centro(a));
+  const t = o.en ?? 0.5, mx = x1 + (x2 - x1) * t, my = y1 + (y2 - y1) * t;
+  return `<g${pa(paso)}><line class="${o.guion ? "" : "trazo"}" pathLength="1" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="2.5"
+      ${o.guion ? 'stroke-dasharray="8 6"' : ""} marker-end="url(#pt-${k})" ${o.doble ? `marker-start="url(#pt-${k})"` : ""}/>${rotulo(mx, my, texto)}</g>`;
+}
+/* figura de actor UML */
+function actor(x, y, t, color = "#0f1e45", paso) {
+  return `<g class="nodo"${pa(paso)} stroke="${color}" stroke-width="3" fill="none"><circle cx="${x}" cy="${y - 52}" r="13"/><line x1="${x}" y1="${y - 39}" x2="${x}" y2="${y - 8}"/>
+    <line x1="${x - 20}" y1="${y - 28}" x2="${x + 20}" y2="${y - 28}"/><line x1="${x}" y1="${y - 8}" x2="${x - 16}" y2="${y + 16}"/><line x1="${x}" y1="${y - 8}" x2="${x + 16}" y2="${y + 16}"/>
+    <text x="${x}" y="${y + 40}" text-anchor="middle" font-size="17" font-weight="800" fill="${color}" stroke="none">${esc(t)}</text></g>`;
+}
+function elipse(x, y, t, k, paso, rx = 165) {
+  return `<g class="nodo"${pa(paso)}><ellipse cx="${x}" cy="${y}" rx="${rx}" ry="34" fill="${KS[k]}" stroke="${K[k]}" stroke-width="2"/>
+    <text x="${x}" y="${y + 6}" text-anchor="middle" font-size="15.5" font-weight="700" fill="#0f1e45">${esc(t)}</text></g>`;
+}
+
+/* ---------- diagrama de clases UML ---------- */
+function clase(c, paso) {
+  const w = c.w || 190, m = c.m || [], cab = c.est ? 46 : 32, h = cab + (m.length ? m.length * 19 + 10 : 0);
+  c.w = w; c.h = h;
+  const col = K[c.k || "tinta"], fondo = KS[c.k || "tinta"];
+  return `<g class="nodo"${pa(paso)}><rect x="${c.x}" y="${c.y}" width="${w}" height="${h}" rx="8" fill="#fff" stroke="${col}" stroke-width="2"/>
+    <path d="M${c.x} ${c.y + cab} V${c.y + 8} a8 8 0 0 1 8 -8 H${c.x + w - 8} a8 8 0 0 1 8 8 V${c.y + cab} z" fill="${fondo}" stroke="${col}" stroke-width="2"/>
+    ${c.est ? `<text x="${c.x + w / 2}" y="${c.y + 17}" text-anchor="middle" font-size="12" font-style="italic" fill="${col}" font-weight="700">«${esc(c.est)}»</text>` : ""}
+    <text x="${c.x + w / 2}" y="${c.y + cab - 10}" text-anchor="middle" font-size="15" font-weight="800" fill="#0f1e45">${esc(c.t)}</text>
+    ${m.map((l, i) => `<text x="${c.x + 10}" y="${c.y + cab + 20 + i * 19}" font-size="12.5" font-weight="600" fill="#2b3a63">${esc(l)}</text>`).join("")}</g>`;
+}
+/* relaciones UML: hereda, realiza, usa, asoc, compone, agrega */
+function rel(a, b, tipo, texto, paso) {
+  const [x1, y1] = borde(a, centro(b)), [x2, y2] = borde(b, centro(a));
+  const guion = tipo === "realiza" || tipo === "usa" ? 'stroke-dasharray="7 5"' : "";
+  const fin = tipo === "hereda" || tipo === "realiza" ? "uml-tri" : tipo === "usa" || tipo === "asoc" ? "uml-abierta" : "";
+  const ini = tipo === "compone" ? "uml-rombo" : tipo === "agrega" ? "uml-rombo-h" : "";
+  return `<g${pa(paso)}><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2b3a63" stroke-width="1.8" ${guion}
+    ${fin ? `marker-end="url(#${fin})"` : ""} ${ini ? `marker-start="url(#${ini})"` : ""}/>${rotulo((x1 + x2) / 2, (y1 + y2) / 2, texto, 12.5)}</g>`;
+}
+
+/* ---------- entidades (modelo de datos) ---------- */
+function entidad(e, paso) {
+  const w = e.w || 250, h = 38 + e.c.length * 23 + 6;
+  e.w = w; e.h = h;
+  return `<g class="nodo"${pa(paso)}><rect x="${e.x}" y="${e.y}" width="${w}" height="${h}" rx="10" fill="#fff" stroke="${K[e.k]}" stroke-width="2"/>
+    <path d="M${e.x} ${e.y + 36} V${e.y + 10} a10 10 0 0 1 10 -10 H${e.x + w - 10} a10 10 0 0 1 10 10 V${e.y + 36} z" fill="${K[e.k]}"/>
+    <text x="${e.x + 14}" y="${e.y + 24}" font-size="15" font-weight="800" fill="#fff" letter-spacing=".04em">${esc(e.t)}</text>
+    ${e.c.map(([llave, nombre, nota], i) => `<text x="${e.x + 12}" y="${e.y + 56 + i * 23}" font-size="11.5" font-weight="800" fill="${K[e.k]}">${llave || ""}</text>
+      <text x="${e.x + 44}" y="${e.y + 56 + i * 23}" font-size="14" font-weight="600" fill="#0f1e45">${esc(nombre)}</text>
+      ${nota ? `<text x="${e.x + w - 10}" y="${e.y + 56 + i * 23}" text-anchor="end" font-size="12" fill="#5a6478">${esc(nota)}</text>` : ""}`).join("")}</g>`;
+}
+function relER(a, b, ca, cb, verbo, paso) {
+  const [x1, y1] = borde(a, centro(b)), [x2, y2] = borde(b, centro(a)), L = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / L, uy = (y2 - y1) / L;
+  const et = (x, y, t) => `<text x="${x - uy * 11}" y="${y + ux * 11 + 5}" text-anchor="middle" font-size="14" font-weight="800" fill="#2f6fae">${t}</text>`;
+  return `<g${pa(paso)}><line class="trazo" pathLength="1" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#7c8aa5" stroke-width="2"/>
+    ${et(x1 + ux * 16, y1 + uy * 16, ca)}${et(x2 - ux * 16, y2 - uy * 16, cb)}${rotulo((x1 + x2) / 2, (y1 + y2) / 2, verbo, 12.5, "#5a6478")}</g>`;
+}
+
+/* ---------- diagrama de secuencia animado ---------- */
+function secuencia(def) {
+  const P = def.part, n = P.length, W = 1080, X0 = 74;
+  const xs = P.map((_, i) => X0 + i * (W - 2 * X0) / Math.max(n - 1, 1));
+  const anchoP = Math.min(140, (W - 2 * X0) / Math.max(n - 1, 1) - 12);
+  const top = 12, cab = 62, fila = Math.max(40, Math.min(54, 500 / def.msj.length));
+  const y0 = top + cab + 46, H = y0 + def.msj.length * fila + 6;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="xMidYMin meet">`;
+  (def.bloques || []).forEach((b) => {
+    const ya = y0 + b.de * fila - 34, yb = y0 + b.a * fila + fila * 0.62, tw = b.txt.length * 7.4 + 22;
+    svg += `<g${pa(b.de + 1)}><rect x="16" y="${ya}" width="${W - 32}" height="${yb - ya}" rx="10" fill="${KS[b.k || "seg"]}" fill-opacity=".45" stroke="${K[b.k || "seg"]}" stroke-dasharray="5 5"/>
+      <path d="M${W - 16} ${ya + 10} a10 10 0 0 0 -10 -10 H${W - 16 - tw} v18 l10 8 H${W - 16} z" fill="${K[b.k || "seg"]}"/>
+      <text x="${W - 16 - tw + 14}" y="${ya + 17}" font-size="13" font-weight="800" fill="#fff">${esc(b.txt)}</text></g>`;
+  });
+  P.forEach((p, i) => {
+    svg += `<line x1="${xs[i]}" y1="${top + cab}" x2="${xs[i]}" y2="${H - 2}" stroke="${K[p.k]}" stroke-width="2" stroke-dasharray="5 6" opacity=".5"/>`;
+    svg += `<rect x="${xs[i] - anchoP / 2}" y="${top}" width="${anchoP}" height="${cab}" rx="12" fill="${KS[p.k]}" stroke="${K[p.k]}" stroke-width="2.5"/>`;
+    const l = [].concat(p.t);
+    l.forEach((t, j) => svg += `<text x="${xs[i]}" y="${top + cab / 2 + (j - (l.length - 1) / 2) * 18 + 5}" text-anchor="middle" font-size="${j ? 12.5 : 15}" font-weight="${j ? 600 : 800}" fill="${j ? "#2b3a63" : "#0f1e45"}">${esc(t)}</text>`);
+  });
+  def.msj.forEach((m, i) => {
+    const y = y0 + i * fila, a = xs[m.de], b = xs[m.a], k = P[m.de].k, c = K[k], etiqueta = `${i + 1}. ${m.txt}`;
+    if (m.de === m.a) {
+      const tw = etiqueta.length * 7.6 + 12, lado = a + 50 + tw > W ? -1 : 1, xr = lado > 0 ? a + 44 : a - 44 - tw;
+      svg += `<g class="msj"${pa(i + 1)}><path d="M${a} ${y - 8} h${38 * lado} v${fila * 0.5} h${-34 * lado}" fill="none" stroke="${c}" stroke-width="3" marker-end="url(#pt-${k})"/>
+        <rect x="${xr}" y="${y - 10}" width="${tw}" height="22" rx="6" fill="#fff" fill-opacity=".92"/>
+        <text x="${xr + 6}" y="${y + 6}" font-size="14" font-weight="700" fill="#0f1e45">${esc(etiqueta)}</text></g>`;
+    } else {
+      const mx = (a + b) / 2, tw = etiqueta.length * 7.6 + 14;
+      svg += `<g class="msj"${pa(i + 1)} data-x1="${a}" data-x2="${b}">
+        <line class="${m.vuelta ? "" : "trazo"}" pathLength="1" x1="${a}" y1="${y}" x2="${b + (b > a ? -3 : 3)}" y2="${y}" stroke="${c}" stroke-width="3" ${m.vuelta ? 'stroke-dasharray="7 6"' : ""} marker-end="url(#pt-${k})"/>
+        <rect x="${mx - tw / 2}" y="${y - 27}" width="${tw}" height="21" rx="6" fill="#fff" fill-opacity=".92"/>
+        <text x="${mx}" y="${y - 11}" text-anchor="middle" font-size="14" font-weight="700" fill="#0f1e45">${esc(etiqueta)}</text>
+        <circle class="punto" cx="${a}" cy="${y}" r="8" fill="${c}" opacity="0"/></g>`;
+    }
+  });
+  svg += `</svg>`;
+  return `<div class="secuencia"><div class="lienzo">${svg}</div>
+    <div class="nota tarjeta"><div class="paso-n">Paso <span class="pn">0</span> de ${def.msj.length}</div>
+      <div class="paso-t">${esc(def.intro[0])}</div><div class="paso-d">${esc(def.intro[1])}</div>
+      <div class="botones"><button class="atras" type="button">← Paso</button><button class="lleno adelante" type="button">Paso →</button><button class="auto" type="button">▶ Auto</button></div></div></div>`;
+}
+
+const cab = (num, sec, titulo, bajada) => `<div class="seccion"><b>${num}</b>${sec}</div><h2>${titulo}</h2>${bajada ? `<p class="bajada">${bajada}</p>` : ""}`;
+const svgAbre = (w, h, alto) => `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${alto || h}" preserveAspectRatio="xMidYMid meet">`;
+
+/* =====================================================================
+   Diapositivas
+   ===================================================================== */
+const D = [];
+const S = (sec, titulo, o) => D.push({ sec, titulo, ...o });
+
+/* --- Portada --- */
+S("Inicio", "Portada", { html: `<div style="display:flex;align-items:center;gap:60px;height:100%;padding-bottom:30px">
+  <div style="flex:1"><div class="chip k-seg" style="margin-bottom:24px">Arquitectura de software · Cómo está construido</div>
+  <h1 style="font-size:96px">Lexora</h1>
+  <p class="bajada" style="margin-top:22px;font-size:28px;color:#2b3a63">Software para una firma de abogados colombiana: vigila los procesos en la Rama Judicial,
+  calcula y avisa los términos y lleva el expediente, los clientes y los honorarios, con un asistente, <b>Lawy</b>, en el portal y en Telegram.</p>
+  <div class="leyenda" style="margin-top:28px"><span class="chip k-java">7 servicios + gateway</span><span class="chip k-datos">55 tablas en 7 esquemas</span>
+  <span class="chip k-mq">Eventos con RabbitMQ</span><span class="chip k-python">Java + Python</span><span class="chip k-infra">Fases F0 a F17</span></div></div>
+  <img src="lawy.svg" alt="Lawy, el asistente de Lexora" style="width:430px"></div>` });
+
+/* --- 01 Qué es --- */
+S("01 · Qué es", "El problema", { pasos: 3, html: `${cab("01", "Qué es y qué problema resuelve", "Dos tareas de todos los días, <em>hechas a mano</em>", "En Colombia los autos se publican en el portal de la Rama Judicial y se notifican por estado electrónico. Desde ahí corren los términos.")}
+  <div class="rejilla" style="grid-template-columns:1fr 1fr">
+   <div class="tarjeta" data-paso="1" style="border-top:6px solid var(--java)"><span class="chip k-java">Problema 1 · los términos</span>
+     <p class="txt" style="margin-top:14px;font-size:20px">Corren en <b>días hábiles judiciales</b>: sin fines de semana, festivos ni vacancia judicial. Cada tipo de proceso y cada acto tiene su regla y su norma. Uno que se pase puede costar el caso.</p></div>
+   <div class="tarjeta" data-paso="2" style="border-top:6px solid var(--python)"><span class="chip k-python">Problema 2 · la Rama Judicial</span>
+     <p class="txt" style="margin-top:14px;font-size:20px">Para saber si salió un auto hay que entrar a <b>Consulta de Procesos</b> y escribir los <b>23 dígitos</b> del radicado, proceso por proceso. No hay una API oficial.</p></div>
+  </div>
+  <div class="tarjeta" data-paso="3" style="margin-top:18px;display:flex;gap:26px;align-items:center">
+   <img src="lawy.svg" alt="" style="width:120px">
+   <p class="txt" style="font-size:21px"><b>Lexora</b> revisa los radicados por la firma, sugiere el término que abre cada auto (con días hábiles, festivos y vacancia), avisa al abogado por la app, el correo y Telegram, y le da al cliente un portal para ver su proceso.</p></div>` });
+
+/* casos de uso */
+(() => {
+  let s = svgAbre(1440, 610, 600) + `<rect x="300" y="20" width="840" height="580" rx="22" fill="#fff" stroke="#c7cbe0" stroke-width="2"/>
+    <text x="324" y="54" font-size="19" font-weight="800" fill="#4338ff">Sistema Lexora</text>`;
+  const izq = [["Gestionar procesos y expediente", 105], ["Controlar términos y audiencias", 190], ["Consultar a Lawy (portal y Telegram)", 275], ["Redactar borradores con IA local", 360], ["Relevo del abogado y cierre", 445], ["Honorarios, pagos y gastos", 530]];
+  const der = [["Vigilar la Rama Judicial", 105], ["Ver su proceso y sus pagos", 225], ["Administrar usuarios y roles", 345], ["Revisar bitácora y servidor", 445]];
+  const lin = (x1, y1, x2, y2, p) => `<line data-paso="${p}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#b6bdd0" stroke-width="2"/>`;
+  [[150, 140, [0, 1, 2, 3]], [150, 340, [0, 1]], [150, 540, [2, 4, 5]]].forEach(([x, y, cs]) => cs.forEach((c) => s += lin(x + 22, y - 30, 535 - 175, izq[c][1], 2)));
+  [[1290, 140, [1]], [1290, 340, [2, 3]]].forEach(([x, y, cs]) => cs.forEach((c) => s += lin(x - 22, y - 30, 930 + 165, der[c][1], 2)));
+  s += lin(1220, 555, 930 + 165, der[0][1], 2);
+  izq.forEach(([t, y]) => s += elipse(535, y, t, "seg", 1, 175));
+  der.forEach(([t, y], i) => s += elipse(930, y, t, i ? "datos" : "python", 1, 165));
+  s += actor(150, 140, "Abogado") + actor(150, 340, "Dependiente") + actor(150, 540, "Socio") + actor(1290, 140, "Cliente") + actor(1290, 340, "Administrador");
+  s += `<g><rect x="1220" y="520" width="150" height="66" rx="10" fill="#eef0f5" stroke="#5a6478" stroke-width="2"/><text x="1295" y="546" text-anchor="middle" font-size="13" font-weight="700" fill="#5a6478">«sistema externo»</text>
+    <text x="1295" y="570" text-anchor="middle" font-size="16" font-weight="800" fill="#0f1e45">Rama Judicial</text></g></svg>`;
+  S("01 · Qué es", "Casos de uso", { pasos: 2, html: `${cab("01", "Qué es", "Diagrama de casos de uso", "Cada actor ve solo lo que su rol permite: el gateway lo decide en cada petición.")}${s}` });
+})();
+
+/* contexto C4 1 */
+(() => {
+  const N = {
+    eq: { x: 30, y: 70, w: 260, h: 100, k: "ext", t: "Equipo de la firma", s: ["socios, abogados,", "dependientes, administrativos"] },
+    cl: { x: 30, y: 400, w: 260, k: "ext", t: "Cliente", s: "portal propio" },
+    lx: { x: 560, y: 220, w: 330, h: 150, k: "seg", t: "Lexora", tam: 23, s: ["procesos, términos, vigilancia,", "honorarios y asistente Lawy"] },
+    oa: { x: 560, y: 480, w: 330, k: "ext", t: "Google · Microsoft · GitHub", s: "entrar con otra cuenta (opcional)" },
+    rj: { x: 1170, y: 0, w: 260, h: 84, k: "ext", t: "Rama Judicial", s: "Consulta de Procesos" },
+    ol: { x: 1170, y: 110, w: 260, h: 84, k: "ia", t: "Ollama", s: "modelo local, en el servidor" },
+    co: { x: 1170, y: 220, w: 260, h: 84, k: "ext", t: "Correo (SMTP)", s: "avisos · Mailpit en pruebas" },
+    tg: { x: 1170, y: 330, w: 260, h: 84, k: "ext", t: "Telegram", s: "bot de la firma" },
+    tk: { x: 1170, y: 470, w: 260, h: 84, k: "python", t: "Talki", s: "flujos de mensajes" },
+  };
+  let s = svgAbre(1440, 600, 590);
+  s += flecha(N.eq, N.lx, "HTTPS por Tailscale", 1) + flecha(N.cl, N.lx, "HTTPS por Tailscale", 1);
+  s += flecha(N.lx, N.rj, "consulta radicados", 2, { en: .62 }) + flecha(N.lx, N.ol, "borradores", 2, { en: .62, k: "ia" }) + flecha(N.lx, N.co, "avisos", 2, { en: .62 }) + flecha(N.lx, N.tg, "avisos", 2, { en: .62 });
+  s += flecha(N.lx, N.oa, "OAuth 2 + PKCE", 3) + flecha(N.tk, N.tg, "", 3, { k: "python", doble: true }) + flecha(N.tk, N.lx, "/api/canales · clave", 3, { k: "python", guion: true, en: .45 });
+  Object.entries(N).forEach(([k, n]) => s += caja(n, { eq: 1, cl: 1, lx: 1, rj: 2, ol: 2, co: 2, tg: 2, oa: 3, tk: 3 }[k]));
+  s += `</svg>`;
+  S("01 · Qué es", "Contexto (C4 nivel 1)", { pasos: 3, html: `${cab("01", "Qué es", "Diagrama de contexto <span style='color:#5a6478;font-size:26px'>· C4 nivel 1</span>", "Nada está abierto a internet: se entra solo por la VPN Tailscale. Talki lee el bot de Telegram y le pregunta a Lexora.")}${s}` });
+})();
+
+/* --- 02 Arquitectura --- */
+S("02 · Arquitectura", "La decisión", { pasos: 4, html: `${cab("02", "Arquitectura", "La decisión: <em>microservicios políglotas</em>", "Tres opciones evaluadas en el ADR 0001. Cada parte usa la herramienta adecuada.")}
+ <div class="rejilla" style="grid-template-columns:1fr 1fr 1.25fr">
+  <div class="tarjeta" data-paso="1"><span class="chip k-ext">A</span><h3 style="font-size:24px;margin:10px 0">Monolito modular</h3><p class="txt">Rápido de construir y poca RAM.<br><b style="color:#b42318">No:</b> la consulta al portal y la IA quedan incómodas en Java y todo escala junto.</p></div>
+  <div class="tarjeta" data-paso="2"><span class="chip k-java">B</span><h3 style="font-size:24px;margin:10px 0">Microservicios solo Java</h3><p class="txt">Un solo lenguaje.<br><b style="color:#b42318">No:</b> 350 a 500 MB por servicio, Eureka y Config Server de más y pocas herramientas para el portal.</p></div>
+  <div class="tarjeta" data-paso="3" style="outline:3px solid #4338ff"><span class="chip k-seg">C · elegida</span><h3 style="font-size:24px;margin:10px 0">Java + Python</h3><p class="txt"><b>Java y Spring</b> para lo transaccional: procesos, términos, honorarios. <b>Python y FastAPI</b> para la vigilancia, los avisos y la IA, donde están las mejores librerías.</p></div>
+ </div>
+ <div class="tarjeta" data-paso="4" style="margin-top:18px"><table><tr><th>Tema</th><th>Elegido</th><th>Por qué no la alternativa</th></tr>
+  <tr><td>Mensajería</td><td><b>RabbitMQ</b> (topic)</td><td>Kafka es excesivo para este volumen; solo REST acopla los servicios y pierde eventos.</td></tr>
+  <tr><td>Identidad</td><td><b>JWT propio</b> RS256</td><td>Keycloak usa unos 700 MB de RAM.</td></tr>
+  <tr><td>Descubrimiento</td><td><b>DNS de Docker Compose</b></td><td>Eureka sería otro servicio Java en un solo servidor.</td></tr>
+  <tr><td>Base de datos</td><td><b>PostgreSQL</b>, un esquema por servicio</td><td>Una base por contenedor gasta más memoria.</td></tr></table></div>` });
+
+(() => {
+  const N = {
+    nav: { x: 0, y: 250, w: 170, k: "ext", t: "Navegador", s: "personal y clientes" },
+    fe: { x: 205, y: 250, w: 195, k: "web", t: "frontend", s: ["nginx + Angular 22", "HTTPS · cabeceras"] },
+    gw: { x: 440, y: 250, w: 205, k: "seg", t: "gateway", s: ["Spring Cloud Gateway", "JWT · roles · bitácora"] },
+    tk: { x: 0, y: 470, w: 170, k: "python", t: "Talki", s: "Telegram" },
+    id: { x: 715, y: 0, w: 235, h: 86, k: "java", t: "identidad", s: "cuentas · sesiones · 2 pasos" },
+    ga: { x: 715, y: 103, w: 235, h: 86, k: "java", t: "gabinete", s: "firma · clientes · honorarios" },
+    pr: { x: 715, y: 206, w: 235, h: 86, k: "java", t: "procesos", s: "expediente · términos · reglas" },
+    vi: { x: 715, y: 309, w: 235, h: 86, k: "python", t: "vigilancia", s: "Rama Judicial" },
+    no: { x: 715, y: 412, w: 235, h: 86, k: "python", t: "notificaciones", s: "avisos · Lawy · canales" },
+    ia: { x: 715, y: 515, w: 235, h: 86, k: "python", t: "asistente-ia", s: "borradores · resúmenes" },
+    pg: { x: 1010, y: 0, w: 210, h: 150, k: "datos", t: "PostgreSQL 16", s: ["un esquema", "por servicio"] },
+    mq: { x: 1010, y: 195, w: 210, h: 100, k: "mq", t: "RabbitMQ", s: ["gabinete.eventos", "(topic)"] },
+    ol: { x: 1010, y: 520, w: 210, k: "ia", t: "Ollama", s: "qwen2.5:3b" },
+    rj: { x: 1260, y: 309, w: 180, h: 86, k: "ext", t: "Rama Judicial", s: "portal" },
+    sa: { x: 1260, y: 412, w: 180, h: 86, k: "ext", t: "Telegram · correo", s: "avisos" },
+  };
+  let s = svgAbre(1440, 610, 600);
+  s += flecha(N.nav, N.fe, "", 1) + flecha(N.fe, N.gw, "", 1);
+  ["id", "ga", "pr", "vi", "no", "ia"].forEach((k) => s += flecha(N.gw, N[k], "", 2));
+  ["id", "ga", "pr", "vi", "no"].forEach((k) => s += flecha(N[k], N.pg, "", 3, { k: "datos" }));
+  ["pr", "vi", "no"].forEach((k) => s += flecha(N[k], N.mq, "", 4, { k: "mq", doble: true }));
+  s += flecha(N.vi, N.rj, "", 5) + flecha(N.no, N.sa, "", 5) + flecha(N.ia, N.ol, "", 5, { k: "ia" }) + flecha(N.tk, N.gw, "/api/canales", 5, { k: "python", guion: true, en: .45 });
+  Object.entries(N).forEach(([k, n]) => s += caja(n, { nav: 1, fe: 1, gw: 1, id: 2, ga: 2, pr: 2, vi: 2, no: 2, ia: 2, pg: 3, mq: 4, ol: 5, rj: 5, sa: 5, tk: 5 }[k]));
+  s += `</svg>`;
+  S("02 · Arquitectura", "Contenedores (C4 nivel 2)", { pasos: 5, html: `${cab("02", "Arquitectura", "Diagrama de contenedores <span style='color:#5a6478;font-size:26px'>· C4 nivel 2</span>")}${LEYENDA}<div style="margin-top:10px">${s}</div>` });
+})();
+
+S("02 · Arquitectura", "Servicios y responsabilidades", { pasos: 3, html: `${cab("02", "Arquitectura", "Cada servicio, <em>su responsabilidad</em>", "Un solo punto de entrada (gateway) valida el token y los permisos. Entre servicios: HTTP para consultar y eventos para avisar.")}
+ <div class="tarjeta"><table><tr><th>Servicio</th><th>Tecnología</th><th>Responsabilidad</th><th>Memoria</th></tr>
+  <tr data-paso="1"><td><span class="chip k-web">frontend</span></td><td>Angular 22, nginx</td><td>Pantallas del personal y portal del cliente; HTTPS y cabeceras de seguridad</td><td class="n">64 MB</td></tr>
+  <tr data-paso="1"><td><span class="chip k-seg">gateway</span></td><td>Spring Cloud Gateway</td><td>Rutas, verificación del JWT, lista de revocados, política de acceso por rol, bitácora</td><td class="n">384 MB</td></tr>
+  <tr data-paso="2"><td><span class="chip k-java">identidad</span></td><td>Spring Boot</td><td>Cuentas y roles, inicio de sesión, refresh tokens, dos pasos, Google/Microsoft/GitHub</td><td class="n">384 MB</td></tr>
+  <tr data-paso="2"><td><span class="chip k-java">gabinete</span></td><td>Spring Boot</td><td>Firma, sedes, abogados, clientes, peritos, tarifas, honorarios, pagos, gastos, consultas</td><td class="n">384 MB</td></tr>
+  <tr data-paso="2"><td><span class="chip k-java">procesos</span></td><td>Spring Boot</td><td>Procesos y radicado, partes, equipo, actuaciones, providencias, términos, reglas, audiencias, documentos, relevo y cierre</td><td class="n">384 MB</td></tr>
+  <tr data-paso="3"><td><span class="chip k-python">vigilancia</span></td><td>FastAPI</td><td>Consulta periódica del portal de la Rama Judicial por radicado; detecta actuaciones nuevas</td><td class="n">192 MB</td></tr>
+  <tr data-paso="3"><td><span class="chip k-python">notificaciones</span></td><td>FastAPI</td><td>Avisos en la app (en vivo), correo y Telegram; Lawy; canales externos</td><td class="n">192 MB</td></tr>
+  <tr data-paso="3"><td><span class="chip k-ia">asistente-ia</span></td><td>FastAPI + Ollama</td><td>Borradores de contestación, demanda y recurso; resumen para el cliente</td><td class="n">192 MB + 3 GB</td></tr>
+ </table></div>` });
+
+/* --- 03 Patrones --- */
+(() => {
+  const CX = 720, CY = 300, R = 285;
+  const hx = (cx, cy, r) => [0, 60, 120, 180, 240, 300].map((g) => `${cx + r * Math.cos(g * Math.PI / 180)},${cy + r * Math.sin(g * Math.PI / 180)}`).join(" ");
+  const bordeHex = (y, lado) => CX + lado * (R - Math.abs(CY - y) / (R * 0.866) * (R / 2));
+  let s = svgAbre(1440, 600, 590);
+  s += `<g data-paso="3"><polygon points="${hx(CX, CY, R)}" fill="#fff8f1" stroke="#e8710a" stroke-width="3"/>
+    <text x="${CX}" y="98" text-anchor="middle" font-size="16" font-weight="800" fill="#e8710a">PUERTOS (interfaces)</text></g>`;
+  s += `<g data-paso="2"><polygon points="${hx(CX, CY, 200)}" fill="#f4f3ff" stroke="#4338ff" stroke-width="3"/>
+    <text x="${CX}" y="160" text-anchor="middle" font-size="16" font-weight="800" fill="#4338ff">APLICACIÓN · casos de uso</text>
+    <text x="${CX}" y="184" text-anchor="middle" font-size="13.5" font-weight="600" fill="#2b3a63">ProcesoServicio · RelevoServicio</text>
+    <text x="${CX}" y="202" text-anchor="middle" font-size="13.5" font-weight="600" fill="#2b3a63">CierreServicio</text></g>`;
+  s += `<g data-paso="1"><polygon points="${hx(CX, 318, 112)}" fill="#0f1e45"/>
+    <text x="${CX}" y="282" text-anchor="middle" font-size="20" font-weight="800" fill="#fff">DOMINIO</text>
+    <text x="${CX}" y="310" text-anchor="middle" font-size="14" font-weight="600" fill="#cfd6ff">Proceso · Término · Radicado</text>
+    <text x="${CX}" y="332" text-anchor="middle" font-size="14" font-weight="600" fill="#cfd6ff">CalendarioJudicial</text>
+    <text x="${CX}" y="354" text-anchor="middle" font-size="14" font-weight="600" fill="#cfd6ff">SugeridorTerminos</text></g>`;
+  const ent = [{ x: 0, y: 120, w: 270, k: "web", t: "Recursos REST", s: "ProcesosRecurso, RelevoRecurso" }, { x: 0, y: 255, w: 270, k: "mq", t: "Consumidores", s: "actuacion.detectada" }, { x: 0, y: 390, w: 270, k: "infra", t: "Tareas programadas", s: "revisión diaria 7:00" }];
+  const sal = [{ x: 1170, y: 70, w: 270, k: "datos", t: "JDBC / JPA", s: "PostgreSQL" }, { x: 1170, y: 190, w: 270, k: "mq", t: "Outbox + relay", s: "RabbitMQ" }, { x: 1170, y: 310, w: 270, k: "java", t: "Clientes HTTP", s: "gabinete, identidad" }, { x: 1170, y: 430, w: 270, k: "infra", t: "Disco", s: "AlmacenArchivos" }];
+  ent.forEach((n) => { const y = n.y + 46, x = bordeHex(y, -1); s += `<g data-paso="4"><line class="trazo" pathLength="1" x1="270" y1="${y}" x2="${x - 3}" y2="${y}" stroke="${K[n.k]}" stroke-width="2.5" marker-end="url(#pt-${n.k})"/></g>` + caja(n, 4); });
+  const puertos = ["ProcesoRepositorio", "PublicadorEventos", "DirectorioGabinete", "AlmacenArchivos"];
+  sal.forEach((n, i) => { const y = n.y + 46, x = bordeHex(y, 1); s += `<g data-paso="5"><line class="trazo" pathLength="1" x1="${x}" y1="${y}" x2="${n.x - 4}" y2="${y}" stroke="${K[n.k]}" stroke-width="2.5" marker-end="url(#pt-${n.k})"/>
+     ${rotulo((x + n.x) / 2, y - 14, puertos[i], 12.5)}</g>` + caja(n, 5); });
+  s += `</svg>`;
+  S("03 · Patrones", "Hexagonal", { pasos: 5, html: `${cab("03", "Patrones de diseño", "Arquitectura <em>hexagonal</em>: puertos y adaptadores", "El dominio no conoce la base de datos, RabbitMQ ni HTTP: habla con interfaces (puertos) que implementan los adaptadores. Así se prueban las reglas con dobles en memoria.")}${s}` });
+})();
+
+S("03 · Patrones", "Catálogo de patrones", { pasos: 4, html: `${cab("03", "Patrones de diseño", "Catálogo de patrones <em>en el código</em>", "Agrupados como en el catálogo clásico, más los de arquitectura e integración. Cada uno con la clase real que lo aplica.")}
+ <div class="rejilla" style="grid-template-columns:1fr 1fr">
+  <div class="tarjeta" data-paso="1"><span class="chip k-ia">Creacionales</span><table style="margin-top:8px;font-size:16px">
+   <tr><td><b>Factory Method</b></td><td><code>Radicado.de</code>, <code>Totp.nuevoSecreto</code></td></tr>
+   <tr><td><b>Builder</b></td><td><code>JWTClaimsSet.Builder</code>, <code>ResponseCookie.from</code></td></tr>
+   <tr><td><b>Singleton</b></td><td>Beans de Spring: una instancia por servicio</td></tr></table></div>
+  <div class="tarjeta" data-paso="2"><span class="chip k-mq">Estructurales</span><table style="margin-top:8px;font-size:16px">
+   <tr><td><b>Adapter</b></td><td><code>FuentePortalHttp</code> tras <code>FuenteRamaJudicial</code></td></tr>
+   <tr><td><b>Decorator</b></td><td><code>FiltroToken.ConIdentidad</code></td></tr>
+   <tr><td><b>Facade</b></td><td><code>CierreServicio</code> y el gateway</td></tr>
+   <tr><td><b>Proxy</b></td><td>Proxies de <code>@Transactional</code></td></tr></table></div>
+  <div class="tarjeta" data-paso="3"><span class="chip k-web">Comportamiento</span><table style="margin-top:8px;font-size:16px">
+   <tr><td><b>Strategy</b></td><td><code>ProveedorExterno</code>, <code>CifradorSecretos</code></td></tr>
+   <tr><td><b>Observer</b></td><td>Eventos de RabbitMQ y avisos en vivo (SSE)</td></tr>
+   <tr><td><b>Chain of Responsibility</b></td><td>Filtros del gateway → <code>FiltroToken</code></td></tr>
+   <tr><td><b>Null Object</b></td><td><code>AvisosSeguridad.NINGUNO</code></td></tr>
+   <tr><td><b>Specification</b></td><td><code>ReglaTermino</code> + <code>SugeridorTerminos</code></td></tr></table></div>
+  <div class="tarjeta" data-paso="4"><span class="chip k-datos">Arquitectura e integración</span><table style="margin-top:8px;font-size:16px">
+   <tr><td><b>Repository</b></td><td><code>*Repositorio</code> + dobles en memoria</td></tr>
+   <tr><td><b>Inyección de dependencias</b></td><td>Constructores de Spring; <code>crear_app(...)</code></td></tr>
+   <tr><td><b>Transactional Outbox</b></td><td><code>procesos.outbox</code>, <code>vigilancia.outbox</code></td></tr>
+   <tr><td><b>Consumidor idempotente</b></td><td>Clave única del aviso</td></tr>
+   <tr><td><b>DTO / Value Object</b></td><td><code>record</code> de Java, <code>dataclass</code></td></tr></table></div>
+ </div>` });
+
+function patron(paso, k, grupo, nombre, svg, texto) {
+  return `<div class="patron tarjeta" data-paso="${paso}"><svg viewBox="0 0 410 270" width="410" height="270">${svg}</svg>
+    <div><span class="chip k-${k}">${grupo}</span><h3>${nombre}</h3><p>${texto}</p></div></div>`;
+}
+(() => {
+  const a = { x: 10, y: 20, w: 190, t: "ProcesoServicio", m: ["+crear(datos)"], k: "java" };
+  const b = { x: 200, y: 130, w: 200, t: "Radicado", est: "record", m: ["numero: String", "+de(texto) «static»", "valida 23 dígitos"], k: "ia" };
+  const fm = clase(a) + clase(b) + rel(a, b, "usa", "Radicado.de(...)");
+  const c = { x: 5, y: 30, w: 170, t: "EmisorJwtRsa", m: ["+acceso(usuario)"], k: "java" };
+  const d = { x: 215, y: 20, w: 190, t: "JWTClaimsSet.Builder", m: ["subject(id)", "issuer(emisor)", "claim(nombre, valor)", "expirationTime(f)", "build()"], k: "ia" };
+  const bu = clase(c) + clase(d) + rel(c, d, "usa", "arma");
+  const e = { x: 110, y: 10, w: 200, t: "contenedor de Spring", m: ["crea una sola instancia"], k: "ext" };
+  const f = { x: 110, y: 120, w: 200, t: "TerminoServicio", est: "@Service", m: [], k: "ia" };
+  const g = { x: 5, y: 210, w: 160, t: "TerminosRecurso", k: "java" }, h = { x: 245, y: 210, w: 160, t: "SugerenciaServicio", k: "java" };
+  const si = clase(e) + clase(f) + clase(g) + clase(h) + rel(e, f, "usa", "1") + rel(g, f, "asoc", "") + rel(h, f, "asoc", "");
+  const i = { x: 10, y: 20, w: 190, t: "ProcesoVista", est: "record", m: ["radicado", "asunto", "etapa"], k: "ia" };
+  const j = { x: 220, y: 110, w: 180, t: "Cierre", est: "record", m: ["motivo", "fecha", "nota"], k: "ia" };
+  const vo = clase(i) + clase(j) + `<text x="10" y="255" font-size="13" font-weight="600" fill="#5a6478">inmutables: se crean completos y no cambian</text>`;
+  S("03 · Patrones", "Creacionales", { pasos: 4, html: `${cab("03", "Patrones de diseño", "Patrones <em>creacionales</em>")}<div class="patrones">
+    ${patron(1, "ia", "Creacional", "Factory Method", fm, "<code>Radicado.de(texto)</code> solo deja crear radicados válidos de 23 dígitos. Igual <code>Totp.nuevoSecreto()</code> para la verificación en dos pasos.")}
+    ${patron(2, "ia", "Creacional", "Builder", bu, "El token de acceso se arma paso a paso (roles, jti, vencimiento). La cookie de sesión también: <code>ResponseCookie.from(...).httpOnly(true).build()</code>.")}
+    ${patron(3, "ia", "Creacional", "Singleton (gestionado)", si, "Spring crea una sola instancia de cada <code>@Service</code> y la inyecta en todos los que la necesitan.")}
+    ${patron(4, "datos", "Integración", "DTO / Value Object", vo, "Los <code>record</code> de Java y las <code>dataclass</code> de Python llevan datos entre capas sin lógica ni estado oculto.")}</div>` });
+})();
+(() => {
+  const a = { x: 110, y: 5, w: 210, t: "FuenteRamaJudicial", est: "Protocol", m: ["consultar(radicado)"], k: "mq" };
+  const b = { x: 5, y: 130, w: 175, t: "FuentePortalHttp", k: "python" }, c = { x: 235, y: 130, w: 170, t: "FuenteSimulada", k: "python" };
+  const d = { x: 5, y: 215, w: 175, t: "Portal Rama Judicial", est: "externo", k: "ext" };
+  const ad = clase(a) + clase(b) + clase(c) + clase(d) + rel(b, a, "realiza") + rel(c, a, "realiza") + rel(b, d, "asoc", "traduce");
+  const e = { x: 80, y: 5, w: 240, t: "HttpServletRequest", est: "interface", k: "mq" };
+  const f = { x: 80, y: 100, w: 240, t: "HttpServletRequestWrapper", k: "ext" };
+  const g = { x: 80, y: 185, w: 240, t: "ConIdentidad", m: ["+getHeader(nombre)"], k: "java" };
+  const de = clase(e) + clase(f) + clase(g) + rel(f, e, "realiza") + rel(g, f, "hereda") + `<path d="M320 220 H372 V40 H326" fill="none" stroke="#2b3a63" stroke-width="1.8" marker-end="url(#uml-abierta)"/>${rotulo(372, 130, "envuelve", 12)}`;
+  const h = { x: 10, y: 10, w: 170, t: "CierreRecurso", k: "web" }, i = { x: 120, y: 95, w: 190, t: "CierreServicio", m: ["+cerrar(id, cierre)"], k: "java" };
+  const fa = clase(h) + clase(i) + rel(h, i, "asoc", "") + [["proceso", 0], ["términos", 103], ["audiencias", 206], ["vigilancia", 309]].map(([t, x]) => { const n = { x, y: 215, w: 96, t, k: "ext" }; return clase(n) + rel(i, n, "asoc", ""); }).join("");
+  const j = { x: 5, y: 20, w: 180, t: "AutenticacionServicio", k: "java" }, k2 = { x: 120, y: 110, w: 200, t: "Proxy transaccional", m: ["abre la transacción", "commit o rollback"], k: "mq" }, l = { x: 220, y: 215, w: 180, t: "MfaServicio", k: "java" };
+  const pr = clase(j) + clase(k2) + clase(l) + rel(j, k2, "asoc", "llama") + rel(k2, l, "asoc", "delega");
+  S("03 · Patrones", "Estructurales", { pasos: 4, html: `${cab("03", "Patrones de diseño", "Patrones <em>estructurales</em>")}<div class="patrones">
+    ${patron(1, "mq", "Estructural", "Adapter", ad, "El portal responde en su propio formato; <code>FuentePortalHttp</code> lo traduce a <code>Actuacion</code>. Si el portal cambia, solo cambia el adaptador.")}
+    ${patron(2, "mq", "Estructural", "Decorator", de, "<code>FiltroToken.ConIdentidad</code> envuelve la petición y cambia las cabeceras de identidad por las del token verificado, sin tocar el resto.")}
+    ${patron(3, "mq", "Estructural", "Facade", fa, "Cerrar un proceso toca el proceso, sus términos pendientes, sus audiencias y su vigilancia. El recurso REST solo conoce <code>CierreServicio.cerrar</code>.")}
+    ${patron(4, "mq", "Estructural", "Proxy", pr, "Spring envuelve cada servicio <code>@Transactional</code> en un proxy que maneja la transacción. Por eso el inicio de sesión declara <code>noRollbackFor</code>.")}</div>` });
+})();
+(() => {
+  const a = { x: 5, y: 10, w: 160, t: "AccesoExterno", k: "java" }, b = { x: 190, y: 5, w: 215, t: "ProveedorExterno", est: "interface", m: ["urlAutorizacion(...)", "canjear(codigo, ...)"], k: "web" };
+  const c = { x: 190, y: 180, w: 215, t: "ProveedorOAuth", m: ["Google · Microsoft · GitHub"], k: "java" };
+  const st = clase(a) + clase(b) + clase(c) + rel(a, b, "asoc", "") + rel(c, b, "realiza") + `<text x="5" y="160" font-size="12" font-weight="600" fill="#5a6478">otras estrategias:</text><text x="5" y="180" font-size="12" font-weight="700" fill="#2b3a63">CifradorSecretos · AES-GCM</text><text x="5" y="200" font-size="12" font-weight="700" fill="#2b3a63">AlmacenArchivos · disco</text>`;
+  const d = { x: 5, y: 10, w: 190, t: "Publicador", est: "procesos, vigilancia", m: ["+publicar(evento)"], k: "java" }, e = { x: 220, y: 10, w: 185, t: "gabinete.eventos", est: "exchange topic", k: "mq" };
+  const f = { x: 220, y: 120, w: 185, t: "Suscriptor", est: "cola", m: ["+alRecibir(evento)"], k: "mq" };
+  const ob = clase(d) + clase(e) + clase(f) + rel(d, e, "asoc", "") + rel(e, f, "asoc", "reparte") + [["notificaciones", 5], ["procesos", 145], ["vigilancia", 285]].map(([t, x]) => { const n = { x, y: 230, w: 120, t, k: "python" }; return clase(n) + rel(n, f, "realiza"); }).join("");
+  const filtros = [["VerificarJwt", "401"], ["RechazarRevocados", "401"], ["PoliticaAcceso", "403"], ["IdentidadEnCabeceras", ""], ["FiltroToken", "401"]];
+  let ch = "";
+  filtros.forEach(([t, cod], i) => { const x = 20 + (i % 2) * 175, y = 5 + i * 52, k = i === 4 ? "java" : "seg";
+    ch += `<g><rect x="${x}" y="${y}" width="210" height="36" rx="8" fill="${KS[k]}" stroke="${K[k]}" stroke-width="2"/><text x="${x + 105}" y="${y + 23}" text-anchor="middle" font-size="14" font-weight="800" fill="#0f1e45">${t}</text>
+      ${cod ? `<text x="${x + (i % 2 ? -8 : 218)}" y="${y + 23}" text-anchor="${i % 2 ? "end" : "start"}" font-size="13" font-weight="800" fill="#b42318">✕ ${cod}</text>` : ""}</g>`;
+    if (i < 4) ch += `<line x1="${x + (i % 2 ? 60 : 150)}" y1="${y + 36}" x2="${x + (i % 2 ? 60 : 150)}" y2="${y + 52}" stroke="#2b3a63" stroke-width="2" marker-end="url(#uml-abierta)"/>`; });
+  const g = { x: 105, y: 5, w: 210, t: "AvisosSeguridad", est: "interface", m: ["avisar(tipo, usuario)", "NINGUNO «static»"], k: "web" };
+  const h = { x: 5, y: 175, w: 200, t: "AvisosSeguridadRabbit", m: ["publica cuenta.seguridad"], k: "java" }, i2 = { x: 240, y: 175, w: 165, t: "NINGUNO", m: ["no hace nada"], k: "ext" };
+  const nu = clase(g) + clase(h) + clase(i2) + rel(h, g, "realiza") + rel(i2, g, "realiza");
+  S("03 · Patrones", "Comportamiento", { pasos: 4, html: `${cab("03", "Patrones de diseño", "Patrones <em>de comportamiento</em>")}<div class="patrones">
+    ${patron(1, "web", "Comportamiento", "Strategy", st, "Entrar con Google, Microsoft o GitHub es la misma estrategia con otra configuración. Cambiar cómo se cifra o dónde se guardan los archivos es cambiar de estrategia.")}
+    ${patron(2, "web", "Comportamiento", "Observer (publish-subscribe)", ob, "Quien publica no conoce a los suscriptores. En la app, los avisos en vivo (SSE) hacen lo mismo con las pestañas abiertas.")}
+    ${patron(3, "web", "Comportamiento", "Chain of Responsibility", ch, "Cada filtro decide si corta la petición (401 o 403) o la pasa al siguiente. El último está en el servicio, que vuelve a verificar el token.")}
+    ${patron(4, "web", "Comportamiento", "Null Object", nu, "Sin mensajería (o en las pruebas) se usa <code>NINGUNO</code>, y el código no tiene que preguntar <code>if (avisos != null)</code>.")}</div>` });
+})();
+(() => {
+  const a = { x: 5, y: 70, w: 180, t: "ReglaTermino", m: ["tipo de proceso", "acto · momento", "días · norma", "validada"], k: "web" }, b = { x: 225, y: 5, w: 180, t: "SugeridorTerminos", m: ["+sugerir(proceso,", "  providencia, reglas)"], k: "java" };
+  const c = { x: 225, y: 190, w: 180, t: "SugerenciaTermino", est: "record", k: "ia" };
+  const sp = clase(a) + clase(b) + clase(c) + rel(b, a, "usa", "evalúa") + rel(b, c, "usa", "crea") + `<text x="5" y="20" font-size="13" font-weight="600" fill="#5a6478">las reglas viven en la base:</text><text x="5" y="40" font-size="13" font-weight="700" fill="#2b3a63">procesos.reglas_termino</text>`;
+  const d = { x: 10, y: 10, w: 170, t: "ProcesoServicio", k: "java" }, e = { x: 120, y: 80, w: 200, t: "ProcesoRepositorio", est: "interface", m: ["buscar(id)", "guardar(proceso)"], k: "datos" };
+  const f = { x: 5, y: 200, w: 190, t: "adaptador JDBC", m: ["PostgreSQL"], k: "datos" }, g = { x: 225, y: 200, w: 180, t: "doble en memoria", est: "pruebas", k: "ext" };
+  const re = clase(d) + clase(e) + clase(f) + clase(g) + rel(d, e, "asoc", "") + rel(f, e, "realiza") + rel(g, e, "realiza");
+  const h = { x: 5, y: 10, w: 175, t: "ProcesoServicio", m: ["+crear(proceso)"], k: "java" }, i = { x: 230, y: 10, w: 175, t: "Outbox", est: "puerto", m: ["+agregar(evento)"], k: "datos" };
+  const j = { x: 230, y: 135, w: 175, t: "OutboxJdbc", m: ["misma transacción"], k: "datos" }, l = { x: 5, y: 135, w: 175, t: "Relay", m: ["cada 2 s, con", "confirmación"], k: "java" }, m = { x: 230, y: 228, w: 175, t: "RabbitMQ", k: "mq" };
+  const ou = clase(h) + clase(i) + clase(j) + clase(l) + clase(m) + rel(h, i, "asoc", "") + rel(j, i, "realiza") + rel(l, j, "asoc", "lee") + rel(l, m, "asoc", "publica");
+  const id = `<g><rect x="10" y="20" width="390" height="70" rx="12" fill="#e4f4eb" stroke="#1f7a4d" stroke-width="2"/><text x="26" y="50" font-size="15" font-weight="800" fill="#1f7a4d">clave única del aviso</text>
+    <text x="26" y="74" font-family="Consolas, monospace" font-size="14" fill="#0f1e45">evento:id:persona:canal:día</text></g>
+    <g><rect x="10" y="110" width="390" height="70" rx="12" fill="#eef0f5" stroke="#5a6478" stroke-width="2"/><text x="26" y="140" font-size="15" font-weight="800" fill="#0f1e45">el mismo evento llega dos veces</text>
+    <text x="26" y="164" font-size="14" font-weight="600" fill="#2b3a63">el segundo choca con la clave y se descarta</text></g>
+    <g><rect x="10" y="200" width="390" height="60" rx="12" fill="#ecebff" stroke="#4338ff" stroke-width="2"/><text x="26" y="236" font-size="14.5" font-weight="700" fill="#0f1e45">Inyección: cada clase recibe sus piezas</text></g>`;
+  S("03 · Patrones", "Integración", { pasos: 4, html: `${cab("03", "Patrones de diseño", "Reglas como datos, <em>repositorios y outbox</em>")}<div class="patrones">
+    ${patron(1, "web", "Comportamiento", "Specification", sp, "Las reglas que sugieren términos no están en el código: viven en la base, un socio las valida y el sugeridor las evalúa. Gana la más específica.")}
+    ${patron(2, "datos", "Integración", "Repository", re, "El dominio pide y guarda objetos; el SQL vive en el adaptador. Las pruebas usan un doble en memoria con la misma interfaz.")}
+    ${patron(3, "datos", "Integración", "Transactional Outbox", ou, "El evento se guarda con el cambio y sale después. Si RabbitMQ cae, no se pierde.")}
+    ${patron(4, "datos", "Integración", "Consumidor idempotente e inyección", id, "Un evento puede llegar dos veces: la clave única evita el aviso repetido. Cada clase recibe sus colaboradores por el constructor, así las pruebas pasan dobles.")}</div>` });
+})();
+
+/* --- 04 Tecnologías --- */
+S("04 · Tecnologías", "Lenguajes y tecnologías", { pasos: 3, html: `${cab("04", "Lenguajes y tecnologías", "Con qué está hecho", "Todo con versión fija, en contenedores con límite de memoria, healthcheck y reinicio automático.")}
+ <div class="rejilla" style="grid-template-columns:repeat(3,1fr)">
+  <div class="tarjeta" data-paso="1" style="border-top:6px solid var(--web)"><span class="chip k-web">TypeScript · interfaz</span><p class="txt" style="margin-top:10px">Angular 22 · Tailwind 4 · Spartan UI<br>Vitest + axe-core (accesibilidad)<br>nginx sirve el portal</p></div>
+  <div class="tarjeta" data-paso="1" style="border-top:6px solid var(--java)"><span class="chip k-java">Java 17 · núcleo</span><p class="txt" style="margin-top:10px">Spring Boot 3.3 · Spring Cloud Gateway<br>Spring Security · JWT con RS256<br>JUnit 5 · Testcontainers · JaCoCo</p></div>
+  <div class="tarjeta" data-paso="1" style="border-top:6px solid var(--python)"><span class="chip k-python">Python 3.12 · servicios</span><p class="txt" style="margin-top:10px">FastAPI · aio-pika · psycopg 3 · httpx<br>APScheduler para la vigilancia<br>pytest + cobertura</p></div>
+  <div class="tarjeta" data-paso="2" style="border-top:6px solid var(--datos)"><span class="chip k-datos">SQL · datos</span><p class="txt" style="margin-top:10px">PostgreSQL 16.4<br>7 esquemas · migraciones idempotentes<br>respaldo diario con pg_dump</p></div>
+  <div class="tarjeta" data-paso="2" style="border-top:6px solid var(--mq)"><span class="chip k-mq">Mensajería</span><p class="txt" style="margin-top:10px">RabbitMQ 3.13.7<br>exchange topic <code>gabinete.eventos</code><br>patrón outbox con confirmación</p></div>
+  <div class="tarjeta" data-paso="2" style="border-top:6px solid var(--ia)"><span class="chip k-ia">IA y canales</span><p class="txt" style="margin-top:10px">Ollama 0.5.4 · qwen2.5:3b, local<br>Bot de Telegram vía Talki<br>Mailpit para el correo de pruebas</p></div>
+  <div class="tarjeta" data-paso="3" style="grid-column:span 3;border-top:6px solid var(--infra)"><span class="chip k-infra">Infraestructura y otros lenguajes</span><p class="txt" style="margin-top:10px">Docker Compose en una VM Ubuntu 24.04 · acceso solo por <b>Tailscale</b> con HTTPS · <b>Shell</b> para el vigía, los respaldos y la instalación · <b>PowerShell</b> para la copia diaria al PC · <b>YAML</b> para Compose, el CI y OpenAPI · GitHub Actions y Dependabot</p></div>
+ </div>` });
+
+/* --- 05 Datos --- */
+S("05 · Datos", "Un esquema por servicio", { pasos: 3, html: `${cab("05", "Modelo de datos", "Una base, <em>un esquema por servicio</em>", "Sin llaves foráneas entre esquemas: un proceso guarda <code>id_cliente</code> como valor y quien necesita el nombre se lo pide a <code>gabinete</code> por HTTP.")}
+ <div class="rejilla" style="grid-template-columns:repeat(4,1fr)">
+  ${[["procesos", "java", 17, "procesos · partes · asignaciones · asignaciones_historial · actuaciones · providencias · pruebas · terminos · reglas_termino · reglas_termino_historial · festivos · despachos · ramas · tipos_proceso · documentos · resumenes_cliente · outbox"],
+     ["gabinete", "java", 13, "firma · sedes · areas_practica · cargos · personal · clientes · peritos · tarifas · smmlv · honorarios_pactados · pagos · gastos · consultas"],
+     ["identidad", "java", 10, "usuarios · roles · usuario_rol · sesiones · tokens_revocados · ingresos · mfa · mfa_codigos · cuentas_externas · oauth_estados"],
+     ["notificaciones", "python", 6, "notificaciones · preferencias · vinculos_telegram · consultas_bot · canales_externos · vinculos_canal"],
+     ["vigilancia", "python", 5, "radicados_vigilados · actuaciones_conocidas · actuaciones_simuladas · consultas · outbox"],
+     ["auditoria", "seg", 1, "registros (hash encadenado, solo se agrega)"],
+     ["operacion", "infra", 3, "revisiones · incidentes · errores (los escribe el vigía)"]]
+    .map(([n, k, c, t], i) => `<div class="tarjeta" data-paso="${i < 3 ? 1 : 2}" style="border-top:6px solid ${K[k]};padding:16px 18px"><div style="display:flex;justify-content:space-between;align-items:center"><span class="chip k-${k}">${n}</span><b style="font-size:26px;color:${K[k]}">${c}</b></div>
+      <p style="font-size:14.5px;line-height:1.75;margin-top:8px;color:#2b3a63">${t.split(" · ").map((x) => `<code>${x}</code>`).join(" ")}</p></div>`).join("")}
+  <div class="tarjeta" data-paso="3" style="background:#0f1e45;color:#fff"><p style="font-size:19px;line-height:1.5"><b style="font-size:36px">55</b> tablas en 7 esquemas.<br>La vista <code style="background:#2b3a63;color:#fff">v_terminos</code> calcula en la base los días hábiles que faltan, con festivos y vacancia.</p></div>
+ </div>` });
+
+(() => {
+  const E = {
+    tp: { x: 20, y: 30, w: 300, k: "java", t: "TIPOS_PROCESO", c: [["PK", "id_tipo"], ["FK", "id_rama", "civil, laboral…"], ["", "nombre"]] },
+    de: { x: 20, y: 215, w: 300, k: "java", t: "DESPACHOS", c: [["PK", "id_despacho"], ["", "nombre", "juzgado"]] },
+    pa: { x: 20, y: 380, w: 300, k: "java", t: "PARTES", c: [["PK", "id_parte"], ["FK", "id_proceso"], ["", "rol", "demandante…"]] },
+    pr: { x: 480, y: 120, w: 330, k: "java", t: "PROCESOS", c: [["PK", "id_proceso"], ["", "radicado", "23 dígitos"], ["FK", "id_tipo"], ["", "id_cliente", "de gabinete"], ["", "estado · etapa"]] },
+    pv: { x: 480, y: 420, w: 330, k: "java", t: "PROVIDENCIAS", c: [["PK", "id_providencia"], ["", "tipo", "AUTO · SENTENCIA"], ["", "fuente", "MANUAL · VIGILANCIA"]] },
+    as: { x: 940, y: 0, w: 300, k: "java", t: "ASIGNACIONES", c: [["FK", "id_proceso"], ["", "rol", "a cargo, apoyo…"]] },
+    ac: { x: 940, y: 125, w: 300, k: "java", t: "ACTUACIONES", c: [["FK", "id_proceso"], ["", "fecha · anotación"]] },
+    dc: { x: 940, y: 250, w: 300, k: "java", t: "DOCUMENTOS", c: [["FK", "id_proceso"], ["", "sha256", "visible al cliente"]] },
+    te: { x: 940, y: 400, w: 300, k: "java", t: "TERMINOS", c: [["PK", "id_termino"], ["FK", "id_providencia"], ["", "vence", "día hábil"], ["", "estado", "PENDIENTE · CUMPLIDO"]] },
+  };
+  Object.values(E).forEach((e) => { e.h = 38 + e.c.length * 23 + 6; });
+  let s = svgAbre(1440, 560, 560);
+  s += relER(E.tp, E.pr, "1", "N", "clasifica", 2) + relER(E.de, E.pr, "1", "N", "conoce", 2) + relER(E.pr, E.pa, "1", "N", "tiene", 2);
+  s += relER(E.pr, E.as, "1", "N", "equipo", 3) + relER(E.pr, E.ac, "1", "N", "registra", 3) + relER(E.pr, E.dc, "1", "N", "expediente", 3);
+  s += relER(E.pr, E.pv, "1", "N", "recibe", 4) + relER(E.pv, E.te, "1", "N", "abre", 4) + relER(E.pr, E.te, "1", "N", "tiene", 4);
+  Object.entries(E).forEach(([k, e]) => s += entidad(e, { pr: 1, tp: 2, de: 2, pa: 2, as: 3, ac: 3, dc: 3, pv: 4, te: 4 }[k]));
+  s += `</svg>`;
+  S("05 · Datos", "Entidad-relación de procesos", { pasos: 4, html: `${cab("05", "Modelo de datos", "Diagrama entidad-relación: <em>procesos</em>", "Las tablas principales del expediente. El cliente vive en otro esquema y se guarda como valor.")}${s}` });
+})();
+(() => {
+  const E = {
+    fi: { x: 20, y: 10, w: 260, k: "java", t: "FIRMA", c: [["PK", "id_firma"], ["", "nit · nombre"]] },
+    se: { x: 20, y: 150, w: 260, k: "java", t: "SEDES", c: [["PK", "id_sede"], ["FK", "id_firma"]] },
+    pe: { x: 20, y: 300, w: 260, k: "java", t: "PERSONAL", c: [["PK", "id_persona"], ["FK", "id_cargo"], ["", "documento"]] },
+    ca: { x: 20, y: 455, w: 260, k: "java", t: "CARGOS", c: [["PK", "id_cargo"], ["", "nombre", "Socio…"]] },
+    cl: { x: 420, y: 150, w: 300, k: "java", t: "CLIENTES", c: [["PK", "id_cliente"], ["FK", "id_sede"], ["", "tipo · documento"], ["", "nombre"]] },
+    ho: { x: 860, y: 10, w: 300, k: "java", t: "HONORARIOS_PACTADOS", c: [["PK", "id_honorario"], ["", "id_proceso", "de procesos"], ["", "forma_cobro", "FIJO, CUOTA_LITIS…"]] },
+    pg: { x: 860, y: 190, w: 300, k: "java", t: "PAGOS", c: [["FK", "id_honorario"], ["", "valor · medio"], ["", "anulado", "con motivo"]] },
+    ga: { x: 860, y: 350, w: 300, k: "java", t: "GASTOS", c: [["FK", "id_cliente"], ["", "valor · reembolsable"]] },
+    co: { x: 420, y: 400, w: 300, k: "java", t: "CONSULTAS", c: [["PK", "id_consulta"], ["", "quién llega y qué necesita"]] },
+  };
+  Object.values(E).forEach((e) => { e.h = 38 + e.c.length * 23 + 6; });
+  let s = svgAbre(1440, 560, 560);
+  s += relER(E.fi, E.se, "1", "N", "tiene", 2) + relER(E.se, E.pe, "1", "N", "trabaja", 2) + relER(E.ca, E.pe, "1", "N", "ocupa", 2) + relER(E.se, E.cl, "1", "N", "atiende", 1);
+  s += relER(E.cl, E.ho, "1", "N", "acuerda", 3) + relER(E.ho, E.pg, "1", "N", "recibe", 3) + relER(E.cl, E.ga, "1", "N", "causa", 3) + relER(E.cl, E.co, "1", "N", "llega por", 4);
+  Object.entries(E).forEach(([k, e]) => s += entidad(e, { cl: 1, se: 1, fi: 2, pe: 2, ca: 2, ho: 3, pg: 3, ga: 3, co: 4 }[k]));
+  s += `</svg>`;
+  S("05 · Datos", "Entidad-relación de gabinete", { pasos: 4, html: `${cab("05", "Modelo de datos", "Diagrama entidad-relación: <em>gabinete</em>", "La firma, su gente, los clientes y el dinero. Las tarifas se expresan en salarios mínimos (tabla <code>smmlv</code>).")}${s}` });
+})();
+
+/* --- 06 Eventos --- */
+(() => {
+  const N = {
+    p1: { x: 0, y: 0, w: 290, h: 118, k: "java", t: "procesos", s: ["proceso.creado · proceso.reasignado", "termino.por_vencer · termino.vencido", "audiencia.proxima · portal.*"], tam: 18 },
+    p2: { x: 0, y: 150, w: 290, h: 80, k: "python", t: "vigilancia", s: "actuacion.detectada", tam: 18 },
+    p3: { x: 0, y: 262, w: 290, h: 80, k: "java", t: "identidad", s: "cuenta.seguridad", tam: 18 },
+    p4: { x: 0, y: 374, w: 290, h: 80, k: "python", t: "notificaciones", s: "notificacion.enviada", tam: 18 },
+    ex: { x: 440, y: 170, w: 250, h: 120, k: "mq", t: "gabinete.eventos", s: ["exchange topic", "clave = nombre del evento"], tam: 19 },
+    q1: { x: 840, y: 20, w: 290, h: 92, k: "mq", t: "vigilancia.procesos", s: "proceso.creado", tam: 17 },
+    q2: { x: 840, y: 185, w: 290, h: 92, k: "mq", t: "procesos.actuaciones", s: "actuacion.detectada", tam: 17 },
+    q3: { x: 840, y: 350, w: 290, h: 110, k: "mq", t: "notificaciones.avisos", s: ["termino.* · actuacion.detectada", "audiencia.* · portal.* · cuenta.*", "proceso.reasignado"], tam: 17 },
+    c1: { x: 1220, y: 20, w: 220, h: 92, k: "python", t: "vigilancia", s: "agrega el radicado", tam: 17 },
+    c2: { x: 1220, y: 185, w: 220, h: 92, k: "java", t: "procesos", s: "registra la providencia", tam: 17 },
+    c3: { x: 1220, y: 359, w: 220, h: 92, k: "python", t: "notificaciones", s: "app · correo · Telegram", tam: 17 },
+  };
+  let s = svgAbre(1440, 470, 470);
+  ["p1", "p2", "p3", "p4"].forEach((k) => s += flecha(N[k], N.ex, "", 1, { k: "mq" }));
+  s += flecha(N.ex, N.q1, "", 2, { k: "mq" }) + flecha(N.ex, N.q2, "", 2, { k: "mq" }) + flecha(N.ex, N.q3, "", 2, { k: "mq" });
+  s += flecha(N.q1, N.c1, "", 3, { k: "mq" }) + flecha(N.q2, N.c2, "", 3, { k: "mq" }) + flecha(N.q3, N.c3, "", 3, { k: "mq" });
+  Object.entries(N).forEach(([k, n]) => s += caja(n, { p1: 1, p2: 1, p3: 1, p4: 1, ex: 1, q1: 2, q2: 2, q3: 2, c1: 3, c2: 3, c3: 3 }[k]));
+  s += `</svg>`;
+  S("06 · Eventos", "Exchange y colas", { pasos: 4, html: `${cab("06", "Eventos", "Publicar y suscribirse con <em>RabbitMQ</em>", "Un exchange topic. El cuerpo es JSON y cada consumidor tiene su cola durable. Un evento puede llegar dos veces: los consumidores descartan los repetidos.")}${s}
+    <div class="leyenda" data-paso="4" style="margin-top:8px"><span class="chip k-mq">colas durables</span><span class="chip k-mq">mensajes persistentes con message_id</span><span class="chip k-ok">consumidores idempotentes</span><span class="chip k-infra">el vigía avisa si una cola se acumula o no tiene consumidor</span></div>` });
+})();
+S("06 · Eventos", "Outbox", { titulo2: "Outbox: <em>entrega garantizada</em>", seq: {
+  bajada: "procesos y vigilancia no publican directo: guardan el evento con el cambio, en la misma transacción, y un relay lo envía.",
+  intro: ["Ningún aviso se pierde", "Siga el recorrido de un evento proceso.creado desde la base hasta el aviso."],
+  part: [{ t: ["procesos"], k: "java" }, { t: ["PostgreSQL"], k: "datos" }, { t: ["relay", "cada 2 s"], k: "java" }, { t: ["RabbitMQ"], k: "mq" }, { t: ["notifica-", "ciones"], k: "python" }],
+  bloques: [{ de: 1, a: 4, txt: "loop · cada 2 segundos", k: "java" }],
+  msj: [
+    { de: 0, a: 1, txt: "INSERT proceso + outbox · COMMIT", d: ["Todo o nada", "El proceso y su evento se guardan en la misma transacción: no hay proceso sin evento ni evento sin proceso."] },
+    { de: 2, a: 1, txt: "SELECT pendientes SKIP LOCKED", d: ["El relay busca pendientes", "FOR UPDATE SKIP LOCKED: dos relays nunca toman el mismo evento."] },
+    { de: 2, a: 3, txt: "publicar (persistente)", d: ["Sale hacia el broker", "Mensaje persistente con message_id, para descartar repetidos más adelante."] },
+    { de: 3, a: 2, txt: "confirmación", vuelta: true, d: ["Publisher confirm", "RabbitMQ confirma que lo guardó. Si no confirma, el evento sigue pendiente y se reintenta."] },
+    { de: 2, a: 1, txt: "UPDATE enviado_en", d: ["Marcado como enviado", "Solo después de la confirmación."] },
+    { de: 3, a: 4, txt: "entrega a la cola", d: ["Llega al consumidor", "Por la cola durable notificaciones.avisos."] },
+    { de: 4, a: 4, txt: "clave única · ¿ya avisado?", d: ["Consumidor idempotente", "Si el evento llegó dos veces, el segundo choca con la clave y no se repite el aviso."] },
+  ] } });
+
+/* --- 07 Flujos --- */
+S("07 · Flujos", "Llega un auto nuevo", { titulo2: "Llega un auto nuevo y <em>se avisa el término</em>", seq: {
+  bajada: "Lexora consulta cada radicado por la firma y trae los autos nuevos al expediente.",
+  intro: ["Ya no se revisa a mano", "vigilancia consulta los radicados marcados, con uso moderado del portal (ADR 0005)."],
+  part: [{ t: ["vigilancia"], k: "python" }, { t: ["Rama", "Judicial"], k: "ext" }, { t: ["RabbitMQ"], k: "mq" }, { t: ["procesos"], k: "java" }, { t: ["notifica-", "ciones"], k: "python" }, { t: ["Abogado"], k: "ext" }],
+  bloques: [{ de: 0, a: 2, txt: "loop · por radicado marcado", k: "python" }],
+  msj: [
+    { de: 0, a: 1, txt: "consultar actuaciones", d: ["Busca el proceso", "Por el radicado de 23 dígitos, una consulta a la vez y 10 s entre radicados. La fuente es intercambiable: manual, simulada o el portal."] },
+    { de: 1, a: 0, txt: "lista de actuaciones", vuelta: true, d: ["Las más recientes", "Las 40 últimas anotaciones del despacho."] },
+    { de: 0, a: 0, txt: "comparar con las conocidas", d: ["Solo lo nuevo", "La primera consulta guarda la línea base sin avisar; después solo cuentan las actuaciones nuevas."] },
+    { de: 0, a: 2, txt: "actuacion.detectada (outbox)", d: ["Publica el evento", "Con el outbox: si RabbitMQ no está, espera y sale después."] },
+    { de: 2, a: 3, txt: "registra la providencia", d: ["Aparece en el expediente", "Sin duplicar: una actuación con la misma referencia se descarta. Una sentencia mueve la etapa."] },
+    { de: 2, a: 4, txt: "avisar al responsable", d: ["Se arma el aviso", "Según las preferencias de cada persona."] },
+    { de: 4, a: 3, txt: "¿quién es el responsable?", d: ["Pregunta por HTTP", "Con un token de servicio que solo permite consultar."] },
+    { de: 4, a: 5, txt: "app (en vivo) · correo · Telegram", d: ["El abogado se entera", "En el portal llega en vivo por SSE, sin recargar."] },
+    { de: 5, a: 3, txt: "abre el expediente", d: ["Revisa el auto", "La línea de tiempo dice «detectado en la Rama Judicial»."] },
+    { de: 3, a: 5, txt: "términos sugeridos", vuelta: true, d: ["«3 días hábiles · CGP art. 318»", "Las reglas proponen el término con su norma, contado en días hábiles judiciales."] },
+    { de: 5, a: 3, txt: "confirma el término", d: ["El abogado decide", "Con «Crear término» queda en el expediente, a su nombre."] },
+  ] } });
+S("07 · Flujos", "Revisión diaria", { titulo2: "Revisión diaria de <em>términos y audiencias</em>", seq: {
+  bajada: "Cada día hábil a las 7:00 procesos revisa lo que vence y publica un evento por cada cosa que hay que avisar.",
+  intro: ["Nada se pasa", "Una tarea programada, sin intervención de nadie."],
+  part: [{ t: ["tarea 7:00", "procesos"], k: "java" }, { t: ["PostgreSQL", "procesos"], k: "datos" }, { t: ["RabbitMQ"], k: "mq" }, { t: ["notifica-", "ciones"], k: "python" }, { t: ["Abogado"], k: "ext" }],
+  msj: [
+    { de: 0, a: 1, txt: "vencen en ≤ 5 días hábiles", d: ["Términos por vencer", "La vista v_terminos ya trae los días hábiles que faltan, con festivos y vacancia."] },
+    { de: 0, a: 2, txt: "termino.por_vencer", d: ["Un evento por término", "Con el responsable y el radicado."] },
+    { de: 0, a: 1, txt: "vencidos hace 1 a 3 días", d: ["Lo que se pasó", "Para que la dirección se entere a tiempo."] },
+    { de: 0, a: 2, txt: "termino.vencido", d: ["Otro evento", "Distinto, para que el aviso diga lo que pasó."] },
+    { de: 0, a: 1, txt: "audiencias del próximo día hábil", d: ["Audiencias", "Una audiencia del lunes se avisa el viernes."] },
+    { de: 0, a: 2, txt: "audiencia.proxima", d: ["Evento de agenda", "Con hora y lugar."] },
+    { de: 2, a: 3, txt: "cada evento", d: ["Llegan a avisos", "Por la cola notificaciones.avisos."] },
+    { de: 3, a: 3, txt: "evento:id:persona:canal:día", d: ["Sin avisos repetidos", "Si la tarea corre dos veces, la clave única evita el doble aviso."] },
+    { de: 3, a: 4, txt: "app · correo · Telegram", vuelta: true, d: ["El abogado lo ve", "Y Lawy lo resume en el inicio: «Hoy tiene 2 por vencer en 5 días hábiles»."] },
+  ] } });
+(() => {
+  const N = {
+    c1: { x: 0, y: 220, w: 210, k: "web", t: "Consulta inicial", s: ["quién llega y", "qué necesita"] },
+    c2: { x: 260, y: 220, w: 200, k: "seg", t: "¿Conflicto de", s: "intereses?" },
+    c3: { x: 260, y: 440, w: 200, k: "mal", t: "Aviso", s: ["la contraparte ya", "es cliente"] },
+    c4: { x: 520, y: 220, w: 170, k: "ok", t: "Contrata" },
+    c5: { x: 740, y: 220, w: 200, k: "java", t: "Ficha del cliente", s: "gabinete" },
+    c6: { x: 990, y: 220, w: 220, k: "java", t: "Proceso", s: ["radicado de 23", "dígitos · procesos"] },
+    c7: { x: 990, y: 30, w: 220, k: "java", t: "Honorarios", s: "fijo, mensual, cuota litis" },
+    c8: { x: 1250, y: 120, w: 190, k: "python", t: "Vigilancia", s: "del radicado" },
+    c9: { x: 1250, y: 330, w: 190, k: "java", t: "Expediente", s: ["equipo, partes,", "términos, audiencias"] },
+    c10: { x: 990, y: 430, w: 220, k: "java", t: "Relevo y cierre", s: "con motivo" },
+    c11: { x: 1250, y: 0, w: 190, h: 80, k: "java", t: "Pagos y gastos" },
+  };
+  let s = svgAbre(1440, 540, 540);
+  s += flecha(N.c1, N.c2, "", 1) + flecha(N.c2, N.c3, "sí", 2, { k: "mal" }) + flecha(N.c2, N.c4, "no", 2, { k: "ok" }) + flecha(N.c4, N.c5, "", 3) + flecha(N.c5, N.c6, "", 3);
+  s += flecha(N.c6, N.c7, "", 4) + flecha(N.c7, N.c11, "", 4) + flecha(N.c6, N.c8, "", 4, { k: "python" }) + flecha(N.c6, N.c9, "", 4) + flecha(N.c6, N.c10, "al final", 5);
+  Object.entries(N).forEach(([k, n]) => s += caja(n, { c1: 1, c2: 1, c3: 2, c4: 2, c5: 3, c6: 3, c7: 4, c8: 4, c9: 4, c11: 4, c10: 5 }[k]));
+  s += `</svg>`;
+  S("07 · Flujos", "De la consulta al proceso", { pasos: 5, html: `${cab("07", "Funcionamiento", "De la consulta inicial <em>al proceso</em>", "El conflicto de intereses compara el NIT o la cédula de la contraparte con los clientes de la firma, también con nombres escritos distinto.")}${s}` });
+})();
+S("07 · Flujos", "Consulta a Lawy por Telegram", { titulo2: "Consulta a <em>Lawy</em> por Telegram", seq: {
+  bajada: "El mensaje viaja por Talki y el gateway hasta los servicios, y vuelve como texto listo para enviar.",
+  intro: ["Un abogado pregunta qué le vence", "Avance con → o pulse ▶ Auto para ver el recorrido completo."],
+  part: [{ t: ["Abogado", "Telegram"], k: "ext" }, { t: ["Talki"], k: "python" }, { t: ["gateway"], k: "seg" }, { t: ["notifica-", "ciones"], k: "python" }, { t: ["gabinete"], k: "java" }, { t: ["procesos"], k: "java" }, { t: ["PostgreSQL"], k: "datos" }],
+  msj: [
+    { de: 0, a: 1, txt: "/terminos", d: ["Escribe en el chat privado", "Talki lee el bot con getUpdates (long polling): nada del servidor queda expuesto a internet."] },
+    { de: 1, a: 2, txt: "POST /api/canales/toga", d: ["Talki llama a Lexora", "Por la red interna de Docker, con la clave compartida en X-Canal-Clave."] },
+    { de: 2, a: 2, txt: "bitácora", d: ["Queda en la auditoría", "El gateway anota la petición en la bitácora encadenada, también si se rechaza."] },
+    { de: 2, a: 3, txt: "reenvía", d: ["Llega a notificaciones", "Compara la clave en tiempo constante y busca de quién es el chat."] },
+    { de: 3, a: 4, txt: "¿sigue activo en la firma?", d: ["Solo el equipo activo", "Un cliente o alguien retirado no recibe datos."] },
+    { de: 3, a: 5, txt: "términos a su nombre", d: ["Solo lo suyo", "Pide únicamente los términos de esa persona."] },
+    { de: 5, a: 6, txt: "SELECT v_terminos", d: ["Días hábiles en la base", "La vista calcula cuántos días hábiles faltan."] },
+    { de: 5, a: 3, txt: "términos", vuelta: true, d: ["Vuelven los datos", "Solo campos de una lista blanca: radicado, qué hay que hacer, cuándo vence."] },
+    { de: 3, a: 6, txt: "INSERT consultas_bot", d: ["Registro sin el texto", "Se guarda quién, cuándo y el resultado; nunca lo escrito ni la respuesta."] },
+    { de: 3, a: 1, txt: "{ respuesta }", vuelta: true, d: ["Texto listo para enviar", "Con lo más próximo primero."] },
+    { de: 1, a: 0, txt: "sendMessage", vuelta: true, d: ["Lo lee en segundos", "«Allegar poder especial · falta 1 día hábil»."] },
+  ] } });
+
+/* --- 08 Seguridad --- */
+S("08 · Seguridad", "Inicio de sesión con dos pasos", { titulo2: "Inicio de sesión con <em>verificación en dos pasos</em>", seq: {
+  bajada: "JWT firmado con RSA (15 min) y refresh token rotativo en una cookie HttpOnly. El código de dos pasos es TOTP.",
+  intro: ["Una contraseña robada no basta", "Con la verificación en dos pasos activa, la contraseña sola no entrega ningún token."],
+  part: [{ t: ["Navegador"], k: "ext" }, { t: ["gateway"], k: "seg" }, { t: ["identidad"], k: "java" }, { t: ["PostgreSQL", "identidad"], k: "datos" }],
+  bloques: [{ de: 4, a: 7, txt: "alt · la cuenta tiene dos pasos", k: "seg" }],
+  msj: [
+    { de: 0, a: 1, txt: "POST /api/auth/login", d: ["Usuario y contraseña", "Ruta pública del gateway, con límite de intentos por IP."] },
+    { de: 1, a: 2, txt: "reenvía", d: ["A identidad", "Que es la dueña de las cuentas."] },
+    { de: 2, a: 3, txt: "usuario · BCrypt · intentos", d: ["Se verifica la clave", "Si el usuario no existe igual se compara un hash ficticio: el tiempo no lo delata."] },
+    { de: 2, a: 2, txt: "5 fallos → bloqueo 15 min", d: ["Contra la fuerza bruta", "Y queda el ingreso en la bitácora con su motivo."] },
+    { de: 2, a: 0, txt: "{ mfaRequerido, desafío }", vuelta: true, d: ["Sin token ni cookie", "Solo un desafío de un solo uso."] },
+    { de: 0, a: 1, txt: "POST /login/mfa (código)", d: ["El código de la app", "Seis dígitos de la app autenticadora."] },
+    { de: 1, a: 2, txt: "reenvía", d: ["A identidad", "El secreto TOTP está cifrado con AES-256-GCM."] },
+    { de: 2, a: 2, txt: "TOTP no reutilizable", d: ["El mismo código no sirve dos veces", "También acepta un código de recuperación."] },
+    { de: 2, a: 0, txt: "JWT RS256 15 min + cookie", vuelta: true, d: ["Dos llaves", "Token de acceso corto y refresh en cookie HttpOnly, Secure y SameSite."] },
+  ] } });
+S("08 · Seguridad", "Renovación y robo de sesión", { titulo2: "Renovación y <em>detección de robo</em> de sesión", seq: {
+  bajada: "Cada refresh token sirve una sola vez. Si alguien usa uno ya gastado, alguien lo copió.",
+  intro: ["Rotación por familia", "Cada renovación entrega un refresh nuevo de la misma familia."],
+  part: [{ t: ["Navegador"], k: "ext" }, { t: ["identidad"], k: "java" }, { t: ["PostgreSQL", "sesiones"], k: "datos" }, { t: ["gateway"], k: "seg" }],
+  bloques: [{ de: 0, a: 3, txt: "caso normal · refresh vigente", k: "ok" }, { de: 4, a: 8, txt: "robo · el refresh ya se había usado", k: "mal" }],
+  msj: [
+    { de: 0, a: 1, txt: "POST /auth/renovar (cookie)", d: ["Renovar", "Con la cookie y la cabecera X-Requested-With."] },
+    { de: 1, a: 2, txt: "marcar usado + emitir otro", d: ["Rota", "El usado queda marcado; sale otro de la misma familia."] },
+    { de: 1, a: 1, txt: "firmar JWT nuevo", d: ["Token nuevo", "Otros 15 minutos."] },
+    { de: 1, a: 0, txt: "token + cookie nuevos", vuelta: true, d: ["Sigue trabajando", "La persona ni lo nota."] },
+    { de: 0, a: 1, txt: "POST /auth/renovar (cookie vieja)", d: ["Alguien usa uno gastado", "O el ladrón o la persona: uno de los dos tiene una copia."] },
+    { de: 1, a: 2, txt: "revocar toda la familia", d: ["Se corta la sesión", "Todos los refresh de esa familia dejan de servir."] },
+    { de: 1, a: 0, txt: "401 · iniciar sesión", vuelta: true, d: ["Se vuelve a entrar", "Con contraseña y, si aplica, dos pasos."] },
+    { de: 3, a: 1, txt: "/interno/revocados (15 s)", d: ["El gateway se entera", "Consulta la lista de revocados cada 15 segundos."] },
+    { de: 3, a: 3, txt: "rechaza los JWT de esa sesión", d: ["Ni el token corto sirve", "Los tokens de acceso de esa sesión dejan de pasar."] },
+  ] } });
+(() => {
+  const capas = [["Navegador", "ext", ""], ["Tailscale", "infra", "solo la VPN"], ["nginx", "web", "HTTPS · HSTS · CSP"], ["gateway", "seg", "firma · revocado · rol"], ["FiltroToken", "java", "verifica de nuevo"], ["Recurso", "java", "segunda barrera de rol"]];
+  let s = svgAbre(1440, 170, 170);
+  capas.forEach(([t, k, d], i) => { const n = { x: i * 244, y: 30, w: 200, h: 100, k, t, s: d || undefined }; s += caja(n, i + 1); if (i) s += flecha({ x: (i - 1) * 244, y: 30, w: 200, h: 100 }, n, "", i + 1, { k }); });
+  s += `</svg>`;
+  S("08 · Seguridad", "Capas y permisos", { pasos: 7, html: `${cab("08", "Seguridad", "Cada petición pasa por <em>seis capas</em>", "Defensa en profundidad: ninguna capa confía en que la anterior hizo bien su trabajo.")}${s}
+   <div class="tarjeta" data-paso="7" style="margin-top:6px;padding:14px 20px"><table style="font-size:16px"><tr><th>Módulo</th><th>ADMIN</th><th>SOCIO</th><th>ABOGADO</th><th>DEPENDIENTE</th><th>ADMINISTRATIVO</th><th>CLIENTE</th></tr>
+    <tr><td>Procesos y expediente</td><td class="si">edita</td><td class="si">edita</td><td class="si">edita</td><td class="medio">términos, actuaciones, documentos</td><td class="medio">ve</td><td class="no">—</td></tr>
+    <tr><td>Relevo y cierre del proceso</td><td class="si">sí</td><td class="si">sí</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+    <tr><td>Honorarios, pagos y gastos</td><td class="si">maneja</td><td class="si">maneja</td><td class="medio">ve</td><td class="no">—</td><td class="si">maneja</td><td class="no">—</td></tr>
+    <tr><td>Firma, reportes, usuarios y servidor</td><td class="si">sí</td><td class="medio">firma y reportes</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+    <tr><td>Portal del cliente</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="si">lo suyo</td></tr></table></div>` });
+})();
+(() => {
+  let s = svgAbre(1440, 260, 260);
+  const filas = [["41", "arodriguez", "GET /api/procesos", "200"], ["42", "anonimo", "POST /api/auth/login", "401"], ["43", "crojas", "POST /api/providencias", "201"], ["44", "lpineda", "GET /api/terminos", "200"]];
+  filas.forEach(([id, u, r, e], i) => {
+    const x = i * 360, p = i + 1;
+    s += `<g class="nodo" data-paso="${p}"><rect x="${x + 10}" y="20" width="300" height="210" rx="16" fill="#fff" stroke="#4338ff" stroke-width="2.5"/>
+      <path d="M${x + 10} 60 V36 a16 16 0 0 1 16 -16 H${x + 294} a16 16 0 0 1 16 16 V60 z" fill="#4338ff"/>
+      <text x="${x + 28}" y="47" font-size="17" font-weight="800" fill="#fff">registro ${id}</text>
+      <text x="${x + 28}" y="92" font-size="15" font-weight="700" fill="#0f1e45">${u}</text><text x="${x + 28}" y="117" font-size="14" font-weight="600" fill="#2b3a63">${r} → ${e}</text>
+      <text x="${x + 28}" y="152" font-size="12.5" font-weight="700" fill="#5a6478">hash_anterior: ${(9157 * (i + 3)).toString(16)}…</text>
+      <rect x="${x + 22}" y="176" width="276" height="34" rx="8" fill="#ecebff"/><text x="${x + 34}" y="198" font-size="13" font-weight="800" fill="#4338ff">hash = SHA-256(fila + anterior)</text></g>`;
+    if (i < 3) s += `<g data-paso="${p + 1}"><line class="trazo" pathLength="1" x1="${x + 312}" y1="125" x2="${x + 366}" y2="125" stroke="#4338ff" stroke-width="3" marker-end="url(#pt-seg)"/></g>`;
+  });
+  s += `</svg>`;
+  S("08 · Seguridad", "Bitácora encadenada", { pasos: 5, html: `${cab("08", "Seguridad", "No repudio: <em>bitácora con hash encadenado</em>", "Una fila por cada petición a /api, también las rechazadas. Cada fila guarda el hash de la anterior: si alguien edita una, la cadena se rompe.")}${s}
+    <div class="rejilla" data-paso="5" style="grid-template-columns:1fr 1fr 1fr;margin-top:14px">
+     <div class="tarjeta"><span class="chip k-seg">Qué se anota</span><p class="txt" style="margin-top:8px">Usuario y roles del token (o «anónimo»), método y ruta sin parámetros, estado, duración e IP.</p></div>
+     <div class="tarjeta"><span class="chip k-mal">Qué no se guarda</span><p class="txt" style="margin-top:8px">Cuerpos, respuestas, parámetros ni datos del expediente.</p></div>
+     <div class="tarjeta"><span class="chip k-ok">Otras defensas</span><p class="txt" style="margin-top:8px">Límite por IP, clave temporal obligatoria de cambiar y avisos a la persona cuando cambian su clave o sus dos pasos.</p></div></div>` });
+})();
+
+/* --- 09 Estados --- */
+(() => {
+  const ini = (x, y, p) => `<g class="nodo"${pa(p)}><circle cx="${x}" cy="${y}" r="11" fill="#0f1e45"/></g>`;
+  const fin = (x, y, p) => `<g class="nodo"${pa(p)}><circle cx="${x}" cy="${y}" r="14" fill="none" stroke="#0f1e45" stroke-width="2.5"/><circle cx="${x}" cy="${y}" r="8" fill="#0f1e45"/></g>`;
+  const est = (n, p) => caja({ ...n, h: n.h || 60, tam: 16 }, p);
+  const pt = (x, y) => ({ x: x - 11, y: y - 11, w: 22, h: 22 });
+  const H = (n) => ({ ...n, h: n.h || 60 });
+  // término
+  let a = svgAbre(700, 290, 280);
+  const T = { ad: H({ x: 140, y: 100, w: 120, k: "ok", t: "AL DÍA" }), pv: H({ x: 290, y: 100, w: 140, k: "infra", t: "POR VENCER" }), ve: H({ x: 460, y: 100, w: 110, k: "mal", t: "VENCIDO" }), cu: H({ x: 290, y: 225, w: 140, k: "ok", t: "CUMPLIDO" }) };
+  a += `<g data-paso="1"><rect x="120" y="40" width="470" height="150" rx="16" fill="#fff8f1" stroke="#e8710a" stroke-width="2.5"/><text x="140" y="70" font-size="16" font-weight="800" fill="#e8710a">PENDIENTE</text></g>`;
+  a += ini(40, 130, 1) + flecha(pt(40, 130), T.ad, "", 1) + est(T.ad, 1) + flecha(T.ad, T.pv, "", 2, { k: "infra" }) + est(T.pv, 2) + flecha(T.pv, T.ve, "", 2, { k: "mal" }) + est(T.ve, 2);
+  a += `<g data-paso="3"><line class="trazo" pathLength="1" x1="360" y1="190" x2="360" y2="222" stroke="#1f7a4d" stroke-width="2.5" marker-end="url(#pt-ok)"/>${rotulo(450, 212, "el abogado lo marca", 12.5)}</g>` + est(T.cu, 3) + fin(520, 255, 3) + flecha(T.cu, pt(520, 255), "", 3) + `</svg>`;
+  // proceso
+  let b = svgAbre(700, 290, 280);
+  const P = { ac: H({ x: 90, y: 110, w: 140, k: "java", t: "ACTIVO" }), su: H({ x: 90, y: 225, w: 140, k: "infra", t: "SUSPENDIDO" }), te: H({ x: 360, y: 110, w: 150, k: "ext", t: "TERMINADO" }), ar: H({ x: 560, y: 110, w: 135, k: "ext", t: "ARCHIVADO" }) };
+  b += ini(30, 140, 1) + flecha(pt(30, 140), P.ac, "", 1) + est(P.ac, 1) + est(P.su, 2) + `<g data-paso="2"><path d="M135 172 V222" stroke="#b45309" stroke-width="2.5" marker-end="url(#pt-infra)"/><path d="M185 222 V173" stroke="#e8710a" stroke-width="2.5" marker-end="url(#pt-java)"/></g>`;
+  b += flecha(P.ac, P.te, "cerrar", 3) + est(P.te, 3) + `<g data-paso="4"><path d="M435 108 C435 40 160 40 160 106" fill="none" stroke="#4338ff" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#pt-seg)"/>${rotulo(298, 56, "reabrir (solo la dirección)", 13, "#4338ff")}</g>`;
+  b += flecha(P.te, P.ar, "", 4) + est(P.ar, 4) + `</svg>`;
+  // sesión
+  let c = svgAbre(700, 290, 280);
+  const Q = { vi: H({ x: 90, y: 40, w: 140, k: "ok", t: "VIGENTE" }), us: H({ x: 360, y: 40, w: 140, k: "infra", t: "USADO" }), re: H({ x: 360, y: 200, w: 150, k: "mal", t: "REVOCADA" }), vc: H({ x: 90, y: 200, w: 140, k: "ext", t: "VENCIDA" }) };
+  c += ini(30, 70, 1) + flecha(pt(30, 70), Q.vi, "", 1) + est(Q.vi, 1) + flecha(Q.vi, Q.us, "renovar", 2) + est(Q.us, 2) + flecha(Q.us, Q.re, "llega otra vez", 3, { k: "mal" }) + flecha(Q.vi, Q.re, "salir", 3, { k: "mal", en: .55 }) + est(Q.re, 3);
+  c += flecha(Q.vi, Q.vc, "vence", 4) + est(Q.vc, 4) + fin(610, 230, 4) + flecha(Q.re, pt(610, 230), "", 4) + `</svg>`;
+  // regla
+  let d = svgAbre(700, 290, 280);
+  const R = { sv: H({ x: 90, y: 40, w: 160, k: "infra", t: "SIN VALIDAR" }), va: H({ x: 430, y: 40, w: 150, k: "ok", t: "VALIDADA" }), in: H({ x: 260, y: 200, w: 150, k: "ext", t: "INACTIVA" }) };
+  d += ini(30, 70, 1) + flecha(pt(30, 70), R.sv, "", 1) + est(R.sv, 1) + `<g data-paso="2"><path d="M250 56 H426" stroke="#1f7a4d" stroke-width="2.5" marker-end="url(#pt-ok)"/>${rotulo(338, 46, "un socio la valida", 13)}
+    <path d="M430 86 H254" stroke="#b45309" stroke-width="2.5" marker-end="url(#pt-infra)"/>${rotulo(342, 108, "cambia su contenido", 13)}</g>` + est(R.va, 2);
+  d += flecha(R.sv, R.in, "", 3) + flecha(R.va, R.in, "se desactiva", 3) + est(R.in, 3) + `</svg>`;
+  const t = (k, nombre, sv, txt) => `<div class="tarjeta" style="padding:12px 16px"><div style="display:flex;gap:10px;align-items:baseline"><span class="chip k-${k}">${nombre}</span><span style="font-size:14px;color:#5a6478;font-weight:600">${txt}</span></div>${sv}</div>`;
+  S("09 · Estados", "Diagramas de estados", { pasos: 4, html: `${cab("09", "Estados", "Diagramas de <em>estados</em>")}<div class="rejilla" style="grid-template-columns:1fr 1fr;gap:14px">
+    ${t("java", "Término", a, "por vencer: faltan 5 días hábiles o menos")}${t("java", "Proceso", b, "cerrar exige un motivo; reabrir vuelve a la etapa que tenía")}
+    ${t("seg", "Refresh token y sesión", c, "vence a las 12 h sin uso o a los 7 días; el reúso revoca la familia")}${t("web", "Regla de términos", d, "validada queda a nombre del socio")}</div>` });
+})();
+
+/* --- 10 Despliegue --- */
+(() => {
+  const N = {
+    us: { x: 0, y: 40, w: 220, k: "ext", t: "Personal y clientes", s: "equipos en Tailscale" },
+    ts: { x: 300, y: 140, w: 200, h: 80, k: "infra", t: "tailscale serve", s: "HTTPS :443" },
+    fe: { x: 300, y: 270, w: 200, h: 80, k: "web", t: "frontend", s: "nginx" },
+    gw: { x: 300, y: 390, w: 200, h: 80, k: "seg", t: "gateway", s: "solo en la VM" },
+    sv: { x: 560, y: 140, w: 240, h: 200, k: "java", t: "servicios", s: ["identidad · gabinete", "procesos", "vigilancia", "notificaciones", "asistente-ia"] },
+    pg: { x: 860, y: 140, w: 200, h: 80, k: "datos", t: "postgres", s: "volumen pgdata" },
+    mq: { x: 860, y: 250, w: 200, h: 80, k: "mq", t: "rabbitmq", s: "sin puerto publicado" },
+    ol: { x: 560, y: 390, w: 240, h: 80, k: "ia", t: "ollama", s: "3 GB · 3 CPU" },
+    re: { x: 860, y: 390, w: 200, h: 80, k: "infra", t: "respaldo", s: "pg_dump 02:30" },
+    vg: { x: 860, y: 500, w: 200, h: 70, k: "infra", t: "vigía (systemd)", s: "cada 5 min" },
+    tk: { x: 560, y: 500, w: 240, h: 70, k: "python", t: "Talki", s: "otro compose, red compartida" },
+    pc: { x: 1160, y: 60, w: 270, h: 120, k: "ext", t: "PC (Windows 11)", s: ["repositorio", "copia de respaldos 9:00", "llave privada"] },
+    gh: { x: 1200, y: 250, w: 230, h: 84, k: "ext", t: "GitHub", s: "CI + Dependabot" },
+    ad: { x: 1160, y: 470, w: 270, k: "ext", t: "Administradores", s: "Telegram" },
+  };
+  let s = svgAbre(1440, 590, 590) + `<g data-paso="1"><rect x="270" y="20" width="840" height="565" rx="22" fill="#fff" stroke="#b45309" stroke-width="2.5" stroke-dasharray="10 8"/>
+    <text x="292" y="52" font-size="17" font-weight="800" fill="#b45309">«nodo» Servidor HP · Windows Server 2019 › VM Ubuntu 24.04 · Docker Compose</text>
+    <text x="292" y="76" font-size="14" font-weight="600" fill="#5a6478">red interna de Compose · cada contenedor con mem_limit, healthcheck y restart: unless-stopped</text></g>`;
+  s += flecha(N.us, N.ts, "VPN", 1, { k: "infra" }) + flecha(N.ts, N.fe, "", 2) + flecha(N.fe, N.gw, "/api", 2) + flecha(N.gw, N.sv, "", 2);
+  s += flecha(N.sv, N.pg, "", 3, { k: "datos" }) + flecha(N.sv, N.mq, "", 3, { k: "mq" }) + flecha(N.sv, N.ol, "", 3, { k: "ia" }) + flecha(N.tk, N.gw, "", 3, { k: "python", guion: true });
+  s += flecha(N.re, N.pg, "", 4, { k: "infra" }) + flecha(N.pc, N.re, "scp + SHA-256", 4, { k: "infra", guion: true, en: .45 }) + flecha(N.vg, N.ad, "Telegram", 4, { k: "infra" });
+  s += flecha(N.pc, N.gh, "push · PR", 5) + `<g data-paso="5"><path d="M1160 100 H680 V136" fill="none" stroke="#8a93a8" stroke-width="2.5" stroke-dasharray="8 6" marker-end="url(#pt-gris)"/>${rotulo(960, 100, "despliegue: tar + ssh", 14)}</g>`;
+  Object.entries(N).forEach(([k, n]) => s += caja(n, { us: 1, ts: 1, fe: 2, gw: 2, sv: 2, pg: 3, mq: 3, ol: 3, tk: 3, re: 4, vg: 4, pc: 4, ad: 4, gh: 5 }[k]));
+  s += `</svg>`;
+  S("10 · Despliegue", "Diagrama de despliegue", { pasos: 5, html: `${cab("10", "Despliegue y operación", "Diagrama de <em>despliegue</em>", "Un servidor propio. PostgreSQL y RabbitMQ no publican puertos; nada queda abierto a internet.")}${s}` });
+})();
+S("10 · Despliegue", "El vigía", { pasos: 4, html: `${cab("10", "Despliegue y operación", "Qué revisa el <em>vigía</em> cada 5 minutos", "Un temporizador de systemd en la VM. Avisa por Telegram cuando aparece un problema y cuando se resuelve, y manda un resumen diario.")}
+ <div class="rejilla" style="grid-template-columns:1fr 1fr">
+  ${[["infra", "Contenedores y máquina", "Contenedores corriendo y sanos · disco (alerta desde el 85 %) · memoria libre (menos de 500 MB)"],
+     ["datos", "Respaldos", "Respaldo de la base de menos de 26 horas · paquete de llaves de menos de 8 días · prueba de restauración de la última semana"],
+     ["mq", "Eventos", "Eventos atascados en los outbox · colas de RabbitMQ sin consumidor o acumuladas · la app respondiendo por HTTPS"],
+     ["mal", "Errores", "ERROR, FATAL y Traceback en los registros de cada servicio. Cada revisión, incidente y error queda en el esquema operacion"]]
+    .map(([k, t, d], i) => `<div class="tarjeta" data-paso="${i + 1}" style="border-left:6px solid ${K[k]}"><span class="chip k-${k}">${t}</span><p class="txt" style="margin-top:10px;font-size:19px">${d}</p></div>`).join("")}
+ </div>
+ <div class="tarjeta" data-paso="4" style="margin-top:18px;display:flex;align-items:center;gap:20px"><span class="chip k-ok">pantalla Servidor</span><p class="txt">Disponibilidad, gráficas de disco y memoria, incidentes y errores, para el administrador.</p></div>` });
+
+/* --- 11 Respaldos --- */
+(() => {
+  const N = {
+    d1: { x: 0, y: 20, w: 300, h: 80, k: "datos", t: "base · *.dump", s: "02:30 diario · 14 días" },
+    d2: { x: 0, y: 120, w: 300, h: 80, k: "datos", t: "documentos · *.tar.gz", s: "diario · 14 días" },
+    d3: { x: 0, y: 220, w: 300, h: 80, k: "seg", t: "llaves · *.p7m", s: ".env y secretos, cifrados" },
+    d4: { x: 0, y: 320, w: 300, h: 80, k: "infra", t: "prueba de restauración", s: "domingos 04:00" },
+    pc: { x: 700, y: 100, w: 300, h: 110, k: "ext", t: "PC · D:\\respaldos", s: ["copia diaria con SHA-256", "30 días"] },
+    pv: { x: 1110, y: 100, w: 320, h: 110, k: "seg", t: "llave privada RSA 4096", s: ["solo en el PC", "comprueba que el paquete abre"] },
+    vg: { x: 700, y: 320, w: 300, h: 80, k: "infra", t: "vigía → Telegram", s: "si falla o no se hace" },
+  };
+  let s = svgAbre(1440, 410, 400);
+  s += flecha(N.d1, N.pc, "", 2, { k: "datos" }) + flecha(N.d2, N.pc, "", 2, { k: "datos" }) + flecha(N.d3, N.pc, "", 2, { k: "seg" });
+  s += flecha(N.pv, N.pc, "", 3, { k: "seg" }) + flecha(N.d4, N.vg, "", 3, { k: "infra", guion: true });
+  Object.entries(N).forEach(([k, n]) => s += caja(n, { d1: 1, d2: 1, d3: 1, d4: 1, pc: 2, pv: 3, vg: 3 }[k]));
+  s += `</svg>`;
+  S("11 · Respaldos", "Respaldos y recuperación", { pasos: 4, html: `${cab("11", "Respaldos y recuperación", "Si se pierde el servidor, <em>se reconstruye</em>", "El paquete de llaves se cifra en la VM con un certificado público: la VM puede cifrarlo, pero no abrirlo. Solo el PC tiene la llave privada.")}${s}
+   <div class="tarjeta" data-paso="4" style="margin-top:8px"><h3 style="font-size:19px;margin-bottom:8px">Recuperar todo en una VM nueva</h3>
+    <div class="rejilla" style="grid-template-columns:repeat(5,1fr);gap:12px;font-size:16px;line-height:1.4;color:#2b3a63">
+     <div><b style="color:#b45309;font-size:22px">1</b><br>VM con Docker y Tailscale; clonar el repositorio</div><div><b style="color:#b45309;font-size:22px">2</b><br>Abrir el paquete de llaves en el PC con <code>openssl cms -decrypt</code></div>
+     <div><b style="color:#b45309;font-size:22px">3</b><br>Restaurar la base con <code>pg_restore</code></div><div><b style="color:#b45309;font-size:22px">4</b><br>Descomprimir los documentos en su volumen</div>
+     <div><b style="color:#b45309;font-size:22px">5</b><br><code>docker compose up -d --build</code>, vigía y <code>tailscale serve</code></div></div></div>` });
+})();
+
+/* --- 12 Calidad --- */
+S("12 · Calidad", "Cobertura y CI", { pasos: 2, html: `${cab("12", "Calidad", "Pruebas en cada push, <em>con cobertura mínima</em>", "GitHub Actions corre las pruebas de cada servicio, mide la cobertura y audita las dependencias (pip-audit, npm audit). El CI falla si la cobertura baja del mínimo.")}
+ <div class="tarjeta" data-paso="1" style="display:grid;gap:14px;padding:24px 30px">
+  ${[["procesos", "java", 85, 80], ["gabinete", "java", 88, 80], ["identidad", "java", 81, 74], ["gateway", "seg", 95, 90], ["notificaciones", "python", 75, 72], ["vigilancia", "python", 99, 95], ["asistente-ia", "ia", 85, 82]]
+    .map(([n, k, v, m]) => `<div class="fila-barra"><span class="chip k-${k}" style="justify-self:start">${n}</span><div class="pista"><div class="relleno" style="width:${v}%;background:${K[k]}"></div><div class="minimo" style="left:${m}%"></div></div><span style="color:${K[k]}">${v} % <small style="color:#5a6478;font-weight:600">(mín. ${m})</small></span></div>`).join("")}
+  <p style="font-size:14px;color:#5a6478">Cobertura de líneas medida en F16. La raya oscura es el mínimo que exige el CI.</p></div>
+ <div class="rejilla" data-paso="2" style="grid-template-columns:repeat(3,1fr);margin-top:16px">
+  <div class="tarjeta"><span class="chip k-web">Interfaz</span><p class="txt" style="margin-top:8px">Vitest + axe-core en el CI: sin violaciones graves de WCAG 2.1 AA.</p></div>
+  <div class="tarjeta"><span class="chip k-seg">Seguridad</span><p class="txt" style="margin-top:8px">11 casos de abuso, cada uno con una prueba que intenta el ataque.</p></div>
+  <div class="tarjeta"><span class="chip k-infra">En el servidor</span><p class="txt" style="margin-top:8px">Cada fase se verificó con un script por HTTPS (entre 15 y 39 comprobaciones).</p></div></div>` });
+
+/* --- 13 Historia --- */
+S("13 · Historia", "Fases", { pasos: 4, html: `${cab("13", "Historia del proyecto", "Construido <em>por fases</em>", "Cada fase termina con algo que se puede usar y criterios comprobados en el servidor. Octubre y noviembre de 2026.")}
+ <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px">
+ ${[["Base", "java", [["F0", "Planteamiento"], ["F1", "Microservicios y frontend"], ["F2", "Términos y avisos"]]],
+    ["Vigilar", "python", [["F3", "Rama Judicial y Telegram"], ["F4", "Asistente IA y honorarios"]]],
+    ["Endurecer", "seg", [["F5", "Seguridad y CI"], ["F6", "Expediente"], ["F7", "Agenda y términos sugeridos"]]],
+    ["Administrar", "datos", [["F8", "Cuentas, gastos, reportes"], ["F9", "Portal del cliente y HTTPS"], ["F10", "Documentos y consultas"]]],
+    ["Operar", "infra", [["F11", "Vigía y calidad"], ["F12", "Reglas validadas"], ["F13", "Dos pasos"]]],
+    ["Cerrar", "web", [["F14", "Facturación (retirada)"], ["F15", "Respaldo de llaves"], ["F16", "Abuso, IA, carga, a11y"], ["F17", "Diseño Lexora"]]]]
+   .map(([g, k, fs], i) => `<div data-paso="${Math.floor(i / 2) + 1}"><div class="chip k-${k}" style="margin-bottom:8px">${g}</div>${fs.map(([f, t]) => `<div class="tarjeta" style="padding:10px 12px;margin-bottom:8px;border-left:5px solid ${K[k]}"><b style="color:${K[k]};font-size:20px">${f}</b><div style="font-size:15px;font-weight:700;margin-top:2px${t.includes("retirada") ? ";text-decoration:line-through;color:#8a93a8" : ""}">${t}</div></div>`).join("")}</div>`).join("")}
+ </div>
+ <div class="tarjeta" data-paso="4" style="margin-top:6px"><span class="chip k-ia">Noviembre de 2026</span>
+  <p class="txt" style="margin-top:8px">Se retiró la facturación electrónica por decisión de la firma · términos que se explican solos · ficha del abogado · relevo y cierre con motivo · vigilancia que dice cómo va el proceso · bitácora encadenada · <b>Lawy</b> en el portal y en Telegram vía Talki.</p></div>` });
+
+/* --- 14 Casos de abuso --- */
+(() => {
+  let s = svgAbre(1440, 600, 590);
+  const usos = [["Iniciar sesión", 90], ["Consultar el expediente", 250], ["Pedir un borrador al asistente", 410], ["Ver su portal", 540]];
+  const abusos = [["Adivinar contraseñas", 40], ["Averiguar qué usuarios existen", 115], ["Entrar a módulos de otro rol", 190], ["Falsificar cabeceras X-Usuario", 265], ["Reusar un token robado", 340], ["Inyectar instrucciones al modelo", 415], ["Acaparar el modelo de IA", 490]];
+  const amen = [[0, 0], [1, 0], [2, 1], [3, 1], [4, 3], [5, 2], [6, 2]];
+  amen.forEach(([a, u]) => s += `<g data-paso="3"><line x1="${930 - 175}" y1="${abusos[a][1] + 30}" x2="${470 + 160}" y2="${usos[u][1]}" stroke="#b42318" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#pt-mal)"/></g>`);
+  s += `<g data-paso="3">${rotulo(692, 590, "«amenaza»", 14, "#b42318")}</g>`;
+  [[0, [0, 1, 2]], [1, [0, 3]]].forEach(([i, us]) => us.forEach((u) => s += `<line data-paso="1" x1="${110 + 22}" y1="${[180, 470][i] - 30}" x2="${470 - 160}" y2="${usos[u][1]}" stroke="#b6bdd0" stroke-width="2"/>`));
+  [[0, [0, 1]], [1, [2, 3, 5, 6]], [2, [4]]].forEach(([i, as]) => as.forEach((a) => s += `<line data-paso="2" x1="${1320 - 22}" y1="${[110, 300, 490][i] - 30}" x2="${930 + 175}" y2="${abusos[a][1] + 30}" stroke="#e7b4ae" stroke-width="2"/>`));
+  usos.forEach(([t, y]) => s += elipse(470, y, t, "seg", 1, 160));
+  abusos.forEach(([t, y]) => s += elipse(930, y + 30, t, "mal", 2, 175));
+  s += actor(110, 180, "Abogado", "#4338ff", 1) + actor(110, 470, "Cliente", "#4338ff", 1);
+  s += actor(1320, 110, "Externo sin cuenta", "#b42318", 2) + actor(1320, 300, "Empleado con rol bajo", "#b42318", 2) + actor(1320, 490, "Quien robó un token", "#b42318", 2) + `</svg>`;
+  S("14 · Casos de abuso", "Diagrama de casos de abuso", { pasos: 3, html: `${cab("14", "Casos de abuso (Gary McGraw)", "Lo que quiere <em style='color:#b42318'>el atacante</em>", "Un caso de abuso cuenta, como un caso de uso, lo que quiere lograr un atacante. Es uno de los siete touchpoints de McGraw; la notación de misuse cases es de Sindre y Opdahl.")}${s}` });
+})();
+S("14 · Casos de abuso", "Controles y pruebas", { pasos: 3, html: `${cab("14", "Casos de abuso (Gary McGraw)", "Cada abuso, <em>su control y su prueba</em>", "Cada fila tiene una prueba automática que intenta el ataque. Donde faltaba, se escribió en F16.")}
+ <div class="tarjeta" style="padding:14px 20px"><table style="font-size:15.5px"><tr><th>#</th><th>El atacante quiere…</th><th>Control que lo mitiga</th></tr>
+  ${[["Adivinar la contraseña", "5 fallos bloquean la cuenta 15 min (423); 100 intentos por IP en 10 min (429)"], ["Saber qué usuarios existen", "Mismo mensaje siempre y hash BCrypt ficticio si el usuario no existe"],
+     ["Entrar a módulos de otro rol", "PoliticaAcceso niega por defecto; el servicio vuelve a verificar"], ["Hacerse pasar por otro con X-Usuario-Id", "Gateway y servicios rehacen la identidad desde el JWT"],
+     ["Usar un token falso o con alg: none", "RS256, emisor y vencimiento obligatorios"], ["Reusar un refresh token robado", "Rotación por familia: el reúso revoca toda la sesión"],
+     ["Seguir usando el token tras cerrar sesión", "Lista de revocados en gateway e identidad; token de 15 min"], ["Usar una cuenta con clave temporal", "Solo puede cambiar la clave"],
+     ["Robar la base y leer los secretos de dos pasos", "AES-256-GCM con la llave fuera de la base"], ["Meter instrucciones en una actuación para el modelo", "El expediente va como datos; el modelo no tiene herramientas"],
+     ["Acaparar el modelo pidiendo borradores", "5 borradores por usuario cada 10 min (429) y registro de uso"]]
+    .map(([a, c], i) => `<tr data-paso="${i < 4 ? 1 : i < 8 ? 2 : 3}"><td class="n" style="color:#b42318;font-weight:800">${i + 1}</td><td style="font-weight:700">${a}</td><td>${c}</td></tr>`).join("")}</table></div>` });
+
+/* --- 15 IA --- */
+(() => {
+  const N = {
+    ab: { x: 0, y: 150, w: 180, k: "ext", t: "Abogado", s: ["indicaciones,", "máx. 800 caracteres"] },
+    li: { x: 230, y: 150, w: 180, k: "seg", t: "¿Menos de 5", s: "en 10 min?" },
+    no: { x: 230, y: 330, w: 180, h: 80, k: "mal", t: "429", s: "espere" },
+    ar: { x: 460, y: 150, w: 200, k: "java", t: "El sistema arma", s: ["el caso con", "datos reales"] },
+    mo: { x: 790, y: 150, w: 190, k: "ia", t: "Ollama local", s: "sin herramientas" },
+    pl: { x: 790, y: 330, w: 190, h: 80, k: "infra", t: "Plantilla", s: "con [COMPLETAR]" },
+    un: { x: 1040, y: 150, w: 200, k: "java", t: "El sistema pone", s: "encabezado y firma" },
+    rv: { x: 1280, y: 150, w: 160, k: "ok", t: "Revisión", s: ["humana", "obligatoria"] },
+  };
+  let s = svgAbre(1440, 420, 400);
+  s += flecha(N.ab, N.li, "", 1) + flecha(N.li, N.no, "no", 2, { k: "mal" }) + flecha(N.li, N.ar, "sí", 2, { k: "ok" }) + flecha(N.ar, N.mo, "como DATOS", 3, { k: "ia" });
+  s += flecha(N.mo, N.pl, "si falla", 4, { k: "infra", guion: true }) + flecha(N.mo, N.un, "texto", 4, { k: "ia" }) + flecha(N.un, N.rv, "", 5, { k: "ok" });
+  Object.entries(N).forEach(([k, n]) => s += caja(n, { ab: 1, li: 1, no: 2, ar: 2, mo: 3, pl: 4, un: 4, rv: 5 }[k]));
+  s += `</svg>`;
+  S("15 · Riesgos de la IA", "Capas del asistente", { pasos: 6, html: `${cab("15", "Factores de riesgo de la IA (Chema Alonso)", "Un modelo no distingue <em>datos de instrucciones</em>", "Por eso lo que debe ser exacto (radicado, juzgado, partes, firma) nunca pasa por el modelo, y el modelo no puede actuar: solo devuelve texto.")}${s}
+   <div class="leyenda" data-paso="6" style="margin-top:4px">
+    <span class="chip k-ok">Prompt injection indirecta: el expediente va rotulado como datos ✔</span><span class="chip k-ok">Directa: 800 caracteres y solo roles jurídicos ✔</span>
+    <span class="chip k-ok">Fuga de datos: modelo local, sin el nombre del cliente ✔</span><span class="chip k-ok">Exceso de agencia: sin herramientas ✔</span>
+    <span class="chip k-ok">Abuso de recursos: 5 cada 10 min ✔</span><span class="chip k-ok">Alucinaciones: aviso fijo y [COMPLETAR] ✔</span>
+    <span class="chip k-infra">Jailbreak: aceptado; el daño posible es un borrador malo que una persona revisa</span></div>` });
+})();
+
+/* --- 16 Carga --- */
+(() => {
+  const datos = [["Procesos", 269], ["Términos", 457], ["Clientes", 132], ["Total", 326]];
+  const yv = (v) => 360 - v * 0.4;
+  let s = `<svg viewBox="0 0 620 400" width="100%" height="400"><line x1="60" y1="360" x2="600" y2="360" stroke="#c7cbe0" stroke-width="2"/>`;
+  [0, 200, 400, 600, 800].forEach((v) => s += `<text x="50" y="${yv(v) + 5}" text-anchor="end" font-size="13" fill="#5a6478">${v}</text><line x1="60" y1="${yv(v)}" x2="600" y2="${yv(v)}" stroke="#eef0f5"/>`);
+  datos.forEach(([t, v], i) => { const x = 90 + i * 128; s += `<g data-paso="1"><rect class="crece" x="${x}" y="${yv(v)}" width="80" height="${v * 0.4}" rx="6" fill="${i === 3 ? "#4338ff" : "#0891b2"}"/>
+    <text x="${x + 40}" y="${yv(v) - 8}" text-anchor="middle" font-size="16" font-weight="800" fill="#0f1e45">${v} ms</text><text x="${x + 40}" y="384" text-anchor="middle" font-size="15" font-weight="700" fill="#2b3a63">${t}</text></g>`; });
+  s += `<g data-paso="2"><line class="trazo" pathLength="1" x1="60" y1="${yv(800)}" x2="600" y2="${yv(800)}" stroke="#b42318" stroke-width="3"/><text x="596" y="${yv(800) - 8}" text-anchor="end" font-size="14" font-weight="800" fill="#b42318">umbral 800 ms</text></g></svg>`;
+  S("16 · Carga", "k6 y JMeter", { pasos: 3, html: `${cab("16", "Pruebas de carga", "50 usuarios a la vez: <em>k6 y JMeter</em>", "El mismo recorrido con las dos herramientas: un login compartido y, durante 3 minutos, procesos, términos y clientes con 1 a 3 s de lectura.")}
+   <div class="rejilla" style="grid-template-columns:1fr 1fr;align-items:start">
+    <div class="tarjeta"><h3 style="font-size:18px">p95 por pantalla con 50 usuarios (k6)</h3>${s}</div>
+    <div class="tarjeta" data-paso="3"><table><tr><th>27/10/2026</th><th>k6</th><th>JMeter</th></tr>
+     <tr><td>Peticiones</td><td class="n">10 213 (48/s)</td><td class="n">3 669 (20/s)</td></tr><tr><td>Errores</td><td class="n si">0 %</td><td class="n si">0 %</td></tr>
+     <tr><td>Mediana</td><td class="n">63 ms</td><td class="n">20 ms</td></tr><tr><td>p95 total</td><td class="n">326 ms</td><td class="n">66 ms</td></tr>
+     <tr><td>Más lenta (p95)</td><td class="n">Términos, 457 ms</td><td class="n">Términos, 91 ms</td></tr></table>
+     <p class="txt" style="margin-top:12px;font-size:16px"><b>Por qué JMeter da tiempos más bajos:</b> su temporizador espera después de cada petición y k6 una vez por recorrido. JMeter generó menos de la mitad de la carga.</p>
+     <p class="txt" style="margin-top:8px;font-size:16px"><b>k6</b>: Go, script en JavaScript, umbrales que hacen fallar la corrida. <b>JMeter</b>: Java, plan XML, informe HTML.</p></div></div>` });
+})();
+
+/* --- 17 Accesibilidad --- */
+(() => {
+  const pasos = [["Auditar", "axe-core, pantalla por pantalla", "web"], ["Corregir", "colores y roles ARIA", "java"], ["Volver a auditar", "11 pantallas", "web"], ["Proteger", "a11y.spec.ts en el CI", "ok"]];
+  let s = svgAbre(1440, 130, 130);
+  pasos.forEach(([t, d, k], i) => { const n = { x: i * 370, y: 20, w: 320, h: 90, k, t, s: d }; s += caja(n, i + 1); if (i) s += flecha({ x: (i - 1) * 370, y: 20, w: 320, h: 90 }, n, "", i + 1, { k }); });
+  s += `</svg>`;
+  S("17 · Accesibilidad", "Axe DevTools", { pasos: 5, html: `${cab("17", "Accesibilidad", "WCAG 2.1 AA con <em>Axe DevTools</em>", "La extensión de Deque Systems audita contraste, etiquetas, nombres de botones, texto alternativo y roles ARIA. Se corrigió todo lo grave y quedó protegido en el CI.")}${s}
+   <div class="rejilla" data-paso="5" style="grid-template-columns:.8fr 1.2fr;margin-top:10px">
+    <div class="tarjeta"><table style="font-size:16px"><tr><th>Pantalla</th><th>Antes</th><th>Después</th></tr>
+     <tr><td>Inicio</td><td class="n">2</td><td class="n si">0</td></tr><tr><td>Procesos</td><td class="n">14</td><td class="n si">0</td></tr><tr><td>Términos</td><td class="n">5</td><td class="n si">0</td></tr>
+     <tr><td>Clientes</td><td class="n">30</td><td class="n si">0</td></tr><tr><td>Calendario</td><td class="n">58</td><td class="n si">0</td></tr></table>
+     <p style="font-size:13px;color:#5a6478;margin-top:6px">Elementos con violaciones serious o critical.</p></div>
+    <div class="tarjeta"><table style="font-size:16px"><tr><th>Causa</th><th>Corrección</th></tr>
+     <tr><td>Gris secundario con contraste 4,0:1 (mínimo 4,5:1)</td><td>Otro gris: 5,2:1</td></tr><tr><td>Ámbar «por vencer» 4,4:1</td><td>Ámbar más oscuro: 5,6:1</td></tr>
+     <tr><td>Días fuera del mes en el calendario: 1,9:1</td><td>Gris secundario: 6,0:1</td></tr><tr><td>Calendario con role="grid" sin filas</td><td>role="group" con el mes; cada día es un botón</td></tr></table></div></div>` });
+})();
+
+/* --- 18 Usuarios --- */
+S("18 · Pruebas con usuarios", "Pruebas con usuarios", { pasos: 3, html: `${cab("18", "Pruebas con usuarios", "Personas reales, <em>tareas reales</em>", "Alguien observa sin ayudar. No se pregunta «¿le gusta?»: se mide si logran la tarea, cuánto tardan y dónde se equivocan. Con 5 participantes por perfil aparecen la mayoría de los problemas (Nielsen).")}
+ <div class="rejilla" style="grid-template-columns:1fr 1fr">
+  <div class="tarjeta" data-paso="1"><table><tr><th>Tarea (abogado o dependiente)</th><th>Meta</th></tr>
+   <tr><td>T1 · Registrar un proceso con su radicado</td><td class="n">3 min</td></tr><tr><td>T2 · Decir qué término vence primero esta semana</td><td class="n">1 min</td></tr>
+   <tr><td>T3 · Registrar un pago de honorarios</td><td class="n">3 min</td></tr><tr><td>T4 · Activar la verificación en dos pasos</td><td class="n">4 min</td></tr>
+   <tr><td>T5 · Pedir un borrador y decir qué revisaría</td><td class="n">6 min</td></tr></table></div>
+  <div class="tarjeta" data-paso="2"><table><tr><th>Métrica</th><th>Meta</th></tr>
+   <tr><td>Eficacia: tareas logradas</td><td class="n">≥ 80 %</td></tr><tr><td>Eficiencia: mediana del tiempo</td><td class="n">≤ meta</td></tr>
+   <tr><td>Errores por tarea</td><td class="n">≤ 1</td></tr><tr><td>Satisfacción: SUS de 0 a 100</td><td class="n">≥ 68</td></tr></table>
+   <p class="txt" style="margin-top:10px;font-size:16px"><b>SUS</b> (John Brooke, 1986): 10 afirmaciones de 1 a 5; impares menos 1, pares 5 menos el valor; la suma por 2,5.</p></div></div>
+ <div class="tarjeta" data-paso="3" style="margin-top:16px;border-left:6px solid var(--infra)"><span class="chip k-infra">Estado: pendiente de ejecutar</span><p class="txt" style="margin-top:8px">El guion, las 10 afirmaciones y la plantilla están en <code>docs/11-pruebas-usuario.md</code>. Las sesiones se hacen con personas de la firma y cuentas de prueba, nunca con datos reales.</p></div>` });
+
+/* --- 19 ISO 25000 --- */
+(() => {
+  const notas = [["Lab 1", 7.65], ["F5", 8.15], ["F9", 8.6], ["F11", 8.8], ["F12", 9.0], ["F13", 9.15], ["F16", 9.4]];
+  const X = (i) => 80 + i * 86, Y = (v) => 330 - (v - 7) * 100;
+  let s = `<svg viewBox="0 0 640 370" width="100%" height="360">`;
+  [7, 8, 9, 10].forEach((v) => s += `<line x1="60" y1="${Y(v)}" x2="620" y2="${Y(v)}" stroke="#eef0f5" stroke-width="2"/><text x="50" y="${Y(v) + 5}" text-anchor="end" font-size="14" fill="#5a6478">${v}</text>`);
+  s += `<g data-paso="2"><polyline class="trazo" pathLength="1" points="${notas.map(([, v], i) => `${X(i)},${Y(v)}`).join(" ")}" fill="none" stroke="#4338ff" stroke-width="4"/>`;
+  notas.forEach(([f, v], i) => s += `<circle cx="${X(i)}" cy="${Y(v)}" r="7" fill="#fff" stroke="#4338ff" stroke-width="3"/><text x="${X(i)}" y="${Y(v) - 14}" text-anchor="middle" font-size="14" font-weight="800" fill="#0f1e45">${v.toLocaleString("es-CO", { minimumFractionDigits: 1 })}</text>`);
+  notas.forEach(([f], i) => s += `<text x="${X(i)}" y="358" text-anchor="middle" font-size="14" font-weight="700" fill="#2b3a63">${f}</text>`);
+  s += `</g></svg>`;
+  const div = [["2500n", "Gestión", "vocabulario y plan", "ext"], ["2501n", "Modelo", "25010: características con peso", "seg"], ["2502n", "Medición", "25023: métrica, valor, umbral y evidencia", "python"], ["2503n", "Requisitos", "25030: < 800 ms, WCAG AA, cobertura ≥ 70 %", "java"], ["2504n", "Evaluación", "25040: escala de 0 a 10, ninguna bajo 5", "mq"]];
+  S("19 · ISO/IEC 25000", "Evaluación de calidad", { pasos: 3, html: `${cab("19", "ISO/IEC 25000 (SQuaRE)", "La calidad, <em>medida en cada fase</em>", "La familia SQuaRE tiene cinco divisiones; la evaluación del proyecto usa una norma de cada una y se repite al cerrar cada fase.")}
+   <div class="rejilla" style="grid-template-columns:.9fr 1.1fr;align-items:start">
+    <div style="display:grid;gap:10px" data-paso="1">${div.map(([n, t, d, k]) => `<div class="tarjeta" style="padding:11px 16px;border-left:6px solid ${K[k]}"><b style="color:${K[k]}">${n}</b> · <b>${t}</b><div style="font-size:15px;color:#2b3a63;margin-top:2px">${d}</div></div>`).join("")}
+     <div class="tarjeta" style="padding:11px 16px;border-left:6px solid var(--infra)"><b style="color:var(--infra)">25019</b> · <b>Calidad en uso</b><div style="font-size:15px;color:#2b3a63;margin-top:2px">pendiente: la miden las pruebas con usuarios</div></div></div>
+    <div class="tarjeta"><h3 style="font-size:18px">Nota ponderada ISO 25010 por fase</h3>${s}
+     <p class="txt" data-paso="3" style="font-size:16px">En F16 suben eficiencia de desempeño (7 → 8, carga medida) y capacidad de interacción (8 → 9, WCAG AA en el CI). Total: <b>9,40, excelente</b>.</p></div></div>` });
+})();
+
+/* --- Cierre --- */
+S("Cierre", "Cierre", { html: `<div style="display:flex;align-items:center;gap:60px;height:100%;padding-bottom:30px">
+  <img src="lawy.svg" alt="" style="width:380px">
+  <div><h1 style="font-size:84px">Lexora<br><em>cada término, a tiempo</em></h1>
+  <p class="bajada" style="margin-top:22px;font-size:25px">Microservicios políglotas con arquitectura hexagonal, eventos confiables con outbox, seguridad en cada capa y un despliegue propio, privado y respaldado.</p>
+  <div class="leyenda" style="margin-top:18px"><span class="chip k-java">Términos controlados</span><span class="chip k-python">Rama Judicial vigilada</span><span class="chip k-seg">Datos protegidos</span><span class="chip k-ia">Lawy, siempre a mano</span></div></div></div>` });
+
+/* =====================================================================
+   Motor de la presentación
+   ===================================================================== */
+const escenario = document.getElementById("escenario");
+const NOMBRE_SEC = { "06": "Eventos", "07": "Funcionamiento", "08": "Seguridad" };
+D.forEach((d, i) => {
+  const s = document.createElement("section");
+  s.className = "diapo";
+  s.setAttribute("aria-label", `${i + 1}. ${d.titulo}`);
+  if (d.seq) {
+    const num = d.sec.split(" · ")[0];
+    s.innerHTML = `${cab(num, NOMBRE_SEC[num] || d.sec, d.titulo2 || d.titulo)}<p class="bajada" style="margin-bottom:12px">${esc(d.seq.bajada)}</p>${secuencia(d.seq)}`;
+    d.pasos = d.seq.msj.length;
+  } else s.innerHTML = d.html;
+  s.insertAdjacentHTML("beforeend", `<div class="pie"><span>Lexora · cómo está construido</span><span>${i + 1} / ${D.length}</span></div>`);
+  escenario.appendChild(s);
+  d.el = s;
+  d.pasos = d.pasos || 0;
+});
+
+/* índice */
+(() => {
+  const grupos = [];
+  D.forEach((d, i) => { const g = grupos.find((x) => x.sec === d.sec); g ? g.items.push([i, d.titulo]) : grupos.push({ sec: d.sec, items: [[i, d.titulo]] }); });
+  document.querySelector("#indice .cols").innerHTML = grupos.map((g) => `<div class="grupo"><b>${esc(g.sec)}</b>${g.items.map(([i, t]) => `<a href="#${i + 1}" data-ir="${i}"><span>${i + 1}</span>${esc(t)}</a>`).join("")}</div>`).join("");
+})();
+const indice = document.getElementById("indice");
+let actual = 0, paso = 0, auto = null;
+const abrirIndice = (si) => { indice.classList.toggle("abierto", si); if (si) indice.querySelector(`[data-ir="${actual}"]`)?.focus(); };
+
+function ajustar() {
+  const k = Math.min(innerWidth / 1640, innerHeight / 940);
+  escenario.style.transform = `scale(${k}) translate(-50%, -50%)`;
+}
+function animarMensaje(g) {
+  const p = g && g.querySelector(".punto");
+  if (!p) return;
+  const x1 = +g.dataset.x1, x2 = +g.dataset.x2, t0 = performance.now(), dur = 700;
+  p.setAttribute("opacity", "1");
+  (function cuadro(t) {
+    const f = Math.min(1, (t - t0) / dur), e = f < .5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2;
+    p.setAttribute("cx", x1 + (x2 - x1) * e);
+    if (f < 1) requestAnimationFrame(cuadro); else p.setAttribute("opacity", "0");
+  })(t0);
+}
+function pintar(animar) {
+  D.forEach((d, i) => d.el.classList.toggle("activa", i === actual));
+  const d = D[actual];
+  d.el.querySelectorAll("[data-paso]").forEach((e) => {
+    const n = +e.dataset.paso;
+    e.classList.toggle("oculto", n > paso);
+    e.classList.remove("anima");
+    if (animar && n === paso) { void e.getBoundingClientRect(); e.classList.add("anima"); }
+  });
+  if (d.seq) {
+    const n = d.el.querySelector(".nota"), m = d.seq.msj[paso - 1];
+    n.querySelector(".pn").textContent = paso;
+    n.querySelector(".paso-t").textContent = m ? m.d[0] : d.seq.intro[0];
+    n.querySelector(".paso-d").textContent = m ? m.d[1] : d.seq.intro[1];
+    d.el.querySelectorAll(".msj").forEach((g) => { const k = +g.dataset.paso; g.style.opacity = k === paso ? 1 : k < paso ? .5 : ""; });
+    if (animar && paso > 0) animarMensaje(d.el.querySelector(`.msj[data-paso="${paso}"]`));
+  }
+  document.getElementById("avance").style.width = `${(actual + paso / Math.max(d.pasos, 1)) / (D.length - 1) * 100}%`;
+  history.replaceState(null, "", `#${actual + 1}`);
+}
+function ir(i) { actual = Math.max(0, Math.min(D.length - 1, i)); paso = 0; pintar(false); }
+function siguiente() {
+  if (paso < D[actual].pasos) { paso++; pintar(true); return; }
+  if (actual < D.length - 1) { actual++; paso = 0; pintar(false); }
+  else pararAuto();
+}
+function anterior() {
+  if (paso > 0) { paso--; pintar(false); return; }
+  if (actual > 0) { actual--; paso = D[actual].pasos; pintar(false); }
+}
+function alternarAuto() {
+  if (auto) return pararAuto();
+  auto = setInterval(() => { if (paso >= D[actual].pasos) pararAuto(); else siguiente(); }, 2600);
+  document.querySelectorAll(".auto").forEach((b) => b.textContent = "❚❚ Pausa");
+  siguiente();
+}
+function pararAuto() { clearInterval(auto); auto = null; document.querySelectorAll(".auto").forEach((b) => b.textContent = "▶ Auto"); }
+document.addEventListener("keydown", (e) => {
+  if (indice.classList.contains("abierto")) { if (e.key === "Escape" || e.key.toLowerCase() === "i") abrirIndice(false); return; }
+  if (["ArrowRight", "PageDown", " ", "Enter"].includes(e.key)) { e.preventDefault(); pararAuto(); siguiente(); }
+  else if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); pararAuto(); anterior(); }
+  else if (e.key === "Home") ir(0);
+  else if (e.key === "End") ir(D.length - 1);
+  else if (e.key.toLowerCase() === "f") { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }
+  else if (e.key.toLowerCase() === "a") alternarAuto();
+  else if (e.key.toLowerCase() === "i") abrirIndice(true);
+});
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("[data-ir]");
+  if (a) { e.preventDefault(); abrirIndice(false); pararAuto(); ir(+a.dataset.ir); return; }
+  if (e.target === indice) { abrirIndice(false); return; }
+  if (e.target.closest("#botonIndice")) { abrirIndice(true); return; }
+  if (e.target.closest(".adelante")) { pararAuto(); siguiente(); }
+  else if (e.target.closest(".atras")) { pararAuto(); anterior(); }
+  else if (e.target.closest(".auto")) alternarAuto();
+});
+addEventListener("resize", ajustar);
+setTimeout(() => document.getElementById("ayuda").style.opacity = "0", 7000);
+// #6 abre la diapositiva 6; #6.3 la abre en el paso 3 (#6.99 la muestra completa)
+const [inicial, pasoInicial] = location.hash.slice(1).split(".").map((x) => parseInt(x, 10));
+if (inicial >= 1 && inicial <= D.length) actual = inicial - 1;
+if (pasoInicial > 0) paso = Math.min(pasoInicial, D[actual].pasos);
+ajustar(); pintar(false);
+</script>
+</body>
+</html>

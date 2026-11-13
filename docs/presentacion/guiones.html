@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lexora · Guiones de la presentación</title>
+<style>
+  @font-face { font-family: "Jakarta"; src: url("jakarta.woff2") format("woff2"); font-weight: 200 800; }
+  :root { --tinta: #0f1e45; --tinta2: #2b3a63; --gris: #5a6478; --linea: #e4e7ef; --suelo: #f5f6fa;
+    --p1: #4338ff; --p1s: #ecebff; --p2: #0e9f6e; --p2s: #e3f6ee; --p3: #e8710a; --p3s: #fff1e5; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Jakarta", "Segoe UI", sans-serif; color: var(--tinta); background: var(--suelo); line-height: 1.55; }
+  .hoja { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 40px; letter-spacing: -0.02em; line-height: 1.1; }
+  h1 em { font-style: normal; color: var(--p1); }
+  .bajada { color: var(--gris); font-size: 18px; margin: 8px 0 24px; }
+  .tarjeta { background: #fff; border-radius: 16px; padding: 20px 24px; box-shadow: 0 1px 2px rgba(15,30,69,.05), 0 12px 28px -18px rgba(15,30,69,.3); margin-bottom: 18px; }
+  .nombres { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .nombres label { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+  .nombres input { width: 100%; margin-top: 4px; font: inherit; font-size: 16px; padding: 8px 10px; border: 2px solid var(--linea); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15.5px; }
+  th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--gris); padding: 6px 8px; border-bottom: 2px solid var(--linea); }
+  td { padding: 8px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+  .persona { break-before: page; margin-top: 40px; }
+  .cabeza { border-radius: 16px; padding: 18px 22px; color: #fff; margin-bottom: 16px; }
+  .cabeza small { font-weight: 800; letter-spacing: .1em; text-transform: uppercase; opacity: .85; }
+  .cabeza h2 { font-size: 30px; line-height: 1.15; margin: 4px 0; }
+  .cabeza p { opacity: .92; }
+  .d1 .cabeza { background: var(--p1); } .d2 .cabeza { background: var(--p2); } .d3 .cabeza { background: var(--p3); }
+  .diapo { background: #fff; border-radius: 14px; padding: 16px 20px; margin-bottom: 12px; border-left: 6px solid var(--c); break-inside: avoid; }
+  .d1 { --c: var(--p1); --cs: var(--p1s); } .d2 { --c: var(--p2); --cs: var(--p2s); } .d3 { --c: var(--p3); --cs: var(--p3s); }
+  .diapo h3 { font-size: 18px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .diapo h3 .n { background: var(--cs); color: var(--c); border-radius: 8px; padding: 1px 9px; font-size: 15px; }
+  .diapo h3 .t { color: var(--gris); font-size: 14px; font-weight: 600; margin-left: auto; }
+  .diapo p { margin-top: 8px; font-size: 17px; color: var(--tinta2); }
+  .tecla { display: inline-block; font-size: 13px; font-weight: 800; color: var(--c); background: var(--cs); border-radius: 6px; padding: 0 7px; margin-right: 4px; white-space: nowrap; }
+  .nota { font-size: 14.5px !important; color: var(--gris) !important; font-style: italic; }
+  .relevo { background: var(--cs); border-radius: 12px; padding: 12px 16px; margin: 4px 0 12px; font-size: 16px; }
+  .relevo b { color: var(--c); }
+  ul { padding-left: 20px; } li { margin: 4px 0; }
+  .nom { font-weight: 800; }
+  @media print {
+    body { background: #fff; } .hoja { padding: 0; } .noimprimir { display: none; }
+    .tarjeta, .diapo { box-shadow: none; border: 1px solid var(--linea); }
+    .cabeza { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<div class="hoja">
+  <h1>Lexora · <em>guiones</em> de la presentación</h1>
+  <p class="bajada">Tres partes seguidas para tres presentadores, sobre <code>index.html</code> (41 diapositivas). Cerca de 8 minutos por persona, unos 25 en total.</p>
+
+  <div class="tarjeta noimprimir">
+    <div class="nombres">
+      <div><label for="n1" style="color:var(--p1)">Presentador 1</label><input id="n1" placeholder="Nombre"></div>
+      <div><label for="n2" style="color:var(--p2)">Presentador 2</label><input id="n2" placeholder="Nombre"></div>
+      <div><label for="n3" style="color:var(--p3)">Presentador 3</label><input id="n3" placeholder="Nombre"></div>
+    </div>
+    <p style="font-size:14px;color:var(--gris);margin-top:10px">Escriban sus nombres y el guion los pone en los saludos y los relevos. Para imprimir: Ctrl+P (cada parte empieza en una hoja nueva).</p>
+  </div>
+
+  <div class="tarjeta">
+    <table>
+      <tr><th>Quién</th><th>Parte</th><th>Diapositivas</th><th>Tiempo</th></tr>
+      <tr><td><b style="color:var(--p1)" class="nom" data-p="1">Presentador 1</b></td><td>El problema, la arquitectura y los patrones</td><td>1 a 14</td><td>8 min</td></tr>
+      <tr><td><b style="color:var(--p2)" class="nom" data-p="2">Presentador 2</b></td><td>Cómo funciona por dentro: datos, eventos y flujos</td><td>15 a 25</td><td>8 min</td></tr>
+      <tr><td><b style="color:var(--p3)" class="nom" data-p="3">Presentador 3</b></td><td>Seguridad, operación y calidad</td><td>26 a 41</td><td>8 min</td></tr>
+    </table>
+  </div>
+
+  <div class="tarjeta">
+    <h3 style="font-size:18px;margin-bottom:6px">Cómo se maneja la presentación</h3>
+    <ul style="font-size:16px;color:var(--tinta2)">
+      <li><span class="tecla">→</span> avanza un paso: cada diagrama se arma por partes. <span class="tecla">←</span> retrocede.</li>
+      <li><span class="tecla">A</span> reproduce solos los pasos de la diapositiva (uno cada 2,6 s). Úsenla en los diagramas de secuencia largos y narren por encima.</li>
+      <li><span class="tecla">I</span> abre el índice para saltar a una diapositiva. <span class="tecla">F</span> pone pantalla completa.</li>
+      <li>En el guion, <span class="tecla">→ ×3</span> quiere decir: pulsar la flecha tres veces mientras se dice ese párrafo. Las frases están para decirlas con sus palabras, no para leerlas.</li>
+      <li><b>Si les dan 15 minutos</b>, salten las diapositivas 7, 10, 12, 17, 21, 30, 35, 38 y 39 (se marcan con «se puede saltar»).</li>
+    </ul>
+  </div>
+
+  <!-- ===================================================================== -->
+  <section class="persona d1">
+    <div class="cabeza"><small>Parte 1 · diapositivas 1 a 14 · 8 min</small><h2><span class="nom" data-p="1">Presentador 1</span>: el problema, la arquitectura y los patrones</h2>
+      <p>Abre la presentación, explica qué problema resuelve Lexora y cómo está organizado.</p></div>
+
+    <div class="diapo"><h3><span class="n">1</span>Portada<span class="t">30 s</span></h3>
+      <p>Buenos días. Somos <span class="nom" data-p="1">Presentador 1</span>, <span class="nom" data-p="2">Presentador 2</span> y <span class="nom" data-p="3">Presentador 3</span>, y les vamos a mostrar cómo construimos <b>Lexora</b>, un software para una firma de abogados colombiana. Lo dividimos en tres partes: yo les cuento el problema y la arquitectura; <span class="nom" data-p="2">Presentador 2</span> les muestra cómo funciona por dentro, con los datos, los eventos y los flujos; y <span class="nom" data-p="3">Presentador 3</span> cierra con la seguridad, la operación y la calidad.</p></div>
+
+    <div class="diapo"><h3><span class="n">2</span>El problema<span class="t">45 s</span></h3>
+      <p><span class="tecla">→</span> Todo abogado litigante tiene dos tareas diarias que hoy se hacen a mano. La primera son los <b>términos</b>: plazos que corren en días hábiles judiciales, sin fines de semana, festivos ni vacancia. Cada tipo de proceso y cada acto tiene su regla, y un término que se pasa puede costar el caso.</p>
+      <p><span class="tecla">→</span> La segunda es la <b>Rama Judicial</b>: para saber si salió un auto hay que entrar al portal y escribir los 23 dígitos del radicado, proceso por proceso. No hay una API oficial.</p>
+      <p><span class="tecla">→</span> Lexora hace las dos cosas: vigila los radicados por la firma, sugiere el término que abre cada auto y avisa al abogado por la app, el correo y Telegram.</p></div>
+
+    <div class="diapo"><h3><span class="n">3</span>Casos de uso<span class="t">30 s</span></h3>
+      <p><span class="tecla">→ ×2</span> Estos son los actores. Abogados, dependientes y socios trabajan sobre los procesos, los términos, el asistente Lawy y los honorarios. El cliente solo ve su proceso y sus pagos, y la Rama Judicial aparece como sistema externo. Lo importante: cada actor ve solo lo que su rol permite, y eso lo decide el gateway en cada petición.</p></div>
+
+    <div class="diapo"><h3><span class="n">4</span>Diagrama de contexto (C4 nivel 1)<span class="t">40 s</span></h3>
+      <p><span class="tecla">→</span> El primer nivel del modelo C4: Lexora y con quién conversa. El equipo y los clientes entran por HTTPS, pero solo a través de la VPN Tailscale. Nada está abierto a internet.</p>
+      <p><span class="tecla">→</span> Lexora consulta la Rama Judicial, redacta con un modelo de IA local (Ollama, en el mismo servidor) y avisa por correo y Telegram.</p>
+      <p><span class="tecla">→</span> También se puede entrar con Google, Microsoft o GitHub, y <b>Talki</b> es el sistema que lee el bot de Telegram y le pregunta a Lexora con una clave compartida.</p></div>
+
+    <div class="diapo"><h3><span class="n">5</span>La decisión de arquitectura<span class="t">45 s</span></h3>
+      <p>¿Por qué microservicios? Evaluamos tres opciones y lo dejamos escrito en un ADR. <span class="tecla">→</span> Un monolito era rápido, pero la consulta al portal y la IA quedaban incómodas en Java. <span class="tecla">→</span> Microservicios solo en Java gastaban 350 a 500 MB cada uno. <span class="tecla">→</span> Elegimos Java con Spring para lo transaccional y Python con FastAPI para la vigilancia, los avisos y la IA.</p>
+      <p><span class="tecla">→</span> Y otras decisiones: RabbitMQ en lugar de Kafka, porque el volumen es bajo; un JWT propio en lugar de Keycloak, que usa 700 MB; el DNS de Docker Compose en lugar de Eureka; y una sola base PostgreSQL con un esquema por servicio.</p></div>
+
+    <div class="diapo"><h3><span class="n">6</span>Diagrama de contenedores (C4 nivel 2)<span class="t">50 s</span></h3>
+      <p>El segundo nivel de C4. Fíjense en los colores, que se repiten en toda la presentación: naranja es Java, verde Python, rosado Angular, azul la base de datos y morado RabbitMQ.</p>
+      <p><span class="tecla">→</span> El navegador llega al frontend, y todo lo que es <code>/api</code> pasa por el gateway: es la única puerta. <span class="tecla">→</span> Detrás hay seis servicios. <span class="tecla">→</span> Cada uno guarda sus datos en su propio esquema de PostgreSQL. <span class="tecla">→</span> Procesos, vigilancia y notificaciones se avisan cosas por RabbitMQ. <span class="tecla">→</span> Y afuera quedan la Rama Judicial, Telegram, el modelo local y Talki, que entra por <code>/api/canales</code>.</p></div>
+
+    <div class="diapo"><h3><span class="n">7</span>Servicios y responsabilidades<span class="t">20 s · se puede saltar</span></h3>
+      <p><span class="tecla">→ ×3</span> Aquí está la responsabilidad de cada servicio y su límite de memoria: 384 MB los de Java, 192 los de Python, y el asistente tiene además 3 GB para el modelo. Así un servicio no puede tumbar a los demás.</p></div>
+
+    <div class="diapo"><h3><span class="n">8</span>Arquitectura hexagonal<span class="t">45 s</span></h3>
+      <p>Por dentro, cada servicio sigue la arquitectura hexagonal. <span class="tecla">→</span> En el centro está el dominio: el proceso, el término, el radicado y el calendario judicial. No sabe nada de bases de datos ni de HTTP. <span class="tecla">→</span> Alrededor están los casos de uso. <span class="tecla">→</span> Y los puertos, que son interfaces.</p>
+      <p><span class="tecla">→</span> Por la izquierda entran las peticiones REST, los eventos y las tareas programadas. <span class="tecla">→</span> Por la derecha salen los adaptadores: PostgreSQL, el outbox, los clientes HTTP y el disco. La ventaja es que probamos las reglas con dobles en memoria y cambiamos una pieza sin tocar el dominio.</p></div>
+
+    <div class="diapo"><h3><span class="n">9</span>Catálogo de patrones<span class="t">30 s</span></h3>
+      <p><span class="tecla">→ ×4</span> Buscamos los patrones de diseño en el código real y los agrupamos como en el catálogo clásico: creacionales, estructurales, de comportamiento y los de arquitectura e integración. Cada uno con la clase que lo aplica. Veamos algunos.</p></div>
+
+    <div class="diapo"><h3><span class="n">10</span>Patrones creacionales<span class="t">30 s · se puede saltar</span></h3>
+      <p><span class="tecla">→</span> Factory Method: <code>Radicado.de</code> solo deja crear radicados válidos de 23 dígitos. <span class="tecla">→</span> Builder: el token de acceso se arma paso a paso. <span class="tecla">→</span> Singleton: Spring crea una sola instancia de cada servicio. <span class="tecla">→</span> Y los <code>record</code> funcionan como objetos de valor inmutables.</p></div>
+
+    <div class="diapo"><h3><span class="n">11</span>Patrones estructurales<span class="t">35 s</span></h3>
+      <p><span class="tecla">→</span> El más útil es el <b>Adapter</b>: el portal de la Rama Judicial responde en su propio formato y <code>FuentePortalHttp</code> lo traduce. Si el portal cambia, solo cambia el adaptador. <span class="tecla">→</span> Decorator: envolvemos la petición para que la identidad salga del token y no de lo que mande el usuario. <span class="tecla">→</span> Facade: cerrar un proceso toca sus términos, audiencias y vigilancia, pero el recurso solo llama a <code>CierreServicio</code>. <span class="tecla">→</span> Y Proxy, con las transacciones de Spring.</p></div>
+
+    <div class="diapo"><h3><span class="n">12</span>Patrones de comportamiento<span class="t">30 s · se puede saltar</span></h3>
+      <p><span class="tecla">→</span> Strategy: entrar con Google, Microsoft o GitHub es la misma estrategia con otra configuración. <span class="tecla">→</span> Observer: quien publica un evento no conoce a quién le llega. <span class="tecla">→</span> Chain of Responsibility: los filtros de seguridad, donde cada uno corta con 401 o 403, o pasa la petición. <span class="tecla">→</span> Y Null Object, para no llenar el código de <code>if (x != null)</code>.</p></div>
+
+    <div class="diapo"><h3><span class="n">13</span>Reglas, repositorios y outbox<span class="t">35 s</span></h3>
+      <p><span class="tecla">→</span> Specification: las reglas de los términos no están en el código, viven en la base de datos, un socio las valida y el sugeridor las evalúa. <span class="tecla">→</span> Repository: el SQL queda en el adaptador. <span class="tecla">→</span> Outbox, que en un momento van a ver animado. <span class="tecla">→</span> Y consumidores idempotentes: si un evento llega dos veces, no se avisa dos veces.</p></div>
+
+    <div class="diapo"><h3><span class="n">14</span>Lenguajes y tecnologías<span class="t">30 s</span></h3>
+      <p><span class="tecla">→ ×3</span> En resumen, con qué está hecho: Angular 22 en la interfaz, Java 17 con Spring Boot en el núcleo, Python 3.12 con FastAPI en los servicios, PostgreSQL 16, RabbitMQ y Ollama, todo en Docker Compose sobre un servidor propio. Todas las versiones están fijas.</p>
+      <div class="relevo"><b>Relevo:</b> «Eso es cómo está organizado. Ahora <span class="nom" data-p="2">Presentador 2</span> les muestra cómo funciona por dentro.»</div></div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="persona d2">
+    <div class="cabeza"><small>Parte 2 · diapositivas 15 a 25 · 8 min</small><h2><span class="nom" data-p="2">Presentador 2</span>: cómo funciona por dentro</h2>
+      <p>Los datos, los eventos y los flujos animados. En los diagramas de secuencia largos, pulsen <b>A</b> y narren por encima; el panel de la derecha ayuda.</p></div>
+
+    <div class="diapo"><h3><span class="n">15</span>Un esquema por servicio<span class="t">35 s</span></h3>
+      <p><span class="tecla">→</span> Empezamos por los datos. Hay una sola base PostgreSQL, pero cada servicio es dueño de su esquema y nadie toca las tablas de otro. <span class="tecla">→</span> Tampoco hay llaves foráneas entre esquemas: un proceso guarda el número del cliente y, si necesita el nombre, se lo pide a gabinete por HTTP.</p>
+      <p><span class="tecla">→</span> En total son 55 tablas en 7 esquemas. Un detalle: la vista <code>v_terminos</code> calcula en la misma base cuántos días hábiles faltan, con festivos y vacancia.</p></div>
+
+    <div class="diapo"><h3><span class="n">16</span>Entidad-relación de procesos<span class="t">30 s</span></h3>
+      <p><span class="tecla">→</span> El corazón es el proceso, con su radicado de 23 dígitos. <span class="tecla">→</span> Tiene un tipo, un despacho y sus partes. <span class="tecla">→</span> Un equipo de abogados, sus actuaciones y sus documentos. <span class="tecla">→</span> Y lo más importante: recibe providencias, y cada providencia abre los términos que hay que cumplir.</p></div>
+
+    <div class="diapo"><h3><span class="n">17</span>Entidad-relación de gabinete<span class="t">20 s · se puede saltar</span></h3>
+      <p><span class="tecla">→ ×4</span> Gabinete guarda la firma, sus sedes y su personal, los clientes y el dinero: honorarios pactados, pagos y gastos. También las consultas iniciales de quien llega a la firma.</p></div>
+
+    <div class="diapo"><h3><span class="n">18</span>Eventos con RabbitMQ<span class="t">40 s</span></h3>
+      <p><span class="tecla">→</span> Los servicios se avisan cosas con eventos. Procesos publica, por ejemplo, <code>termino.por_vencer</code>; vigilancia publica <code>actuacion.detectada</code>. Todo va a un exchange de tipo topic. <span class="tecla">→</span> Cada consumidor tiene su cola y escoge qué eventos le interesan. <span class="tecla">→</span> Por ejemplo, notificaciones recibe todos los que terminan en un aviso.</p>
+      <p><span class="tecla">→</span> Las colas son durables y los mensajes persistentes. Como un evento puede llegar dos veces, los consumidores descartan los repetidos.</p></div>
+
+    <div class="diapo"><h3><span class="n">19</span>Outbox: entrega garantizada<span class="t">45 s · pulsar A</span></h3>
+      <p><span class="tecla">A</span> ¿Qué pasa si RabbitMQ está caído justo cuando se crea un proceso? Para eso está el patrón outbox. El proceso y su evento se guardan en la misma transacción: todo o nada. Después, un relay revisa cada dos segundos la tabla de pendientes, publica el evento y solo lo marca como enviado cuando RabbitMQ confirma. Si no confirma, se reintenta. Y al final, el consumidor revisa que no sea repetido.</p></div>
+
+    <div class="diapo"><h3><span class="n">20</span>Llega un auto nuevo<span class="t">60 s · pulsar A</span></h3>
+      <p><span class="tecla">A</span> Este es el flujo principal. El servicio de vigilancia consulta cada radicado en el portal de la Rama Judicial, uno a la vez y sin saturarlo. Compara con lo que ya conocía; la primera vez solo guarda la línea base.</p>
+      <p>Cuando aparece una actuación nueva, publica <code>actuacion.detectada</code>. Procesos la registra en el expediente y notificaciones avisa al responsable, en vivo en el portal, por correo y por Telegram. El abogado abre el expediente y Lexora le sugiere el término con su norma, por ejemplo tres días hábiles según el artículo 318 del Código General del Proceso. El abogado decide y lo crea.</p></div>
+
+    <div class="diapo"><h3><span class="n">21</span>Revisión diaria<span class="t">40 s · pulsar A · se puede saltar</span></h3>
+      <p><span class="tecla">A</span> Además, todos los días hábiles a las 7 de la mañana una tarea revisa lo que vence en cinco días hábiles o menos, lo que ya se pasó y las audiencias del día siguiente, y publica un evento por cada cosa. Si la tarea corriera dos veces, la clave única evita el aviso repetido.</p></div>
+
+    <div class="diapo"><h3><span class="n">22</span>De la consulta al proceso<span class="t">30 s</span></h3>
+      <p><span class="tecla">→</span> Así entra un cliente nuevo. Llega a una consulta inicial <span class="tecla">→</span> y lo primero es revisar el conflicto de intereses: si la contraparte ya es cliente de la firma, Lexora avisa, aunque el nombre esté escrito distinto. <span class="tecla">→</span> Si no hay conflicto, se crea la ficha del cliente y el proceso. <span class="tecla">→</span> De ahí salen los honorarios, la vigilancia y el expediente. <span class="tecla">→</span> Y al final, el relevo del abogado o el cierre, siempre con un motivo.</p></div>
+
+    <div class="diapo"><h3><span class="n">23</span>Consulta a Lawy por Telegram<span class="t">60 s · pulsar A</span></h3>
+      <p><span class="tecla">A</span> Y este es Lawy, el asistente. Un abogado escribe <code>/terminos</code> en Telegram. Talki lee el bot y le pregunta a Lexora por la red interna, con una clave compartida. El gateway lo anota en la bitácora y lo pasa a notificaciones.</p>
+      <p>Notificaciones revisa que la persona siga activa en la firma, pide solo los términos a su nombre y arma la respuesta. Del lado de la privacidad: se registra quién consultó y cuándo, pero nunca lo que escribió ni lo que se le respondió.</p></div>
+
+    <div class="diapo"><h3><span class="n">24</span>Inicio de sesión con dos pasos<span class="t">45 s · pulsar A</span></h3>
+      <p><span class="tecla">A</span> Ahora un flujo de seguridad. El usuario manda su contraseña e identidad la verifica con BCrypt. Con cinco fallos la cuenta se bloquea quince minutos. Si la persona activó la verificación en dos pasos, la contraseña sola no entrega ningún token: devuelve un desafío y pide el código de la app autenticadora, que no se puede usar dos veces. Al final entrega un token de 15 minutos y un refresh en una cookie protegida.</p></div>
+
+    <div class="diapo"><h3><span class="n">25</span>Renovación y robo de sesión<span class="t">45 s · pulsar A</span></h3>
+      <p><span class="tecla">A</span> El token dura poco y se renueva con el refresh. Cada refresh sirve una sola vez: al usarlo se entrega uno nuevo de la misma familia. Si alguien usa uno ya gastado, significa que alguien lo copió, y Lexora revoca toda la familia. El gateway se entera en menos de 15 segundos y deja de aceptar los tokens de esa sesión.</p>
+      <div class="relevo"><b>Relevo:</b> «Esa es la sesión. <span class="nom" data-p="3">Presentador 3</span> les cuenta qué más protege cada petición y cómo operamos y medimos la calidad.»</div></div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="persona d3">
+    <div class="cabeza"><small>Parte 3 · diapositivas 26 a 41 · 8 min</small><h2><span class="nom" data-p="3">Presentador 3</span>: seguridad, operación y calidad</h2>
+      <p>Cierra la presentación. Varias diapositivas son de resultados: basta con decir la cifra importante y seguir.</p></div>
+
+    <div class="diapo"><h3><span class="n">26</span>Las seis capas<span class="t">40 s</span></h3>
+      <p><span class="tecla">→ ×6</span> Cada petición pasa por seis capas: la VPN, nginx con HTTPS y cabeceras de seguridad, el gateway, que revisa la firma del token, si está revocado y si el rol puede entrar, después el propio servicio, que vuelve a verificar el token, y el recurso, que hace una segunda revisión del rol. Ninguna capa confía en la anterior.</p>
+      <p><span class="tecla">→</span> Y esta es la tabla de permisos: por ejemplo, el cliente solo ve lo suyo y solo socios y administradores cierran procesos.</p></div>
+
+    <div class="diapo"><h3><span class="n">27</span>Bitácora encadenada<span class="t">35 s</span></h3>
+      <p><span class="tecla">→ ×4</span> Para el no repudio, cada petición a la API queda en una bitácora, también las rechazadas. Cada fila guarda el hash de la anterior, como una cadena: si alguien edita una fila, la cadena se rompe y se nota.</p>
+      <p><span class="tecla">→</span> Se anota quién, qué ruta, el resultado y la IP, pero nunca el contenido ni los datos del expediente.</p></div>
+
+    <div class="diapo"><h3><span class="n">28</span>Diagramas de estados<span class="t">40 s</span></h3>
+      <p><span class="tecla">→ ×4</span> Cuatro máquinas de estados. Un término pendiente pasa de al día a por vencer y a vencido, hasta que el abogado lo marca cumplido. Un proceso se puede suspender, se cierra con motivo y solo la dirección lo puede reabrir. La sesión es lo que acabamos de ver: el reúso la revoca. Y una regla de términos queda sin validar cada vez que cambia, hasta que un socio la vuelve a validar.</p></div>
+
+    <div class="diapo"><h3><span class="n">29</span>Diagrama de despliegue<span class="t">40 s</span></h3>
+      <p><span class="tecla">→</span> Todo corre en un servidor propio, en una máquina virtual Ubuntu con Docker Compose, y se entra por Tailscale. <span class="tecla">→</span> El frontend, el gateway y los servicios. <span class="tecla">→</span> La base y RabbitMQ no publican puertos: solo los ven los servicios. <span class="tecla">→</span> Hay un respaldo diario que se copia al PC y un vigía que avisa por Telegram. <span class="tecla">→</span> El código vive en GitHub y se despliega por SSH.</p></div>
+
+    <div class="diapo"><h3><span class="n">30</span>El vigía<span class="t">25 s · se puede saltar</span></h3>
+      <p><span class="tecla">→ ×4</span> Cada cinco minutos el vigía revisa los contenedores, el disco y la memoria, que los respaldos estén al día, que no haya eventos atascados y que no aparezcan errores en los registros. Si algo falla avisa por Telegram, y avisa otra vez cuando se resuelve.</p></div>
+
+    <div class="diapo"><h3><span class="n">31</span>Respaldos y recuperación<span class="t">35 s</span></h3>
+      <p><span class="tecla">→ ×3</span> La base y los documentos se respaldan todos los días y se copian al PC verificando el SHA-256. Las llaves y secretos van en un paquete cifrado: el servidor lo puede cifrar, pero solo el PC tiene la llave privada para abrirlo.</p>
+      <p><span class="tecla">→</span> Y está escrito y ensayado cómo reconstruir todo en una máquina nueva, en cinco pasos.</p></div>
+
+    <div class="diapo"><h3><span class="n">32</span>Cobertura y CI<span class="t">30 s</span></h3>
+      <p><span class="tecla">→</span> Cada push corre las pruebas de cada servicio en GitHub Actions. La raya oscura es el mínimo de cobertura: si un servicio baja de ahí, el CI falla. Vigilancia está en 99 % y el gateway en 95. <span class="tecla">→</span> Además hay pruebas de accesibilidad y de seguridad, y cada fase se comprobó en el servidor.</p></div>
+
+    <div class="diapo"><h3><span class="n">33</span>Construido por fases<span class="t">25 s</span></h3>
+      <p><span class="tecla">→ ×4</span> Lo construimos en 18 fases, de la F0 a la F17. Cada una terminaba con algo que se podía usar y con criterios comprobados en el servidor. La facturación electrónica se hizo y después se retiró, por decisión de la firma.</p></div>
+
+    <div class="diapo"><h3><span class="n">34</span>Casos de abuso<span class="t">35 s</span></h3>
+      <p><span class="tecla">→</span> Un caso de uso dice lo que quiere el usuario. <span class="tecla">→</span> Un caso de abuso dice lo que quiere el atacante, como propone Gary McGraw: alguien de afuera que adivina contraseñas, un empleado que intenta entrar a módulos de otro rol, alguien que robó un token. <span class="tecla">→</span> Las flechas rojas muestran qué caso de uso amenaza cada uno.</p></div>
+
+    <div class="diapo"><h3><span class="n">35</span>Controles y pruebas<span class="t">25 s · se puede saltar</span></h3>
+      <p><span class="tecla">→ ×3</span> Son once casos de abuso, y cada uno tiene su control y una prueba automática que intenta el ataque. Por ejemplo, un token con <code>alg: none</code> se rechaza, y un refresh robado revoca la sesión.</p></div>
+
+    <div class="diapo"><h3><span class="n">36</span>Riesgos de la IA<span class="t">35 s</span></h3>
+      <p><span class="tecla">→ ×5</span> Con la IA seguimos la idea que divulga Chema Alonso: un modelo no distingue datos de instrucciones. Por eso el expediente le llega marcado como datos, el modelo no tiene herramientas para actuar, corre local y no ve el nombre del cliente, y lo exacto (el radicado, el juzgado y la firma) lo pone el sistema. Además hay un límite de cinco borradores cada diez minutos. Siempre lo revisa una persona.</p>
+      <p><span class="tecla">→</span> Esta es la lista de riesgos con su control.</p></div>
+
+    <div class="diapo"><h3><span class="n">37</span>Pruebas de carga<span class="t">30 s</span></h3>
+      <p><span class="tecla">→</span> Probamos con 50 usuarios a la vez durante tres minutos. <span class="tecla">→</span> La meta era responder en menos de 800 milisegundos en el percentil 95: la pantalla más lenta, términos, quedó en 457 y el total en 326, sin errores. <span class="tecla">→</span> Lo medimos con k6 y con JMeter; JMeter da tiempos más bajos porque genera menos carga.</p></div>
+
+    <div class="diapo"><h3><span class="n">38</span>Accesibilidad<span class="t">25 s · se puede saltar</span></h3>
+      <p><span class="tecla">→ ×5</span> Auditamos las pantallas con Axe DevTools contra WCAG 2.1 AA, corregimos los contrastes y los roles ARIA, volvimos a auditar y dejamos una prueba en el CI para que no se rompa. Todas las pantallas quedaron sin violaciones graves.</p></div>
+
+    <div class="diapo"><h3><span class="n">39</span>Pruebas con usuarios<span class="t">25 s · se puede saltar</span></h3>
+      <p><span class="tecla">→ ×3</span> Lo que falta es probar con personas reales: cinco tareas con tiempo meta, sin ayudar, y el cuestionario SUS. El guion está listo y queda pendiente hacerlo con gente de la firma.</p></div>
+
+    <div class="diapo"><h3><span class="n">40</span>ISO/IEC 25000<span class="t">30 s</span></h3>
+      <p><span class="tecla">→</span> Para medir la calidad usamos la familia ISO 25000: un modelo con características y pesos, métricas, umbrales y una escala de evaluación. <span class="tecla">→</span> La evaluamos al cerrar cada fase, y la nota subió de 7,65 en el primer laboratorio a <b>9,40, excelente</b>. <span class="tecla">→</span> Lo último que subió fue la eficiencia, con las pruebas de carga, y la interacción, con la accesibilidad.</p></div>
+
+    <div class="diapo"><h3><span class="n">41</span>Cierre<span class="t">15 s</span></h3>
+      <p>En resumen, Lexora son microservicios en Java y Python con arquitectura hexagonal, eventos que no se pierden gracias al outbox, seguridad en cada capa y un despliegue propio, privado y respaldado. Para que cada término llegue a tiempo. Muchas gracias, quedamos atentos a sus preguntas.</p>
+      <p class="nota">Para las preguntas: con <b>I</b> se abre el índice y se salta a cualquier diagrama. Cada uno responde las preguntas de su parte.</p></div>
+  </section>
+</div>
+<script>
+  const campos = [1, 2, 3].map((n) => document.getElementById(`n${n}`));
+  function poner() {
+    campos.forEach((c, i) => {
+      const v = c.value.trim() || `Presentador ${i + 1}`;
+      document.querySelectorAll(`[data-p="${i + 1}"]`).forEach((e) => e.textContent = v);
+      try { localStorage.setItem(`guion-n${i + 1}`, c.value); } catch (e) {}
+    });
+  }
+  campos.forEach((c, i) => { try { c.value = localStorage.getItem(`guion-n${i + 1}`) || ""; } catch (e) {} c.addEventListener("input", poner); });
+  poner();
+</script>
+</body>
+</html>
