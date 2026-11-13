@@ -48,14 +48,22 @@ interface Mensaje {
     </ng-template>
 
     @if (abierto()) {
-      <section class="panel" role="dialog" aria-modal="false" aria-labelledby="asistente-titulo">
+      <section class="panel" [class.grande]="grande()" role="dialog" aria-modal="false" aria-labelledby="asistente-titulo">
         <header>
-          <span class="cara"><app-mascota [tamano]="46" [animo]="pensando() ? 'pensando' : 'neutro'" /></span>
+          <span class="cara"><app-mascota [tamano]="50" [animo]="pensando() ? 'pensando' : 'neutro'" /></span>
           <div class="titulos">
             <h2 id="asistente-titulo">{{ nombre }}</h2>
             <p>Asistente de la firma · solo consulta</p>
           </div>
-          <button type="button" class="cerrar" (click)="cerrar()" [attr.aria-label]="'Cerrar la conversación con ' + nombre">×</button>
+          <button type="button" class="boton-cabecera agrandar" (click)="grande.set(!grande())" [attr.aria-pressed]="grande()"
+                  [attr.aria-label]="grande() ? 'Achicar la conversación' : 'Agrandar la conversación'">
+            @if (grande()) {
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M9 3v6H3M15 21v-6h6M21 9h-6V3M3 15h6v6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            } @else {
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3 9V3h6M21 15v6h-6M15 3h6v6M9 21H3v-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            }
+          </button>
+          <button type="button" class="boton-cabecera" (click)="cerrar()" [attr.aria-label]="'Cerrar la conversación con ' + nombre">×</button>
         </header>
 
         <div class="conversacion" #conversacion aria-live="polite">
@@ -147,9 +155,16 @@ interface Mensaje {
       }
       .lanzador:hover { box-shadow: var(--shadow-lg), 0 0 0 4px var(--accent); }
       .panel {
-        width: min(460px, calc(100vw - 32px)); max-height: min(640px, calc(100vh - 120px)); display: flex;
+        width: clamp(380px, 36vw, 560px); height: min(680px, calc(100vh - 116px)); display: flex;
         flex-direction: column; border-radius: 18px; background: var(--surface); border: 1px solid var(--line);
-        box-shadow: var(--shadow-lg); overflow: hidden;
+        box-shadow: var(--shadow-lg); overflow: hidden; transition: width .2s ease, height .2s ease;
+      }
+      .panel.grande { width: min(980px, calc(100vw - 48px)); height: calc(100vh - 116px); }
+      /* Celular: ocupa la pantalla, encima del botón. */
+      @media (max-width: 640px) {
+        :host { right: 12px; bottom: 12px; }
+        .panel, .panel.grande { position: fixed; inset: 8px 8px 88px 8px; width: auto; height: auto; }
+        .agrandar { display: none; }
       }
       @media (prefers-reduced-motion: no-preference) {
         .panel { animation: subir .22s cubic-bezier(.22, 1, .36, 1) both; }
@@ -166,29 +181,30 @@ interface Mensaje {
         display: flex; align-items: center; gap: 12px; padding: 12px 14px; color: #fff;
         background: linear-gradient(120deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #000));
       }
-      .cara { width: 52px; height: 52px; border-radius: 50%; background: #fff; display: grid; place-items: center;
+      .cara { width: 56px; height: 56px; flex: none; border-radius: 50%; background: #fff; display: grid; place-items: center;
               box-shadow: 0 2px 8px rgb(0 0 0 / .2); }
       .titulos { flex: 1; min-width: 0; }
-      .titulos h2 { font-size: 17px; font-weight: 800; letter-spacing: .01em; color: #fff; }
-      .titulos p { font-size: 12px; opacity: .9; color: #fff; }
-      .cerrar { border: 0; background: rgb(255 255 255 / .15); font-size: 22px; line-height: 1; color: #fff;
-                width: 34px; height: 34px; border-radius: 50%; }
-      .cerrar:hover { background: rgb(255 255 255 / .28); }
+      .titulos h2 { font-size: 19px; font-weight: 800; letter-spacing: .01em; color: #fff; line-height: 1.2; }
+      .titulos p { font-size: 12.5px; opacity: .9; color: #fff; }
+      .boton-cabecera { border: 0; background: rgb(255 255 255 / .15); font-size: 22px; line-height: 1; color: #fff;
+                        width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+      .boton-cabecera:hover { background: rgb(255 255 255 / .28); }
 
-      .conversacion { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px;
-                      background: var(--surface-2); }
-      .bienvenida { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 14px;
-                    background: var(--surface); border: 1px dashed var(--line); font-size: 13.5px; color: var(--ink-2); }
+      .conversacion { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column;
+                      gap: 12px; background: var(--surface-2); }
+      .bienvenida { display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 14px;
+                    background: var(--surface); border: 1px dashed var(--line); font-size: 14px; line-height: 1.5;
+                    color: var(--ink-2); }
       .fila-asistente { display: flex; gap: 8px; align-items: flex-start; max-width: 100%; }
-      .mini { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--surface);
+      .mini { flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--surface);
               border: 1px solid var(--line); display: grid; place-items: center; }
-      .mensaje { font-size: 13.5px; line-height: 1.5; border-radius: 14px; color: var(--ink); }
+      .mensaje { font-size: 14px; line-height: 1.55; border-radius: 14px; color: var(--ink); }
       .mensaje.mio {
-        align-self: flex-end; max-width: 85%; padding: 8px 12px; white-space: pre-line;
+        align-self: flex-end; max-width: 80%; padding: 9px 14px; white-space: pre-line;
         background: var(--accent); color: var(--on-accent, #fff); border-bottom-right-radius: 4px;
       }
       .respuesta {
-        min-width: 0; flex: 1; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line);
+        min-width: 0; flex: 1; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line);
         border-top-left-radius: 4px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 8px;
       }
       .respuesta p { margin: 0; }
@@ -199,10 +215,12 @@ interface Mensaje {
 
       /* Tablas */
       .tabla-envoltura { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
-      table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-      th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
-           background: var(--surface-2); padding: 6px 8px; white-space: nowrap; }
-      td { padding: 7px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.45; }
+      th { text-align: left; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+           color: var(--muted); background: var(--surface-2); padding: 8px 10px; white-space: nowrap; }
+      td { padding: 9px 10px; border-top: 1px solid var(--line); vertical-align: top; min-width: 90px; }
+      td:first-child { min-width: 0; white-space: nowrap; }
+      tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
       tr td:first-child { box-shadow: inset 3px 0 0 transparent; }
       tr.u-alta td { background: color-mix(in srgb, var(--color-danger) 7%, transparent); }
       tr.u-alta td:first-child { box-shadow: inset 3px 0 0 var(--color-danger); }
@@ -233,17 +251,17 @@ interface Mensaje {
 
       .sugerencias { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px 4px; background: var(--surface); }
       .sugerencias button {
-        font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 99px;
+        font: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 99px;
         border: 1px solid var(--accent-soft); background: var(--accent-soft); color: var(--accent-ink);
       }
       .sugerencias button:hover:not(:disabled) { border-color: var(--accent); }
       .escribir { display: flex; gap: 8px; padding: 10px 14px 14px; background: var(--surface); }
       .escribir input {
-        flex: 1; min-width: 0; font: inherit; font-size: 13.5px; padding: 10px 14px; border-radius: 99px;
+        flex: 1; min-width: 0; font: inherit; font-size: 14.5px; padding: 11px 16px; border-radius: 99px;
         border: 1px solid var(--line-input, var(--line)); background: var(--surface-2); color: var(--ink);
       }
       .escribir input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-      .enviar { flex: none; width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--accent);
+      .enviar { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--accent);
                 color: var(--on-accent, #fff); display: grid; place-items: center; }
       .enviar:disabled { opacity: .45; }
       .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -263,6 +281,8 @@ export class PreguntaTogaComponent {
   ];
 
   readonly abierto = signal(false);
+  /** Modo grande: casi toda la pantalla, para leer tablas largas. */
+  readonly grande = signal(false);
   readonly pensando = signal(false);
   readonly mensajes = signal<Mensaje[]>([]);
   texto = '';
