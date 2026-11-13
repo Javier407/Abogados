@@ -164,7 +164,7 @@ interface Mensaje {
       @media (max-width: 640px) {
         :host { right: 12px; bottom: 12px; }
         .panel, .panel.grande { position: fixed; inset: 8px 8px 88px 8px; width: auto; height: auto; }
-        .agrandar { display: none; }
+        header .agrandar { display: none; }
       }
       @media (max-width: 420px) {
         .titulos p, .bienvenida app-mascota { display: none; }
@@ -238,12 +238,13 @@ interface Mensaje {
         tr.u-alta { border-left-color: var(--color-danger); }
         tr.u-media { border-left-color: var(--color-warn); }
         td, td:first-child, tbody tr:nth-child(even) td {
-          display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; align-items: baseline;
+          display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px; align-items: baseline;
           padding: 7px 10px; min-width: 0; white-space: normal; box-shadow: none; background: transparent;
         }
         td + td { border-top: 1px solid var(--line); }
         tr td:first-child { border-top: 0; }
         tr.u-alta td { background: color-mix(in srgb, var(--color-danger) 6%, transparent); }
+        .seg, .seg-radicado { white-space: normal; overflow-wrap: anywhere; }
         td::before { content: attr(data-columna); font-size: 11px; font-weight: 700; text-transform: uppercase;
                      letter-spacing: .04em; color: var(--muted); }
       }
