@@ -16,7 +16,7 @@ fi
 
 sudo tee /etc/systemd/system/abogados-vigia.service > /dev/null <<EOF
 [Unit]
-Description=Vigía del servidor de Gestión Jurídica (revisión y avisos por Telegram)
+Description=Vigía del servidor de Lexora (revisión y avisos por Telegram)
 After=docker.service network-online.target
 
 [Service]
@@ -28,7 +28,7 @@ EOF
 
 sudo tee /etc/systemd/system/abogados-vigia.timer > /dev/null <<EOF
 [Unit]
-Description=Vigía de Gestión Jurídica cada 5 minutos
+Description=Vigía de Lexora cada 5 minutos
 
 [Timer]
 OnBootSec=3min

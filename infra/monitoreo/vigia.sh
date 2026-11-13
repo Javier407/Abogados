@@ -212,7 +212,7 @@ case "$MODO" in
     if [ -z "$abiertos" ]; then echo "Todo en orden (disco ${disco} %, memoria disponible ${memoria} MB)"; else printf '%s\n' "$abiertos"; fi
     exit 0 ;;
   probar)
-    enviar "🔔 Gestión Jurídica: mensaje de prueba del vigía del servidor. Los avisos llegarán aquí."
+    enviar "🔔 Lexora: mensaje de prueba del vigía del servidor. Los avisos llegarán aquí."
     exit 0 ;;
 esac
 
@@ -247,11 +247,11 @@ DELETE FROM operacion.errores WHERE momento < now() - interval '30 days';
 SQL
 
 if [ -n "$(printf '%s' "$nuevos" | sed '/^$/d')" ]; then
-  enviar "⚠️ Gestión Jurídica — problema en el servidor:
+  enviar "⚠️ Lexora — problema en el servidor:
 $(printf '%s\n' "$nuevos" | sed '/^$/d; s/^/• /')"
 fi
 if [ -n "$resueltos" ]; then
-  enviar "✅ Gestión Jurídica — resuelto:
+  enviar "✅ Lexora — resuelto:
 $(printf '%s\n' "$resueltos" | sed 's/^/• /')"
 fi
 mv "$ESTADO/actuales" "$ESTADO/problemas"
@@ -259,9 +259,9 @@ mv "$ESTADO/actuales" "$ESTADO/problemas"
 hoy=$(date +%F)
 if [ "$(date +%H)" -ge 7 ] && [ "$(cat "$ESTADO/resumen" 2>/dev/null)" != "$hoy" ]; then
   if [ -z "$problemas" ]; then
-    enviar "🟢 Gestión Jurídica — resumen diario: todo en orden. Disco ${disco} %, memoria disponible ${memoria} MB, último respaldo $(basename "${ultimo:-ninguno}")."
+    enviar "🟢 Lexora — resumen diario: todo en orden. Disco ${disco} %, memoria disponible ${memoria} MB, último respaldo $(basename "${ultimo:-ninguno}")."
   else
-    enviar "🟠 Gestión Jurídica — resumen diario, problemas abiertos:
+    enviar "🟠 Lexora — resumen diario, problemas abiertos:
 $(printf '%s\n' "$abiertos" | sed 's/^/• /')"
   fi
   echo "$hoy" > "$ESTADO/resumen"
