@@ -42,7 +42,7 @@ Las consultas del bot **no pasan por el gateway**: el servicio `notificaciones` 
 1. Aplicar la migración `020` (crea el registro y el índice que impide un chat a nombre de dos personas; si ya hay chats repetidos, avisa y no crea el índice).
 2. Desplegar `notificaciones` con este cambio.
 3. En `infra/.env`: `TELEGRAM_CONSULTAS=true` (lo escribe Javier). Reiniciar `notificaciones`.
-4. Opcional, en @BotFather: nombre «Toga», foto `docs/marca/toga-512.png` y la lista de comandos:
+4. Opcional, en @BotFather: nombre «Lawy» (`/setname`), foto `docs/marca/lawy-512.png` (`/setuserpic`) y la lista de comandos:
 
 ```text
 mis_procesos - Sus procesos abiertos
