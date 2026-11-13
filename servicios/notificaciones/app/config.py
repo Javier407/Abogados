@@ -27,6 +27,13 @@ class Config:
     identidad_url: str = "http://localhost:8005"
     # El bot también responde consultas de la firma (apagado por defecto: ver docs/15-bot-telegram.md).
     telegram_consultas: bool = False
+    # false = los mensajes del bot los lee Talki (docs/16-integracion-talki.md); Lexora solo envía avisos.
+    telegram_escucha: bool = True
+    # Mostrar en el portal la tarjeta «Toga por WhatsApp e Instagram». Apagada hasta que Meta habilite la cuenta;
+    # las rutas de Talki (/canales/*) funcionan igual (chat de prueba del panel).
+    canales_en_portal: bool = False
+    # Clave compartida con Talki para /canales/* (la escribe Javier en infra/.env). Vacía = canales apagados.
+    canal_clave: str = field(default="", repr=False)
 
     @staticmethod
     def desde_entorno() -> "Config":
@@ -42,9 +49,12 @@ class Config:
             smtp_usuario=e("SMTP_USUARIO", ""),
             smtp_clave=e("SMTP_CLAVE", ""),
             smtp_starttls=_bool(e("SMTP_STARTTLS", "false")),
-            correo_remitente=e("CORREO_REMITENTE", "Gestion Juridica <avisos@gestion-juridica.local>"),
+            correo_remitente=e("CORREO_REMITENTE", "Lexora <avisos@gestion-juridica.local>"),
             telegram_token=e("TELEGRAM_TOKEN", "").strip(),
             procesos_url=e("PROCESOS_URL", "http://localhost:8082"),
             identidad_url=e("IDENTIDAD_URL", "http://localhost:8005"),
             telegram_consultas=_bool(e("TELEGRAM_CONSULTAS", "false")),
+            canal_clave=e("CANAL_CLAVE", "").strip(),
+            telegram_escucha=_bool(e("TELEGRAM_ESCUCHA", "true")),
+            canales_en_portal=_bool(e("CANALES_EN_PORTAL", "false")),
         )

@@ -36,6 +36,34 @@
       </div>
     }
 
+    @if (canales?.configurado) {
+      <div class="card">
+        <div class="card-header"><h2>Lawy por WhatsApp e Instagram</h2></div>
+        <div class="card-body">
+          <p>Pregúntele a Lawy por sus procesos, términos y audiencias desde su chat. Solo consulta; para cambiar algo, use el portal.</p>
+          @if (vinculoCanal) {
+            <p>Escriba este mensaje en el chat de la firma en {{ vinculoCanal.nombre }}:</p>
+            <p><code class="codigo-vinculo">{{ vinculoCanal.mensaje }}</code></p>
+            <p class="form-ayuda">El código sirve una vez y por 24 horas, y solo en {{ vinculoCanal.nombre }}.</p>
+            <button class="btn btn-secondary btn-sm" type="button" (click)="cargarCanales(sesion.idPersona())">Ya lo hice</button>
+          } @else {
+            <ul class="lista-canales">
+              @for (c of canales!.canales; track c.canal) {
+                <li>
+                  <span>{{ c.nombre }}: <strong>{{ c.vinculado ? 'vinculado' : 'sin vincular' }}</strong></span>
+                  @if (c.vinculado) {
+                    <button class="btn btn-secondary btn-sm" type="button" (click)="desvincularCanal(c)">Desvincular</button>
+                  } @else {
+                    <button class="btn btn-primary btn-sm" type="button" (click)="vincularCanal(c)">Vincular {{ c.nombre }}</button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    }
+
     <div class="filtros">
       <span class="resumen-chip">Sin leer: <strong>{{ sesion.noLeidos() }}</strong></span>
       <button class="btn btn-secondary btn-sm" type="button" (click)="leerTodos()" [disabled]="sesion.noLeidos() === 0">

@@ -83,7 +83,7 @@ async def test_una_actuacion_llega_al_responsable_por_app_correo_y_telegram():
     assert await servicio(repo, telegram, correo=correo).procesar("actuacion.detectada", ACTUACION) == 3
 
     assert telegram.enviados[0][0] == "555" and "Auto requiere al demandante" in telegram.enviados[0][1]
-    assert correo.enviados[0][1] == "[Gestión Jurídica] Nueva actuación en un proceso"
+    assert correo.enviados[0][1] == "[Lexora] Nueva actuación en un proceso"
     assert repo.por_canal(Canal.TELEGRAM)[0]["estado"] == "ENVIADA"
 
 

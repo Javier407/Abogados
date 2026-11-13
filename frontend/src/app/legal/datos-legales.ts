@@ -14,8 +14,8 @@ export const DATOS_LEGALES = {
   correoDatos: 'datospersonales@rodriguezasociados.co',
   telefono: '601 321 6540',
   producto: 'Lexora',
-  version: '1.2',            // 1.2: sin facturación electrónica; se declara el envío de avisos por Telegram
-  vigenteDesde: '2026-11-11',
+  version: '1.3',            // 1.3: Toga por WhatsApp e Instagram (Meta, vía Talki); 1.2: avisos por Telegram
+  vigenteDesde: '2026-11-12',
   revisada: false
 } as const;
 

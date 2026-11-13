@@ -42,7 +42,7 @@ Las consultas del bot **no pasan por el gateway**: el servicio `notificaciones` 
 1. Aplicar la migración `020` (crea el registro y el índice que impide un chat a nombre de dos personas; si ya hay chats repetidos, avisa y no crea el índice).
 2. Desplegar `notificaciones` con este cambio.
 3. En `infra/.env`: `TELEGRAM_CONSULTAS=true` (lo escribe Javier). Reiniciar `notificaciones`.
-4. Opcional, en @BotFather: nombre «Toga», foto `docs/marca/toga-512.png` y la lista de comandos:
+4. Opcional, en @BotFather: nombre «Lawy» (`/setname`), foto `docs/marca/lawy-512.png` (`/setuserpic`) y la lista de comandos:
 
 ```text
 mis_procesos - Sus procesos abiertos
@@ -52,7 +52,7 @@ proceso - Cómo va un proceso suyo (con el radicado)
 ayuda - Qué puede preguntar
 ```
 
-Es un solo bot y un solo token: Telegram solo deja que un proceso lea los mensajes de cada bot, y ese proceso es `notificaciones`. El vigía (`infra/monitoreo/vigia.sh`) usa el mismo token solo para enviar.
+Es un solo bot y un solo token: Telegram solo deja que un proceso lea los mensajes de cada bot. Por defecto ese proceso es `notificaciones`; con `TELEGRAM_ESCUCHA=false` los lee Talki y le pregunta a Lexora por `/api/canales/*` (docs/16-integracion-talki.md, §2.8), con el mismo vínculo y las mismas respuestas. El vigía (`infra/monitoreo/vigia.sh`) usa el mismo token solo para enviar.
 
 ## 6. Pruebas
 

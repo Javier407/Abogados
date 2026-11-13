@@ -85,6 +85,6 @@ def test_la_clave_cambia_por_dia_y_canal_para_no_repetir_avisos():
 def test_el_correo_escapa_html_y_trae_el_enlace():
     n = avisos_para(aviso(descripcion="Recurso <urgente>"), [Preferencia(Canal.EMAIL, "a@firma.co")], None, HOY)[1]
     asunto, texto, html = correo_de(n, "http://100.65.152.112:8090/")
-    assert asunto == "[Gestión Jurídica] Término por vencer"
+    assert asunto == "[Lexora] Término por vencer"
     assert "&lt;urgente&gt;" in html and "<urgente>" not in html
     assert "http://100.65.152.112:8090/terminos" in texto

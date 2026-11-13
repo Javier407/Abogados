@@ -23,7 +23,7 @@ describe('Pregúntale a Toga', () => {
     const f = montar();
     const el = f.nativeElement as HTMLElement;
     const lanzador = el.querySelector('button.lanzador') as HTMLButtonElement;
-    expect(lanzador.getAttribute('aria-label')).toBe('Pregúntale a Toga');
+    expect(lanzador.getAttribute('aria-label')).toBe('Pregúntale a Lawy');
 
     lanzador.click();
     f.detectChanges();
@@ -34,13 +34,30 @@ describe('Pregúntale a Toga', () => {
     const peticion = http.expectOne(r => r.url.endsWith('/api/notificaciones/toga'));
     expect(peticion.request.method).toBe('POST');
     expect(peticion.request.body).toEqual({ texto: '¿Qué términos me vencen?' });
-    expect(el.textContent).toContain('Toga está revisando');
+    expect(el.textContent).toContain('Lawy está revisando');
 
-    peticion.flush({ respuesta: 'Tiene 2 término(s) pendiente(s):\n• 14/11/2026 — Aportar dictamen' });
+    peticion.flush({ respuesta: 'Tiene 2 término(s) pendiente(s), 1 vencido(s). Empiece por esos:\n'
+      + '• 10/11/2026 — Pronunciarse sobre excepciones\n  11001-31-03-032-2026-00501-00 · venció hace 1 día hábil\n'
+      + '• 14/11/2026 — Aportar dictamen\n  11001-31-03-032-2026-00501-00 · faltan 2 días hábiles' });
     f.detectChanges();
-    const mensajes = Array.from(el.querySelectorAll('.mensaje')).map(m => m.textContent?.trim());
-    expect(mensajes).toEqual(['¿Qué términos me vencen?', 'Tiene 2 término(s) pendiente(s):\n• 14/11/2026 — Aportar dictamen']);
     expect(el.querySelector('.mensaje.mio')?.textContent).toContain('¿Qué términos');
+    // La respuesta se ve ordenada: el título y una tabla, con lo vencido y lo próximo resaltados.
+    const respuesta = el.querySelector('.respuesta') as HTMLElement;
+    expect(respuesta.querySelector('p.titulo')?.textContent).toContain('Empiece por esos:');
+    expect(Array.from(respuesta.querySelectorAll('th')).map(t => t.textContent)).toEqual(['Vence', 'Qué hay que hacer', 'Proceso', 'Estado']);
+    const filas = respuesta.querySelectorAll('tbody tr');
+    expect(filas.length).toBe(2);
+    expect(filas[0].className).toBe('u-alta');
+    expect(filas[0].querySelector('.seg-vencido')?.textContent).toBe('venció hace 1 día hábil');
+    expect(filas[1].className).toBe('u-media');
+    expect(filas[1].querySelector('.seg-pronto')?.textContent).toBe('faltan 2 días hábiles');
+
+    // Tocar un radicado pregunta por ese proceso.
+    (respuesta.querySelector('.seg-radicado') as HTMLButtonElement).click();
+    const otra = http.expectOne(r => r.url.endsWith('/api/notificaciones/toga'));
+    expect(otra.request.body).toEqual({ texto: '11001310303220260050100' });
+    otra.flush({ respuesta: '11001-31-03-032-2026-00501-00 — Incumplimiento de contrato' });
+    f.detectChanges();
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     f.detectChanges();
@@ -56,7 +73,7 @@ describe('Pregúntale a Toga', () => {
       { status: 503, statusText: 'Service Unavailable' });
     f.detectChanges();
     expect(c.pensando()).toBe(false);
-    expect(c.mensajes().at(-1)?.de).toBe('toga');
+    expect(c.mensajes().at(-1)?.de).toBe('asistente');
     c.preguntar('   ');                                  // vacío: no pregunta
     expect(c.mensajes().length).toBe(2);
   });

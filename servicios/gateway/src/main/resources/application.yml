@@ -30,7 +30,7 @@ spring:
         - id: notificaciones
           uri: ${NOTIFICACIONES_URL:http://localhost:8000}
           predicates:
-            - Path=/api/notificaciones/**
+            - Path=/api/notificaciones/**,/api/canales/**
           filters:
             - StripPrefix=1
         - id: asistente

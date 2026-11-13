@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import { ApiService, mensajeDeError } from '../../core/api.service';
 import { EsqueletoComponent } from '../../ui/esqueleto.component';
-import { Aviso, EstadoTelegram, VinculoTelegram } from '../../core/modelos';
+import { Aviso, CanalExterno, EstadoCanales, EstadoTelegram, VinculoCanal, VinculoTelegram } from '../../core/modelos';
 import { SesionService } from '../../core/sesion.service';
 import { AuthService } from '../../core/auth.service';
 
@@ -24,6 +24,8 @@ export class AvisosComponent {
   avisos: Aviso[] = [];
   telegram: EstadoTelegram | null = null;
   vinculo: VinculoTelegram | null = null;
+  canales: EstadoCanales | null = null;
+  vinculoCanal: VinculoCanal | null = null;
   cargando = false;
   error = '';
 
@@ -35,6 +37,7 @@ export class AvisosComponent {
       this.cargar();
     });
     effect(() => this.cargarTelegram(this.sesion.idPersona()));
+    effect(() => this.cargarCanales(this.sesion.idPersona()));
   }
 
   cargar(): void {
@@ -78,6 +81,33 @@ export class AvisosComponent {
     if (!confirm('¿Dejar de recibir avisos por Telegram?')) return;
     this.api.desvincularTelegram(this.sesion.idPersona()!).subscribe({
       next: () => this.cargarTelegram(this.sesion.idPersona()),
+      error: (e) => (this.error = mensajeDeError(e)),
+    });
+  }
+
+  /** Toga por WhatsApp e Instagram: solo el equipo de la firma (Toga no responde datos a un cliente). */
+  cargarCanales(id: number | null): void {
+    this.vinculoCanal = null;
+    if (!id || this.auth.esCliente()) {
+      this.canales = null;
+      return;
+    }
+    this.api
+      .estadoCanales(id)
+      .subscribe({ next: (c) => (this.canales = c), error: () => (this.canales = null) });
+  }
+
+  vincularCanal(c: CanalExterno): void {
+    this.api.vincularCanal(this.sesion.idPersona()!, c.canal).subscribe({
+      next: (v) => (this.vinculoCanal = v),
+      error: (e) => (this.error = mensajeDeError(e)),
+    });
+  }
+
+  desvincularCanal(c: CanalExterno): void {
+    if (!confirm(`¿Dejar de consultar a Lawy por ${c.nombre}?`)) return;
+    this.api.desvincularCanal(this.sesion.idPersona()!, c.canal).subscribe({
+      next: () => this.cargarCanales(this.sesion.idPersona()),
       error: (e) => (this.error = mensajeDeError(e)),
     });
   }

@@ -103,7 +103,7 @@ async def test_sus_procesos_abiertos_con_su_papel_y_sin_datos_de_mas():
     assert r.startswith("Tiene 2 procesos abiertos:")
     assert "11001-31-03-032-2026-00501-00 — Incumplimiento de contrato" in r
     assert "Verbal, etapa pruebas (a cargo)" in r
-    assert "2 término(s); el próximo vence el 14/11/2026" in r
+    assert "2 término(s), 1 VENCIDO(S); el más antiguo desde el 10/11/2026" in r
     assert "(apoyo)" in r
     assert "Archivado" not in r                                 # los cerrados no salen
     assert "320000000" not in r and "cuantia" not in r          # lista blanca de campos
@@ -130,7 +130,7 @@ async def test_un_proceso_suyo_si_y_uno_ajeno_como_si_no_existiera():
     ajeno = await b.responder(CHAT, "/proceso 05001310502120260011800")
     assert "No encuentro el proceso 05001-31-05-021-2026-00118-00 entre los suyos" in ajeno
     corto = await b.responder(CHAT, "/proceso 123")
-    assert "23 dígitos" in corto and "11001-31-03-032-2026-00501-00" in corto
+    assert "23 dígitos" in corto and "con o sin guiones" in corto
     assert [x[3] for x in repo.registro] == ["RESPONDIDA", "NO_ENCONTRADO", "RESPONDIDA"]
 
 
@@ -187,7 +187,7 @@ async def test_en_el_portal_la_persona_viene_de_la_sesion_y_la_ayuda_no_habla_de
     b = bot(repo, datos)
 
     ayuda = await b.responder_portal(CATALINA, "hola")
-    assert ayuda.startswith("Hola, Catalina. Soy Toga") and "/mis_procesos" not in ayuda
+    assert ayuda.startswith("Hola, Catalina. Soy Lawy") and "/mis_procesos" not in ayuda
     assert "Tiene 2 procesos abiertos" in await b.responder_portal(CATALINA, "mis procesos")
     assert "etapa pruebas" in await b.responder_portal(CATALINA, "mis procesos")
     assert "solo para el equipo" in await b.responder_portal(CLIENTE, "mis procesos")   # un cliente, no
@@ -220,7 +220,7 @@ def test_preguntar_a_toga_desde_el_portal_con_la_sesion():
 
 async def test_la_ayuda_saluda_y_explica_los_comandos():
     r = await bot().responder(CHAT, "hola")
-    assert r.startswith("Hola, Catalina. Soy Toga")
+    assert r.startswith("Hola, Catalina. Soy Lawy")
     assert "/mis_procesos" in r and "/proceso" in r and "Solo consulto" in r
 
 
@@ -279,7 +279,11 @@ async def test_los_datos_se_piden_a_cada_servicio_con_el_token_de_servicio():
         if req.url.path == "/abogados/1":
             return httpx.Response(404)
         if req.url.path.startswith("/abogados/"):
-            return httpx.Response(200, json={"nombres": "Catalina", "activo": True, "email": "c@f.test"})
+            return httpx.Response(200, json={"nombres": "Catalina", "activo": True, "email": "c@f.test",
+                                             "cargo": "Socio"})
+        if req.url.path == "/abogados":
+            return httpx.Response(200, json=[{"idPersona": 5, "nombres": "Ana", "apellidos": "Ruiz", "cargo": "Socio",
+                                              "area": "Laboral", "email": "a@f.test", "tarifaHora": 1}])
         return httpx.Response(200, json=[{"x": 1}])
 
     class Token:
@@ -296,7 +300,9 @@ async def test_los_datos_se_piden_a_cada_servicio_con_el_token_de_servicio():
     httpx.AsyncClient.__init__ = con_transporte
     try:
         d = DatosBotHttp("http://gabinete:8080/", "http://procesos:8080", Token())
-        assert await d.persona(CATALINA) == {"nombres": "Catalina", "activo": True}   # sin el correo
+        assert await d.persona(CATALINA) == {"nombres": "Catalina", "activo": True, "cargo": "Socio"}   # sin el correo
+        assert await d.abogados() == [{"idPersona": 5, "nombres": "Ana", "apellidos": "Ruiz", "cargo": "Socio",
+                                       "area": "Laboral"}]                         # sin correo ni tarifa
         assert await d.persona(1) is None
         assert await d.procesos_de(CATALINA) == [{"x": 1}]
         await d.terminos_de(CATALINA)
@@ -308,6 +314,7 @@ async def test_los_datos_se_piden_a_cada_servicio_con_el_token_de_servicio():
     assert all(p[3] == "Bearer servicio" for p in pedidos)
     assert ("procesos", "/procesos/de-abogado/52345678", {}, "Bearer servicio") in pedidos
     assert ("procesos", "/terminos", {"idResponsable": "52345678"}, "Bearer servicio") in pedidos
+    assert ("gabinete", "/abogados", {"soloActivos": "true"}, "Bearer servicio") in pedidos
     assert ("procesos", "/terminos", {"idProceso": "34"}, "Bearer servicio") in pedidos
     assert ("procesos", "/audiencias", {"desde": "2026-11-12", "hasta": "2026-11-26", "idAsistente": "52345678"},
             "Bearer servicio") in pedidos
@@ -362,3 +369,72 @@ async def test_un_chat_a_nombre_de_dos_personas_no_es_de_nadie():
     await RepositorioPostgres(registro).registrar_consulta_bot(CATALINA, CHAT, "terminos", "RESPONDIDA")
     assert registro.sql[0][1] == (CATALINA, CHAT, "terminos", "RESPONDIDA")
     assert "INSERT INTO notificaciones.consultas_bot" in registro.sql[0][0]
+
+
+async def test_mis_procesos_marca_como_vencido_el_termino_con_fecha_pasada():
+    datos = DatosFalsos()
+    vencido = {**PROCESOS[1], "terminosPendientes": 1, "proximoVencimiento": "2026-10-16"}
+
+    async def procesos_de(_):
+        return [PROCESOS[0], vencido]
+    datos.procesos_de = procesos_de
+    r = await bot(datos=datos).responder(CHAT, "/mis_procesos")
+    assert "1 término(s), VENCIDO desde el 16/10/2026" in r
+    assert "2 término(s), 1 VENCIDO(S); el más antiguo desde el 10/11/2026" in r
+
+
+async def test_mis_procesos_dice_todos_vencidos_y_el_mas_antiguo():
+    datos = DatosFalsos()
+    proceso = {**PROCESOS[0], "terminosPendientes": 2, "proximoVencimiento": "2026-10-16"}
+    terminos = [{"radicadoLegible": proceso["radicadoLegible"], "estado": "PENDIENTE", "diasHabilesRestantes": d,
+                 "fechaVencimiento": f, "descripcion": "x"} for d, f in ((-16, "2026-10-20"), (-18, "2026-10-16"))]
+
+    async def procesos_de(_):
+        return [proceso]
+
+    async def terminos_de(_):
+        return terminos
+    datos.procesos_de, datos.terminos_de = procesos_de, terminos_de
+    r = await bot(datos=datos).responder(CHAT, "/mis_procesos")
+    assert "2 término(s), todos VENCIDOS; el más antiguo desde el 16/10/2026" in r
+
+
+async def test_si_no_se_pueden_contar_los_vencidos_usa_la_fecha_del_proximo():
+    datos = DatosFalsos()
+    proceso = {**PROCESOS[0], "terminosPendientes": 3, "proximoVencimiento": "2026-10-16"}
+
+    async def procesos_de(_):
+        return [proceso]
+
+    async def terminos_de(_):
+        raise RuntimeError("procesos no responde")
+    datos.procesos_de, datos.terminos_de = procesos_de, terminos_de
+    r = await bot(datos=datos).responder(CHAT, "/mis_procesos")
+    assert "3 término(s), 1 VENCIDO(S); el más antiguo desde el 16/10/2026" in r
+
+
+async def test_la_ayuda_usa_un_radicado_propio_de_ejemplo():
+    ayuda = await bot().responder(CHAT, "/ayuda")
+    assert "/proceso 11001310303220260050100 — cómo va ese proceso suyo" in ayuda    # el primero abierto
+
+    datos = DatosFalsos()
+
+    async def sin_procesos(_):
+        return []
+    datos.procesos_de = sin_procesos
+    assert "/proceso <radicado de 23 dígitos>" in await bot(datos=datos).responder(CHAT, "/ayuda")
+
+    async def falla(_):
+        raise RuntimeError("procesos no responde")
+    datos.procesos_de = falla
+    assert "/proceso <radicado de 23 dígitos>" in await bot(datos=datos).responder(CHAT, "/ayuda")
+
+
+async def test_respuestas_cortas_a_registrar_y_quien_es_toga():
+    registrar = await bot().responder(CHAT, "¿Puedo registrar un término?")
+    assert registrar.startswith("No: solo consulto.") and "/mis_procesos" not in registrar
+    quien = await bot().responder(CHAT, "¿Eres un bot?")
+    assert quien.startswith("Soy Lawy") and "No soy una persona" in quien and "/mis_procesos" not in quien
+    portal = await bot().responder_portal(CATALINA, "quiero borrar un proceso")
+    assert portal.startswith("No: solo consulto.") and "/ayuda" not in portal
+    assert "/ayuda" not in await bot().responder_portal(CATALINA, "eres humano?")

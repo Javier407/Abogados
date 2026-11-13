@@ -193,6 +193,15 @@ class SeguridadTest {
 	}
 
 	@Test
+	void talkiLlegaAToga_sinTokenDeUsuario_peroSoloAEsasDosRutas() {
+		// notificaciones exige la clave compartida (X-Canal-Clave); el gateway solo deja pasar estas dos rutas.
+		web.post().uri("/api/canales/toga").exchange().expectStatus().value(s -> assertThat(s).isNotIn(401, 403));
+		web.post().uri("/api/canales/vinculo").exchange().expectStatus().value(s -> assertThat(s).isNotIn(401, 403));
+		web.get().uri("/api/canales/toga").exchange().expectStatus().isUnauthorized();
+		web.post().uri("/api/canales/otra").exchange().expectStatus().isUnauthorized();
+	}
+
+	@Test
 	void elLoginNoPideToken() {
 		web.post().uri("/api/auth/login").exchange()
 				.expectStatus().value(s -> assertThat(s).isNotIn(401, 403));

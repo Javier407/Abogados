@@ -2,15 +2,19 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import json
 import logging
 from contextlib import asynccontextmanager
+from typing import Literal
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field, model_validator
 
 from .aplicacion import ConsultaServidor, ServicioNotificaciones
+from .canales import CANALES, CanalesExternos
 from .seguridad import MiddlewareToken, TokenServicio, VerificadorTokens
 from .infraestructura import AvisosEnVivoMemoria
 
@@ -20,6 +24,31 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 log = logging.getLogger("notificaciones")
 
 LATIDO_SEGUNDOS = 25
+# Talki llama a estas rutas sin token de usuario: se validan con la clave compartida (X-Canal-Clave).
+RUTAS_DE_CANAL = ("/canales/vinculo", "/canales/toga")
+
+Canal = Literal["WHATSAPP", "INSTAGRAM", "TELEGRAM"]
+IdExterno = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9_.:+-]+$")
+
+
+class PeticionCanal(BaseModel):
+    canal: Canal
+    idExterno: str = IdExterno
+
+    @model_validator(mode="after")
+    def solo_chats_privados(self):
+        # En Telegram un chat privado tiene id positivo; los grupos y canales, negativo. Los datos son de una persona.
+        if self.canal == "TELEGRAM" and not self.idExterno.isdigit():
+            raise ValueError("En Telegram solo se atienden chats privados (idExterno numérico positivo)")
+        return self
+
+
+class PeticionVinculo(PeticionCanal):
+    codigo: str = Field(min_length=4, max_length=20)
+
+
+class PeticionToga(PeticionCanal):
+    texto: str = Field(min_length=1, max_length=300)
 
 
 def persona_autorizada(request: Request, idPersona: int = Query(..., gt=0)) -> int:
@@ -52,9 +81,36 @@ def solo_admin(request: Request) -> None:
         raise HTTPException(403, detail="Solo el administrador ve el estado del servidor")
 
 
+def canal_con_clave(request: Request) -> CanalesExternos:
+    """Solo Talki, con la clave compartida. Sin clave configurada, los canales están apagados."""
+    clave = getattr(request.app.state, "canal_clave", "")
+    canales = getattr(request.app.state, "canales", None)
+    if not clave or canales is None:
+        raise HTTPException(503, detail="Los canales externos no están configurados")
+    recibida = request.headers.get("x-canal-clave") or ""
+    if not hmac.compare_digest(recibida.encode(), clave.encode()):
+        raise HTTPException(401, detail="Clave de canal inválida")
+    return canales
+
+
+def canales_del_portal(request: Request) -> CanalesExternos:
+    canales = getattr(request.app.state, "canales", None)
+    if canales is None:
+        raise HTTPException(503, detail="Los canales externos no están disponibles")
+    return canales
+
+
+def canal_valido(canal: str) -> str:
+    canal = canal.upper()
+    if canal not in CANALES:
+        raise HTTPException(404, detail=f"No existe el canal {canal}")
+    return canal
+
+
 def crear_app(servicio: ServicioNotificaciones | None = None,
               en_vivo: AvisosEnVivoMemoria | None = None, verificador: VerificadorTokens | None = None,
-              servidor: ConsultaServidor | None = None, toga=None) -> FastAPI:
+              servidor: ConsultaServidor | None = None, toga=None, canales: CanalesExternos | None = None,
+              canal_clave: str = "", canales_en_portal: bool = True) -> FastAPI:
     """Sin argumentos conecta PostgreSQL, SMTP y RabbitMQ; en las pruebas se pasan dobles."""
 
     @asynccontextmanager
@@ -64,6 +120,9 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
             app.state.en_vivo = en_vivo or AvisosEnVivoMemoria()
             app.state.servidor = servidor
             app.state.toga = toga
+            app.state.canales = canales
+            app.state.canal_clave = canal_clave
+            app.state.canales_en_portal = canales_en_portal
             yield
             return
 
@@ -98,7 +157,16 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
         tareas = [asyncio.create_task(mensajeria.iniciar(app.state.servicio.procesar))]
         # Toga responde en el portal siempre; por Telegram, solo con TELEGRAM_CONSULTAS.
         app.state.toga = ConsultasBot(repo, DatosBotHttp(cfg.gabinete_url, cfg.procesos_url, token))
-        if telegram is not None:
+        # WhatsApp, Instagram… por Talki: solo si Javier escribió CANAL_CLAVE (docs/16-integracion-talki.md).
+        app.state.canales = CanalesExternos(repo, app.state.toga,
+                                            vincular_telegram=app.state.servicio.vincular_telegram)
+        app.state.canal_clave = cfg.canal_clave
+        app.state.canales_en_portal = cfg.canales_en_portal
+        if not cfg.canal_clave:
+            log.info("Sin CANAL_CLAVE: Toga no responde por WhatsApp ni Instagram")
+        if telegram is not None and not cfg.telegram_escucha:
+            log.info("TELEGRAM_ESCUCHA=false: los mensajes del bot los lee Talki; Lexora solo envía avisos")
+        elif telegram is not None:
             consultar = None
             if cfg.telegram_consultas:
                 consultar = app.state.toga.responder
@@ -116,7 +184,8 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
     # F9: cada petición trae un token válido (también verificado aquí, no solo en el gateway). En las pruebas
     # con dobles no se verifica, salvo que se pase un verificador.
     if servicio is None or verificador is not None:
-        app.add_middleware(MiddlewareToken, verificador=verificador or VerificadorTokens.desde_entorno())
+        app.add_middleware(MiddlewareToken, verificador=verificador or VerificadorTokens.desde_entorno(),
+                           publicas=("/salud", *RUTAS_DE_CANAL))
 
     def srv(request: Request) -> ServicioNotificaciones:
         return request.app.state.servicio
@@ -165,8 +234,36 @@ def crear_app(servicio: ServicioNotificaciones | None = None,
         """Pregunta a Toga desde el portal. Mismas reglas que el bot: solo la firma, solo lo suyo, solo lectura."""
         toga = getattr(request.app.state, "toga", None)
         if toga is None:
-            raise HTTPException(503, detail="Toga no está disponible en este momento")
+            raise HTTPException(503, detail="Lawy no está disponible en este momento")
         return {"respuesta": await toga.responder_portal(idPersona, texto)}
+
+    # ---------------------------------------------------------- WhatsApp, Instagram… (vía Talki)
+
+    @app.get("/notificaciones/canales")
+    async def estado_canales(request: Request, idPersona: int = Depends(persona_autorizada)):
+        canales = canales_del_portal(request)
+        # Sin CANAL_CLAVE o con CANALES_EN_PORTAL=false, el portal no muestra la tarjeta.
+        visible = bool(getattr(request.app.state, "canal_clave", "")) and \
+            getattr(request.app.state, "canales_en_portal", False)
+        return {"configurado": visible, "canales": await canales.estado(idPersona)}
+
+    @app.post("/notificaciones/canales/{canal}/vinculo")
+    async def vinculo_canal(request: Request, canal: str, idPersona: int = Depends(persona_autorizada)):
+        return await canales_del_portal(request).generar_vinculo(idPersona, canal_valido(canal))
+
+    @app.delete("/notificaciones/canales/{canal}")
+    async def desvincular_canal(request: Request, canal: str, idPersona: int = Depends(persona_autorizada)):
+        return {"desvinculado": await canales_del_portal(request).desvincular(idPersona, canal_valido(canal))}
+
+    @app.post("/canales/vinculo")
+    async def vincular_desde_canal(p: PeticionVinculo, canales: CanalesExternos = Depends(canal_con_clave)):
+        """Talki: la persona escribió «vincular <código>» en su chat."""
+        return await canales.vincular(p.canal, p.idExterno, p.codigo)
+
+    @app.post("/canales/toga")
+    async def preguntar_desde_canal(p: PeticionToga, canales: CanalesExternos = Depends(canal_con_clave)):
+        """Talki: una pregunta a Toga desde un chat externo. Texto plano listo para enviar."""
+        return await canales.preguntar(p.canal, p.idExterno, p.texto)
 
     @app.get("/notificaciones/servidor")
     async def estado_servidor(request: Request, dias: int = Query(7, ge=1, le=90)):

@@ -140,6 +140,55 @@ class RepositorioPostgres:
                 "DELETE FROM notificaciones.preferencias WHERE id_persona = %s AND canal = 'TELEGRAM'", (id_persona,))
             return cur.rowcount > 0
 
+    # ------------------------------------------------ WhatsApp, Instagram… vía Talki (migración 021)
+
+    async def crear_vinculo_canal(self, codigo: str, id_persona: int, canal: str) -> None:
+        async with self.pool.connection() as con:
+            await con.execute(
+                "INSERT INTO notificaciones.vinculos_canal (codigo, id_persona, canal) VALUES (%s, %s, %s)",
+                (codigo, id_persona, canal))
+
+    async def usar_vinculo_canal(self, codigo: str, canal: str) -> int | None:
+        """Un código sirve una vez, durante 24 horas y solo para el canal en que se generó."""
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                """UPDATE notificaciones.vinculos_canal SET usado = now()
+                   WHERE codigo = %s AND canal = %s AND usado IS NULL AND creado > now() - interval '24 hours'
+                   RETURNING id_persona""", (codigo, canal))
+            fila = await cur.fetchone()
+            return fila[0] if fila else None
+
+    async def guardar_canal(self, id_persona: int, canal: str, id_externo: str) -> None:
+        """El chat queda solo a nombre de esta persona, y la persona con un solo chat en ese canal."""
+        async with self.pool.connection() as con:
+            await con.execute(
+                """DELETE FROM notificaciones.canales_externos
+                   WHERE canal = %s AND (id_persona = %s OR id_externo = %s)""", (canal, id_persona, id_externo))
+            await con.execute(
+                "INSERT INTO notificaciones.canales_externos (canal, id_externo, id_persona) VALUES (%s, %s, %s)",
+                (canal, id_externo, id_persona))
+
+    async def persona_de_canal(self, canal: str, id_externo: str) -> int | None:
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                "SELECT id_persona FROM notificaciones.canales_externos WHERE canal = %s AND id_externo = %s",
+                (canal, id_externo))
+            fila = await cur.fetchone()
+            return fila[0] if fila else None
+
+    async def canales_de(self, id_persona: int) -> list[str]:
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                "SELECT canal FROM notificaciones.canales_externos WHERE id_persona = %s", (id_persona,))
+            return [f[0] for f in await cur.fetchall()]
+
+    async def quitar_canal(self, id_persona: int, canal: str) -> bool:
+        async with self.pool.connection() as con:
+            cur = await con.execute(
+                "DELETE FROM notificaciones.canales_externos WHERE id_persona = %s AND canal = %s",
+                (id_persona, canal))
+            return cur.rowcount > 0
+
 
 # ------------------------------------------------------------------ correo (SMTP)
 
@@ -223,7 +272,13 @@ class DatosBotHttp:
 
     async def persona(self, id_persona: int) -> dict | None:
         p = await self._get(f"{self.gabinete}/abogados/{id_persona}")
-        return {"nombres": p.get("nombres") or "", "activo": bool(p.get("activo"))} if p else None
+        return {"nombres": p.get("nombres") or "", "activo": bool(p.get("activo")), "cargo": p.get("cargo")} \
+            if p else None
+
+    async def abogados(self) -> list[dict]:
+        """El equipo activo, solo con lo que muestra Toga (sin correos, teléfonos ni tarifas)."""
+        return [{k: a.get(k) for k in ("idPersona", "nombres", "apellidos", "cargo", "area")}
+                for a in await self._get(f"{self.gabinete}/abogados", {"soloActivos": "true"}) or []]
 
     async def procesos_de(self, id_persona: int) -> list[dict]:
         return await self._get(f"{self.procesos}/procesos/de-abogado/{id_persona}") or []
@@ -342,10 +397,10 @@ class TelegramBot:
         chat_id = str(chat["id"])
         try:
             if len(partes) == 2 and await vincular(partes[1].strip(), chat_id) is not None:
-                respuesta = ("Listo: este chat quedó vinculado a Gestión Jurídica. Aquí recibirá los avisos de "
+                respuesta = ("Listo: este chat quedó vinculado a Lexora. Aquí recibirá los avisos de "
                              "términos y de actuaciones nuevas en sus procesos.")
             else:
-                respuesta = ("Para vincular este chat, abra Gestión Jurídica → Avisos → Vincular Telegram y use el "
+                respuesta = ("Para vincular este chat, abra Lexora → Avisos → Vincular Telegram y use el "
                              "enlace que aparece (sirve una vez y por 24 horas).")
             await self.enviar(chat_id, respuesta)
         except Exception:   # noqa: BLE001

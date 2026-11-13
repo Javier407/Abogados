@@ -18,12 +18,12 @@ describe('Toga y el inicio', () => {
     expect(svg.getAttribute('role')).toBeNull();
 
     const b = TestBed.createComponent(MascotaComponent);
-    b.componentRef.setInput('etiqueta', `${NOMBRE_ASISTENTE}, la asistente`);
+    b.componentRef.setInput('etiqueta', `${NOMBRE_ASISTENTE}, el asistente`);
     b.componentRef.setInput('animo', 'pensando');
     b.detectChanges();
     const svg2 = b.nativeElement.querySelector('svg') as SVGElement;
     expect(svg2.getAttribute('role')).toBe('img');
-    expect(svg2.getAttribute('aria-label')).toBe('Toga, la asistente');
+    expect(svg2.getAttribute('aria-label')).toBe('Lawy, el asistente');
     expect(svg2.classList).toContain('pensando');
     expect(a.nativeElement.querySelector('pattern').id).not.toBe(b.nativeElement.querySelector('pattern').id);
   });
